@@ -1,0 +1,6 @@
+{
+  "name": "Enterprise",
+  "description": "Maximum robustness for mission-critical systems. Full pipeline with design phase.",
+  "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
+  "default_effort": "extreme"
+}

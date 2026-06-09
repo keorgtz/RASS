@@ -1,0 +1,19 @@
+{
+  "name": "Local",
+  "description": "Offline and local models. GLM-5.1 for all phases — works with OpenCode Go without external APIs.",
+  "default": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "medium",
+    "fallbacks": []
+  },
+  "orchestrator": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "medium",
+    "fallbacks": []
+  },
+  "apply": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "medium",
+    "fallbacks": []
+  }
+}

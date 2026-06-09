@@ -1,0 +1,6 @@
+{
+  "name": "UI",
+  "description": "For MeridianUI, MAUI, Blazor, Avalonia, and UI-focused development.",
+  "phases": ["orchestrator", "design", "apply", "verify"],
+  "default_effort": "medium"
+}

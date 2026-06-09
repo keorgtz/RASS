@@ -1,0 +1,9 @@
+{
+  "system_name": "RASS",
+  "full_name": "Ryou Adaptive SDD System",
+  "version": "2.0.0",
+  "default_mode": "ryouset",
+  "default_profile": "ryouset",
+  "cache_enabled": true,
+  "telemetry": false
+}

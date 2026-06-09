@@ -1,0 +1,17 @@
+{
+  "name": "rass-installer",
+  "version": "2.0.0",
+  "description": "RASS — Ryou Adaptive SDD System Installer TUI",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "install-rass": "node index.js install",
+    "uninstall-rass": "node index.js uninstall",
+    "local-rass": "node index.js local",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.5.1",
+    "picocolors": "^1.1.1"
+  }
+}

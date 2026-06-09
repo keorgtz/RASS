@@ -1,0 +1,6 @@
+{
+  "name": "Fast",
+  "description": "For CRUDs, simple UI, APIs, and quick tasks. Minimal pipeline for speed.",
+  "phases": ["orchestrator", "apply", "verify"],
+  "default_effort": "low"
+}

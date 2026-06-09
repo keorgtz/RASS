@@ -1,0 +1,6 @@
+{
+  "name": "RyouSet",
+  "description": "Full Ryou orchestrator pipeline — GLM-5.1 orchestrates, Kimi K2.6 builds, DeepSeek V4 Pro reviews. The complete SDD workflow with all subagents.",
+  "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
+  "default_effort": "medium"
+}

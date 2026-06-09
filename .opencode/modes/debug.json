@@ -1,0 +1,6 @@
+{
+  "name": "Debug",
+  "description": "For complex bugs, concurrency issues, memory leaks, and runtime errors.",
+  "phases": ["orchestrator", "explore", "verify", "apply", "verify"],
+  "default_effort": "high"
+}
