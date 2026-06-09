@@ -76,92 +76,92 @@ const THEME = {
 // ─── Ryou ASCII Art Banner — Elegant Cursive Style ────────────────────────
 
 const RYOU_ASCII_RAW = [
-  '                 :+xX$$$X+:',
-  '           .+X$$$$$$$$$$$$$$$X;',
-  '        .X$$$$$$$$X+;:::::;+$$$$+',
-  '      .$$$$$$$x;:..........::;$$$x',
-  '     ;$$$$$$;...   .x$$$X....:$$$$:',
-  '   .:X$$$$+.      ;$$$X:.   .;$$$$:    ..                     .:;;..         .        ..',
-  '   .:;$$$x.     .X$$$x..   .:$$$$$.  .x$$$.    .$$$X.     .xX$$$$$$X.      ;$$$+     x$$X.',
-  '   ..::;+.    .:$$$$+     .+$$$$$.  :$$$$X.   ;$$$$X.   :$$$$X;::+$$x    .X$$$$;   .X$$$X.',
-  '    ....     .+$$$$+    .x$$$$$x   +$$$$x.   x$$$$$.  .X$$$$$+...:$$X   .$$$$X.  .;$$$$x.',
-  '            .x$$$$x:;x$$$$$$X+.  .x$$$$+   .X$$$$$.  :$$$$X;$X...x$$; .:$$$$X.  .+$$$$+',
-  '           .X$$$$X$$$$$$$x;:.   .x$$$$;   +$$$$$$.  ;$$$$X.:X$X.;$$X..+$$$$X.  .X$$$$;   .+$+',
-  '          ;$$$$$x::x$$$x..     .;$$$$+ ..$$+$$$$. .+$$$$$ .::X$$$$$X$$$$$$$. .;$$$$$+  .:$$;',
-  '        .X$$$$$+..:x$$$$.     .:$$$$X .X$x:X$$$;.x$$$$$$X ..:;X$$$$XxX$$$$. :X$$$$$$. ;X$x.',
-  '  .X+.+$$$$$$$;  .:+$$$$x    ..;$$$$$$$X..X$$$X$$X;x$$$$X..;X$$X::..;$$$$$X$$++$$$$$X$$X.',
-  ' .:X$$$$$$$$X.   ..;$$$$$:   .:;$$$$$X: .X$$$$X;...:X$$$$$$$$X:.   .;$$$$$$x.:+$$$$$$X:.',
-  ' .::X$$$$$X:     ..:x$$$$$:  ..::++:...+$$$$+..   .::;X$$XX;..     .:+$$X;. .::x$$X;.',
-  ' ..:::;;;..       .:;$$$$$$+......:+X$$$$$$:      ....:::...       ..::..   ...::...',
-  '   .....          ..:+$$$$$$$$$$$$$X::X$$$.',
-  '                   ..:;$$$$$$$$$$;..:$$$x.',
-  '                   ...::;x$$Xx$$$Xx$$$X.',
-  '                     .....:.::+$$$$$x:',
-  '                           ...:::::..',
-  '                             .....',
+  '           :+XXXXXXx:',
+  '        xXXXXx;....;XX;',
+  '      ;XXX+    +Xx  .XX+',
+  '     .xXX    :XX+   ;XX+  :;    ;:     .+xx:     x.    +',
+  '      .;.   +XX.   +XXx  xXX.  XXX.  xXX:.xX.  ;XX+  +XX:',
+  '           xXX:.;XXXX: .XXX  :XXX  ;XX+X  xX. +XX:  xXX.',
+  '         .XXXxxXXx:   .XXx  xXXX: ;XX+.xX+X;:XXX: .XXX.  x;',
+  '        +XXX: ;XX.    xXX.:X:XX::XXXX  .XXXxxXX+ xXXX; +X.',
+  '    :XXXXXX.  :XXX   .XXXX:.XXXX:.XXXXXXX.  xXXXX.xXXXX:',
+  '    .;XXX:    .xXXx  .::  XXX;    .:+;:     :+;   :+;',
+  '               :XXXXxxxX+;XX:',
+  '               .:xXXXXX ;XX',
+  '                  . .+XX+.',
 ];
 
-const BANNER_FRAME_WIDTH = 108;
+// All lines must have exactly the same visual width
+const BANNER_CONTENT_WIDTH = 60;
 
 function colorizeAsciiLine(line) {
   let result = '';
   for (const ch of line) {
     if (ch === ' ') {
       result += ch;
-    } else if ('$X'.includes(ch)) {
-      // Main logo characters — bright cyan
+    } else if ('X'.includes(ch)) {
       result += THEME.primaryBright(ch);
     } else if ('x+;'.includes(ch)) {
-      // Secondary details — medium cyan
       result += THEME.primary(ch);
     } else if (':,.'.includes(ch)) {
-      // Shadows/dots — dim cyan/gray
       result += THEME.dim(pc.cyan(ch));
     } else {
-      // Fallback
       result += THEME.primary(ch);
     }
   }
   return result;
 }
 
-function centerInFrame(text, width) {
-  const pad = Math.max(0, Math.floor((width - text.length) / 2));
-  return ' '.repeat(pad) + text;
-}
-
 function buildBannerColored() {
   const lines = [];
-  const w = BANNER_FRAME_WIDTH;
+  const W = BANNER_CONTENT_WIDTH;
+  
+  // Helper to build frame lines with exact width
+  const frameTop = THEME.dim('        ╭' + '─'.repeat(W + 2) + '╮');
+  const frameInnerTop = THEME.dim('       ╭' + ' '.repeat(W + 2) + '╮');
+  const frameEmpty = THEME.dim('      │ ' + ' '.repeat(W) + ' │');
+  const frameBottomInner = THEME.dim('       ╰' + ' '.repeat(W + 2) + '╰');
+  const frameBottom = THEME.dim('        ╰' + '─'.repeat(W + 2) + '╯');
   
   // Top frame
-  lines.push(THEME.dim('        ╭' + '─'.repeat(w - 2) + '╮'));
-  lines.push(THEME.dim('       ╭' + ' '.repeat(w - 2) + '╮'));
-  
-  // Empty line
-  lines.push(THEME.dim('      │' + ' '.repeat(w - 2) + '│'));
+  lines.push(frameTop);
+  lines.push(frameInnerTop);
+  lines.push(frameEmpty);
   
   // ASCII art lines
   for (const artLine of RYOU_ASCII_RAW) {
-    const centered = centerInFrame(artLine, w - 2);
-    const colored = colorizeAsciiLine(centered);
-    lines.push(THEME.dim('      │') + colored + THEME.dim('│'));
+    // Ensure exact width by padding/truncating
+    let content = artLine;
+    if (content.length < W) {
+      content = content + ' '.repeat(W - content.length);
+    } else if (content.length > W) {
+      content = content.substring(0, W);
+    }
+    const colored = colorizeAsciiLine(content);
+    lines.push(THEME.dim('      │ ') + colored + THEME.dim(' │'));
   }
   
   // Empty line
-  lines.push(THEME.dim('      │' + ' '.repeat(w - 2) + '│'));
+  lines.push(frameEmpty);
   
   // Subtitle
   const subtitle = 'Ryou Adaptive SDD System v3.0';
-  const centeredSubtitle = centerInFrame(subtitle, w - 2);
-  lines.push(THEME.dim('      │') + THEME.infoBright(centeredSubtitle) + THEME.dim('│'));
+  let subtitleContent = subtitle;
+  if (subtitleContent.length < W) {
+    const padLeft = Math.floor((W - subtitleContent.length) / 2);
+    const padRight = W - subtitleContent.length - padLeft;
+    subtitleContent = ' '.repeat(padLeft) + subtitleContent + ' '.repeat(padRight);
+  } else if (subtitleContent.length > W) {
+    subtitleContent = subtitleContent.substring(0, W);
+  }
+  lines.push(THEME.dim('      │ ') + THEME.infoBright(subtitleContent) + THEME.dim(' │'));
   
   // Empty line
-  lines.push(THEME.dim('      │' + ' '.repeat(w - 2) + '│'));
+  lines.push(frameEmpty);
   
   // Bottom frame
-  lines.push(THEME.dim('       ╰' + ' '.repeat(w - 2) + '╰'));
-  lines.push(THEME.dim('        ╰' + '─'.repeat(w - 2) + '╯'));
+  lines.push(frameBottomInner);
+  lines.push(frameBottom);
   
   return lines;
 }
@@ -236,20 +236,14 @@ class ProgressTracker {
     this.percent = 0;
     this.message = 'Initializing...';
     this.icon = ICONS.diamond;
-    this._lastRender = 0;
   }
 
   update(percent, message, icon) {
     this.percent = Math.min(Math.max(percent, 0), 100);
     if (message) this.message = message;
     if (icon) this.icon = icon;
-
-    // Throttle rendering to avoid flickering (min 50ms between renders)
-    const now = Date.now();
-    if (now - this._lastRender > 50) {
-      this._lastRender = now;
-      renderProgressBar(this.percent, this.message, this.icon);
-    }
+    // Render immediately — no throttle to ensure all progress updates are visible
+    renderProgressBar(this.percent, this.message, this.icon);
   }
 
   finish(message = 'Installation complete') {
@@ -521,35 +515,43 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
   const { starPattern, starStarPattern } = getMeridianUIPathPatterns();
   const agentModels = resolveAgentModels(modeProfileName);
 
-  // ── Phase weights (what % of total each phase represents) ──
-  const PHASE_WEIGHTS = {
-    init: 5,
-    copyDirs: 35,
-    copyFiles: 10,
-    npm: 20,
-    register: 15,
-    agents: 10,
-    finalize: 5,
+  // ── Phase definitions with start/end percentages ──
+  const PHASES = {
+    init: { start: 0, end: 5, msg: 'Preparing directories', icon: ICONS.diamond },
+    copyDirs: { start: 5, end: 35, msg: 'Copying directories', icon: ICONS.bullet },
+    copyFiles: { start: 35, end: 45, msg: 'Copying plugin files', icon: ICONS.bullet },
+    npm: { start: 45, end: 70, msg: 'Installing npm dependencies', icon: ICONS.ring },
+    register: { start: 70, end: 85, msg: 'Registering plugins', icon: ICONS.sparkle },
+    agents: { start: 85, end: 98, msg: 'Configuring Ryou agents', icon: ICONS.star },
+    finalize: { start: 98, end: 100, msg: 'Finalizing installation', icon: ICONS.check },
   };
 
   let currentPercent = 0;
 
-  function reportProgress(phase, message, icon = ICONS.ring) {
+  function reportProgress(percent, message, icon) {
     if (progress) {
-      progress.update(currentPercent, message, icon);
+      progress.update(percent, message, icon);
     }
   }
 
-  function advancePercent(amount) {
-    currentPercent = Math.min(currentPercent + amount, 99);
+  function runPhase(phaseName, workFn) {
+    const phase = PHASES[phaseName];
+    reportProgress(phase.start, phase.msg, phase.icon);
+    
+    // Execute the work
+    workFn();
+    
+    // Ensure we reach the end of this phase
+    currentPercent = phase.end;
+    reportProgress(currentPercent, phase.msg + '...', phase.icon);
   }
 
   // Phase 1: Init (0-5%)
-  reportProgress('init', 'Preparing directories', ICONS.diamond);
-  if (!fs.existsSync(globalDir)) {
-    fs.mkdirSync(globalDir, { recursive: true });
-  }
-  currentPercent = 5;
+  runPhase('init', () => {
+    if (!fs.existsSync(globalDir)) {
+      fs.mkdirSync(globalDir, { recursive: true });
+    }
+  });
 
   // Count total files for accurate copy progress
   const dirsToCopy = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules'];
@@ -559,127 +561,116 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
 
   function onFileCopied() {
     filesCopied++;
-    if (totalFiles > 0) {
-      const copyProgress = (filesCopied / totalFiles) * PHASE_WEIGHTS.copyDirs;
-      currentPercent = 5 + copyProgress;
-      reportProgress('copy', `Copying files (${filesCopied}/${totalFiles})`, ICONS.bullet);
+    if (totalFiles > 0 && progress) {
+      const copyRange = PHASES.copyDirs.end - PHASES.copyDirs.start;
+      const copyProgress = (filesCopied / totalFiles) * copyRange;
+      currentPercent = PHASES.copyDirs.start + copyProgress;
+      reportProgress(currentPercent, `Copying files (${filesCopied}/${totalFiles})`, ICONS.bullet);
     }
   }
 
-  // Phase 2: Copy directories (5-40%)
-  for (const dir of dirsToCopy) {
-    const src = path.join(OPENCODE_DIR, dir);
-    const dest = path.join(globalDir, dir);
-    if (fs.existsSync(src)) {
-      copyDirRecursiveSync(src, dest, onFileCopied);
+  // Phase 2: Copy directories (5-35%)
+  runPhase('copyDirs', () => {
+    for (const dir of dirsToCopy) {
+      const src = path.join(OPENCODE_DIR, dir);
+      const dest = path.join(globalDir, dir);
+      if (fs.existsSync(src)) {
+        copyDirRecursiveSync(src, dest, onFileCopied);
+      }
     }
-  }
-  currentPercent = 40;
+  });
 
-  // Phase 3: Copy individual files (40-50%)
-  reportProgress('copyFiles', 'Copying plugin files', ICONS.bullet);
-  for (const file of filesToCopy) {
-    const src = path.join(OPENCODE_DIR, file);
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(globalDir, file));
-      filesCopied++;
-      const copyProgress = (filesCopied / totalFiles) * PHASE_WEIGHTS.copyFiles;
-      currentPercent = 40 + copyProgress;
-      reportProgress('copyFiles', `Copying files (${filesCopied}/${totalFiles})`, ICONS.bullet);
+  // Phase 3: Copy individual files (35-45%)
+  runPhase('copyFiles', () => {
+    for (const file of filesToCopy) {
+      const src = path.join(OPENCODE_DIR, file);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(globalDir, file));
+        filesCopied++;
+        if (totalFiles > 0 && progress) {
+          const copyRange = PHASES.copyFiles.end - PHASES.copyFiles.start;
+          const fileProgress = (filesCopied / totalFiles) * copyRange;
+          currentPercent = PHASES.copyFiles.start + fileProgress;
+          reportProgress(currentPercent, `Copying files (${filesCopied}/${totalFiles})`, ICONS.bullet);
+        }
+      }
     }
-  }
-  currentPercent = 50;
+  });
 
-  // Phase 4: npm install (50-70%) — simulate smooth progress
-  reportProgress('npm', 'Installing npm dependencies', ICONS.ring);
+  // Phase 4: npm install (45-70%)
+  // Note: execSync blocks the event loop, so we show start/end progress only
   let npmInstalled = false;
-  const npmStartPercent = 50;
-  const npmEndPercent = 70;
+  
+  if (progress) {
+    // Show start of npm phase
+    currentPercent = PHASES.npm.start;
+    reportProgress(currentPercent, 'Installing npm dependencies...', ICONS.ring);
+  }
+
+  try {
+    execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
+    npmInstalled = true;
+  } catch (e) {
+    const stderr = e.stderr || '';
+    printWarning('npm install failed in global dir');
+    if (stderr.trim()) printInfo(stderr.trim().split('\n').pop());
+    printInfo('Plugin registration may fail without dependencies');
+  }
 
   if (progress) {
-    // Simulate npm progress with smooth animation
-    const npmDuration = 3000; // assume 3 seconds max
-    const startTime = Date.now();
-    const npmInterval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const simulated = Math.min(elapsed / npmDuration, 1);
-      currentPercent = npmStartPercent + (simulated * (npmEndPercent - npmStartPercent));
-      reportProgress('npm', 'Installing npm dependencies...', ICONS.ring);
-    }, 100);
-
-    try {
-      execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
-      npmInstalled = true;
-    } catch (e) {
-      const stderr = e.stderr || '';
-      printWarning('npm install failed in global dir');
-      if (stderr.trim()) printInfo(stderr.trim().split('\n').pop());
-      printInfo('Plugin registration may fail without dependencies');
-    }
-
-    clearInterval(npmInterval);
-  } else {
-    try {
-      execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
-      npmInstalled = true;
-    } catch (e) {
-      const stderr = e.stderr || '';
-      printWarning('npm install failed in global dir');
-      if (stderr.trim()) printInfo(stderr.trim().split('\n').pop());
-      printInfo('Plugin registration may fail without dependencies');
-    }
+    // Show end of npm phase
+    currentPercent = PHASES.npm.end;
+    reportProgress(currentPercent, 'npm dependencies installed', ICONS.ring);
   }
-  currentPercent = 70;
 
   // Phase 5: Register plugins (70-85%)
   const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
   const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
   const opencodeCmd = findOpenCodeCommand();
 
-  if (opencodeCmd) {
-    reportProgress('register', 'Registering plugin server', ICONS.sparkle);
-    let pluginRegistered = false;
-    try {
-      execSync(`${opencodeCmd} plugin "${pluginUrl}" --global --force`, {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        encoding: 'utf8',
-      });
-      pluginRegistered = true;
-      currentPercent = 78;
-      reportProgress('register', 'Registering plugin TUI', ICONS.sparkle);
-    } catch (e) {
-      const stderr = e.stderr || '';
-      const stdout = e.stdout || '';
-      printWarning('opencode plugin command failed');
-      if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
-      if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
-      printWarning('Falling back to manual config registration');
-      registerPluginManually(globalConfigPath, globalDir);
-    }
-
-    if (pluginRegistered) {
+  runPhase('register', () => {
+    if (opencodeCmd) {
+      let pluginRegistered = false;
       try {
-        execSync(`${opencodeCmd} plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
-        currentPercent = 85;
-        reportProgress('register', 'Plugins registered', ICONS.sparkle);
+        execSync(`${opencodeCmd} plugin "${pluginUrl}" --global --force`, {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          encoding: 'utf8',
+        });
+        pluginRegistered = true;
+        if (progress) {
+          currentPercent = PHASES.register.start + ((PHASES.register.end - PHASES.register.start) * 0.5);
+          reportProgress(currentPercent, 'Registering plugin TUI...', ICONS.sparkle);
+        }
       } catch (e) {
         const stderr = e.stderr || '';
         const stdout = e.stdout || '';
-        printWarning('opencode plugin for TUI failed');
+        printWarning('opencode plugin command failed');
         if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
         if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
+        printWarning('Falling back to manual config registration');
+        registerPluginManually(globalConfigPath, globalDir);
       }
-    }
-  } else {
-    printWarning('opencode CLI not found in PATH or common locations');
-    printInfo('Tried: opencode, npx opencode-ai, and common install directories');
-    printWarning('Falling back to manual config registration');
-    registerPluginManually(globalConfigPath, globalDir);
-    currentPercent = 85;
-  }
 
-  // Phase 6: Configure agents (85-95%)
-  reportProgress('agents', 'Configuring Ryou agents', ICONS.star);
+      if (pluginRegistered) {
+        try {
+          execSync(`${opencodeCmd} plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
+        } catch (e) {
+          const stderr = e.stderr || '';
+          const stdout = e.stdout || '';
+          printWarning('opencode plugin for TUI failed');
+          if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
+          if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
+        }
+      }
+    } else {
+      printWarning('opencode CLI not found in PATH or common locations');
+      printInfo('Tried: opencode, npx opencode-ai, and common install directories');
+      printWarning('Falling back to manual config registration');
+      registerPluginManually(globalConfigPath, globalDir);
+    }
+  });
+
+  // Phase 6: Configure agents (85-98%)
   let config = {};
   if (fs.existsSync(globalConfigPath)) {
     try {
@@ -755,6 +746,8 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
   };
 
   const agentNames = Object.keys(ryouAgents);
+  const agentRange = PHASES.agents.end - PHASES.agents.start;
+  
   for (let i = 0; i < agentNames.length; i++) {
     const name = agentNames[i];
     const agentConfig = ryouAgents[name];
@@ -763,9 +756,12 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
     } else {
       config.agent[name].model = agentConfig.model;
     }
-    // Update progress per agent (85-95% over 7 agents)
-    currentPercent = 85 + ((i + 1) / agentNames.length) * 10;
-    reportProgress('agents', `Configuring agent: ${name}`, ICONS.star);
+    // Update progress per agent smoothly
+    if (progress) {
+      const agentProgress = ((i + 1) / agentNames.length) * agentRange;
+      currentPercent = PHASES.agents.start + agentProgress;
+      reportProgress(currentPercent, `Configuring agent: ${name}`, ICONS.star);
+    }
   }
 
   if (!config.default_agent) {
@@ -814,7 +810,7 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
 
   fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
 
-  // Phase 7: Finalize (95-100%)
+  // Phase 7: Finalize (98-100%)
   currentPercent = 100;
   if (progress) {
     progress.finish('Installation complete');
