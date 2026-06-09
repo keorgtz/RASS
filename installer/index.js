@@ -13,15 +13,102 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RASS_DIR = path.resolve(__dirname, '..');
 const OPENCODE_DIR = path.join(RASS_DIR, '.opencode');
 
+// ─── Cross-platform helpers ────────────────────────────────────────────────
+
+function getHomeDir() {
+  return process.env.USERPROFILE || process.env.HOME || os.homedir();
+}
+
+function getMeridianUIPathPatterns() {
+  const home = getHomeDir();
+  const isWindows = process.platform === 'win32';
+  const meridianDir = path.join(home, '.MeridianUI');
+  // OpenCode uses glob patterns; use forward slashes for consistency
+  const meridianGlob = meridianDir.replace(/\\/g, '/');
+  const starPattern = `${meridianGlob}/*`;
+  const starStarPattern = `${meridianGlob}/**`;
+  return { starPattern, starStarPattern };
+}
+
+function getDefaultShell() {
+  return process.platform === 'win32' ? 'pwsh' : 'bash';
+}
+
+/**
+ * Find the opencode CLI command, trying multiple strategies.
+ * Returns the command string or null if not found.
+ */
+function findOpenCodeCommand() {
+  // 1. Try 'opencode' in PATH
+  try {
+    execSync('opencode --version', { stdio: 'pipe' });
+    return 'opencode';
+  } catch {
+    // not in PATH
+  }
+
+  // 2. Try npx opencode-ai
+  try {
+    execSync('npx opencode-ai --version', { stdio: 'pipe' });
+    return 'npx opencode-ai';
+  } catch {
+    // npx fallback failed
+  }
+
+  // 3. Try common install locations
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(getHomeDir(), 'AppData', 'Roaming');
+    const winPaths = [
+      path.join(appData, 'npm', 'opencode.exe'),
+      path.join(appData, 'npm', 'node_modules', 'opencode-ai', 'bin', 'opencode.exe'),
+      path.join(getHomeDir(), 'AppData', 'Roaming', 'npm', 'opencode.exe'),
+      path.join(getHomeDir(), 'AppData', 'Roaming', 'npm', 'node_modules', 'opencode-ai', 'bin', 'opencode.exe'),
+    ];
+    for (const p of winPaths) {
+      if (fs.existsSync(p)) {
+        return `"${p}"`;
+      }
+    }
+  } else {
+    const unixPaths = [
+      '/usr/local/bin/opencode',
+      '/usr/bin/opencode',
+      path.join(getHomeDir(), '.local', 'bin', 'opencode'),
+      path.join(getHomeDir(), '.npm-global', 'bin', 'opencode'),
+      path.join(getHomeDir(), '.nvm', 'versions', 'node', '*', 'bin', 'opencode'),
+    ];
+    for (const p of unixPaths) {
+      if (p.includes('*')) {
+        // Handle glob-like paths (e.g., nvm versions)
+        const dir = path.dirname(p);
+        if (fs.existsSync(dir)) {
+          const entries = fs.readdirSync(dir);
+          for (const entry of entries) {
+            const candidate = path.join(dir, entry, 'bin', 'opencode');
+            if (fs.existsSync(candidate)) {
+              return candidate;
+            }
+          }
+        }
+      } else if (fs.existsSync(p)) {
+        return p;
+      }
+    }
+  }
+
+  return null;
+}
+
 // ─── Global install paths ──────────────────────────────────────────────────
 
 function getGlobalOpenCodeDir() {
-  const home = process.env.USERPROFILE || process.env.HOME || process.env.HOMEPATH;
+  const home = getHomeDir();
   // OpenCode reads global config from ~/.config/opencode/ on all platforms
   return path.join(home, '.config', 'opencode');
 }
@@ -59,6 +146,7 @@ function removeDirRecursiveSync(dir) {
 function installGlobally() {
   const globalDir = getGlobalOpenCodeDir();
   const globalConfigPath = getGlobalConfigPath();
+  const { starPattern, starStarPattern } = getMeridianUIPathPatterns();
 
   // 1. Ensure global .opencode directory exists
   if (!fs.existsSync(globalDir)) {
@@ -114,21 +202,26 @@ function installGlobally() {
   }
 
   // 8. Register plugins using opencode CLI (this is the correct way)
-  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
-  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
+  const opencodeCmd = findOpenCodeCommand();
 
-  try {
-    execSync(`opencode plugin "${pluginUrl}" --global --force`, { stdio: 'pipe' });
-  } catch (e) {
-    // If opencode CLI fails, fall back to manual config
-    console.log(pc.yellow('  Warning: opencode plugin command failed, falling back to manual config.'));
+  if (opencodeCmd) {
+    try {
+      execSync(`${opencodeCmd} plugin "./plugin.js" --global --force`, { cwd: globalDir, stdio: 'pipe' });
+    } catch (e) {
+      console.log(pc.yellow(`  Warning: opencode plugin command failed (${e.message}), falling back to manual config.`));
+      registerPluginManually(globalConfigPath, globalDir);
+    }
+
+    try {
+      execSync(`${opencodeCmd} plugin "./tui.js" --global --force`, { cwd: globalDir, stdio: 'pipe' });
+    } catch (e) {
+      // TUI plugin may already be registered with the server plugin
+      console.log(pc.yellow(`  Warning: opencode plugin for TUI failed (${e.message}). It may already be registered.`));
+    }
+  } else {
+    console.log(pc.yellow('  Warning: opencode CLI not found in PATH or common locations. Falling back to manual config.'));
+    console.log(pc.gray('  Tried: opencode, npx opencode-ai, and common install directories.'));
     registerPluginManually(globalConfigPath, globalDir);
-  }
-
-  try {
-    execSync(`opencode plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
-  } catch (e) {
-    // TUI plugin may already be registered with the server plugin
   }
 
   // 9. Merge Ryou agents into OpenCode config
@@ -154,9 +247,9 @@ function installGlobally() {
       prompt: '{file:./agents/ryou-orchestrator.md}',
       permission: {
         read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\*': 'deny', 'C:\\Users\\kevin\\.MeridianUI\\**': 'deny' },
+        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
         bash: 'allow', task: 'allow', webfetch: 'allow', websearch: 'allow',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' },
       },
     },
     planner: {
@@ -164,46 +257,46 @@ function installGlobally() {
       mode: 'subagent', model: 'opencode-go/glm-5.1', temperature: 0.1, steps: 14,
       prompt: '{file:./agents/planner.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'deny', task: 'deny',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' } },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     builder: {
       description: 'Subagent for C#, .NET, EF Core, XAML, Blazor, MAUI, and MeridianUI implementation.',
       mode: 'subagent', model: 'opencode-go/kimi-k2.6', temperature: 0.2, steps: 40,
       prompt: '{file:./agents/builder.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\*': 'deny', 'C:\\Users\\kevin\\.MeridianUI\\**': 'deny' },
+        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
         bash: 'allow', task: 'deny',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' } },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     architect: {
       description: 'Subagent for architecture decisions, boundaries, data flow, and pragmatic design tradeoffs.',
       mode: 'subagent', model: 'opencode-go/glm-5.1', temperature: 0.1, steps: 16,
       prompt: '{file:./agents/architect.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'deny', task: 'deny',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' } },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     reviewer: {
       description: 'Subagent for code review, regressions, maintainability, performance, and security risks.',
       mode: 'subagent', model: 'opencode-go/deepseek-v4-pro', temperature: 0.1, steps: 18,
       prompt: '{file:./agents/reviewer.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'allow', task: 'deny',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' } },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     debugger: {
       description: 'Subagent for bug investigation, failing tests, runtime errors, EF issues, and async/concurrency problems.',
       mode: 'subagent', model: 'opencode-go/deepseek-v4-pro', temperature: 0.1, steps: 26,
       prompt: '{file:./agents/debugger.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'allow', task: 'deny',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' } },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     documentation: {
       description: 'Subagent for concise Markdown and visual HTML implementation summaries.',
       mode: 'subagent', model: 'opencode-go/deepseek-v4-flash', temperature: 0.2, steps: 12,
       prompt: '{file:./agents/documentation.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\*': 'deny', 'C:\\Users\\kevin\\.MeridianUI\\**': 'deny' },
+        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
         bash: 'deny', task: 'deny',
-        external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' } },
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
   };
 
@@ -226,7 +319,7 @@ function installGlobally() {
     config.small_model = 'opencode-go/deepseek-v4-flash';
   }
   if (!config.shell) {
-    config.shell = 'pwsh';
+    config.shell = getDefaultShell();
   }
 
   // Merge permissions (add missing skills)
@@ -274,7 +367,9 @@ function installGlobally() {
  */
 function registerPluginManually(globalConfigPath, globalDir) {
   let config = {};
-  if (fs.existsSync(globalConfigPath)) {
+  const configExists = fs.existsSync(globalConfigPath);
+
+  if (configExists) {
     try {
       config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
     } catch {
@@ -282,10 +377,16 @@ function registerPluginManually(globalConfigPath, globalDir) {
     }
   }
 
+  // Ensure $schema is present (OpenCode requires this)
+  if (!config.$schema) {
+    config.$schema = 'https://opencode.ai/schema.json';
+  }
+
   if (!config.plugin) config.plugin = [];
 
-  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
-  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
+  // Use relative paths — OpenCode resolves these relative to the config directory
+  const pluginPath = './plugin.js';
+  const tuiPath = './tui.js';
 
   // Remove old RASS entries if they exist
   config.plugin = config.plugin.filter((p) => {
@@ -298,8 +399,8 @@ function registerPluginManually(globalConfigPath, globalDir) {
     return true;
   });
 
-  config.plugin.push(pluginUrl);
-  config.plugin.push(tuiUrl);
+  config.plugin.push(pluginPath);
+  config.plugin.push(tuiPath);
 
   fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
 }
