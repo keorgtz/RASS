@@ -1,0 +1,23 @@
+{
+  "name": "rass-opencode",
+  "version": "2.0.0",
+  "description": "Ryou Adaptive SDD System — OpenCode Plugin for dynamic mode and profile management",
+  "type": "module",
+  "exports": {
+    "./server": "./plugin.js",
+    "./tui": "./tui.js"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.16.2"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.3.2",
+    "@opentui/keymap": ">=0.3.2",
+    "@opentui/solid": ">=0.3.2"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": { "optional": true },
+    "@opentui/keymap": { "optional": true },
+    "@opentui/solid": { "optional": true }
+  }
+}
