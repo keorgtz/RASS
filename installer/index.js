@@ -202,25 +202,35 @@ function installGlobally() {
   }
 
   // 8. Register plugins using opencode CLI (this is the correct way)
+  // opencode plugin requires an absolute file:// URL, not a relative path
+  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
+  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
+
   const opencodeCmd = findOpenCodeCommand();
 
   if (opencodeCmd) {
+    let pluginRegistered = false;
     try {
-      execSync(`${opencodeCmd} plugin "./plugin.js" --global --force`, { cwd: globalDir, stdio: 'pipe' });
+      execSync(`${opencodeCmd} plugin "${pluginUrl}" --global --force`, { stdio: 'pipe' });
+      pluginRegistered = true;
     } catch (e) {
-      console.log(pc.yellow(`  Warning: opencode plugin command failed (${e.message}), falling back to manual config.`));
+      console.log(pc.yellow(`  Warning: opencode plugin command failed (${e.message}).`));
+      console.log(pc.yellow('  Falling back to manual config registration.'));
       registerPluginManually(globalConfigPath, globalDir);
     }
 
-    try {
-      execSync(`${opencodeCmd} plugin "./tui.js" --global --force`, { cwd: globalDir, stdio: 'pipe' });
-    } catch (e) {
-      // TUI plugin may already be registered with the server plugin
-      console.log(pc.yellow(`  Warning: opencode plugin for TUI failed (${e.message}). It may already be registered.`));
+    if (pluginRegistered) {
+      try {
+        execSync(`${opencodeCmd} plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
+      } catch (e) {
+        // TUI plugin may already be registered with the server plugin
+        console.log(pc.yellow(`  Warning: opencode plugin for TUI failed (${e.message}). It may already be registered.`));
+      }
     }
   } else {
-    console.log(pc.yellow('  Warning: opencode CLI not found in PATH or common locations. Falling back to manual config.'));
+    console.log(pc.yellow('  Warning: opencode CLI not found in PATH or common locations.'));
     console.log(pc.gray('  Tried: opencode, npx opencode-ai, and common install directories.'));
+    console.log(pc.yellow('  Falling back to manual config registration.'));
     registerPluginManually(globalConfigPath, globalDir);
   }
 
@@ -384,23 +394,24 @@ function registerPluginManually(globalConfigPath, globalDir) {
 
   if (!config.plugin) config.plugin = [];
 
-  // Use relative paths — OpenCode resolves these relative to the config directory
-  const pluginPath = './plugin.js';
-  const tuiPath = './tui.js';
+  // Use absolute file:// URLs — OpenCode requires these for plugin registration
+  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
+  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
 
   // Remove old RASS entries if they exist
   config.plugin = config.plugin.filter((p) => {
     if (typeof p === 'string') {
       return !p.includes('rass') && !p.includes('RASS') &&
              !p.includes('.opencode/plugin') && !p.includes('.opencode/tui') &&
-             !p.includes('plugin.js') && !p.includes('tui.js');
+             !(p.endsWith('plugin.js') && p.includes('opencode')) &&
+             !(p.endsWith('tui.js') && p.includes('opencode'));
     }
     if (Array.isArray(p)) return !p[0]?.includes('rass') && !p[0]?.includes('RASS');
     return true;
   });
 
-  config.plugin.push(pluginPath);
-  config.plugin.push(tuiPath);
+  config.plugin.push(pluginUrl);
+  config.plugin.push(tuiUrl);
 
   fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
 }
