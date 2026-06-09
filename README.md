@@ -1,57 +1,34 @@
 <div align="center">
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
-<!-- RASS — Visual Header Banner with SVG -->
+<!-- RASS — Visual Header Banner -->
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 
-<svg width="800" height="320" viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="800" height="320" fill="#0d1117"/>
-  
-  <!-- Decorative corner elements -->
-  <text x="20" y="30" fill="#00d4ff" font-size="14" opacity="0.3">◈</text>
-  <text x="770" y="30" fill="#ff00ff" font-size="14" opacity="0.3">◈</text>
-  <text x="20" y="300" fill="#ff00ff" font-size="14" opacity="0.3">◈</text>
-  <text x="770" y="300" fill="#00d4ff" font-size="14" opacity="0.3">◈</text>
-  
-  <!-- Top decorative line -->
-  <line x1="100" y1="50" x2="700" y2="50" stroke="#00d4ff" stroke-width="1" opacity="0.2"/>
-  <text x="400" y="48" fill="#00d4ff" font-size="10" text-anchor="middle" opacity="0.4">✦ ✦ ✦</text>
-  
-  <!-- ASCII Art Logo -->
-  <text x="400" y="90" fill="#00d4ff" font-family="monospace" font-size="11" text-anchor="middle" opacity="0.9">
-    <tspan x="400" dy="0">           :+XXXXXXx:</tspan>
-    <tspan x="400" dy="14">        xXXXXx;....;XX;</tspan>
-    <tspan x="400" dy="14">      ;XXX+    +Xx  .XX+</tspan>
-    <tspan x="400" dy="14">     .xXX    :XX+   ;XX+  :;    ;:     .+xx:     x.    +</tspan>
-    <tspan x="400" dy="14">      .;.   +XX.   +XXx  xXX.  XXX.  xXX:.xX.  ;XX+  +XX:</tspan>
-    <tspan x="400" dy="14">           xXX:.;XXXX: .XXX  :XXX  ;XX+X  xX. +XX:  xXX.</tspan>
-    <tspan x="400" dy="14">         .XXXxxXXx:   .XXx  xXXX: ;XX+.xX+X;:XXX: .XXX.  x;</tspan>
-    <tspan x="400" dy="14">        +XXX: ;XX.    xXX.:X:XX::XXXX  .XXXxxXX+ xXXX; +X.</tspan>
-    <tspan x="400" dy="14">    :XXXXXX.  :XXX   .XXXX:.XXXX:.XXXXXXX.  xXXXX.xXXXX:</tspan>
-    <tspan x="400" dy="14">    .;XXX:    .xXXx  .::  XXX;    .:+;:     :+;   :+;</tspan>
-    <tspan x="400" dy="14">               :XXXXxxxX+;XX:</tspan>
-    <tspan x="400" dy="14">               .:xXXXXX ;XX</tspan>
-    <tspan x="400" dy="14">                  . .+XX+.</tspan>
-  </text>
-  
-  <!-- Title -->
-  <text x="400" y="245" fill="#00d4ff" font-family="Arial, sans-serif" font-size="42" font-weight="bold" text-anchor="middle">RASS</text>
-  
-  <!-- Subtitle -->
-  <text x="400" y="270" fill="#ff00ff" font-family="Arial, sans-serif" font-size="16" text-anchor="middle">Ryou Adaptive SDD System</text>
-  
-  <!-- Tagline -->
-  <text x="400" y="290" fill="#8b949e" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">The definitive Sub-Agent Driven Development framework for OpenCode</text>
-  
-  <!-- Bottom decorative line -->
-  <line x1="100" y1="310" x2="700" y2="310" stroke="#ff00ff" stroke-width="1" opacity="0.2"/>
-  <text x="400" y="318" fill="#ff00ff" font-size="10" text-anchor="middle" opacity="0.4">◈ ◈ ◈</text>
-  
-  <!-- Side decorations -->
-  <text x="60" y="160" fill="#00d4ff" font-size="20" opacity="0.15">✦</text>
-  <text x="730" y="160" fill="#ff00ff" font-size="20" opacity="0.15">✦</text>
-</svg>
+<pre align="center">
+<code>
+           :+XXXXXXx:
+        xXXXXx;....;XX;
+      ;XXX+    +Xx  .XX+
+     .xXX    :XX+   ;XX+  :;    ;:     .+xx:     x.    +
+      .;.   +XX.   +XXx  xXX.  XXX.  xXX:.xX.  ;XX+  +XX:
+           xXX:.;XXXX: .XXX  :XXX  ;XX+X  xX. +XX:  xXX.
+         .XXXxxXXx:   .XXx  xXXX: ;XX+.xX+X;:XXX: .XXX.  x;
+        +XXX: ;XX.    xXX.:X:XX::XXXX  .XXXxxXX+ xXXX; +X.
+    :XXXXXX.  :XXX   .XXXX:.XXXX:.XXXXXXX.  xXXXX.xXXXX:
+    .;XXX:    .xXXx  .::  XXX;    .:+;:     :+;   :+;
+               :XXXXxxxX+;XX:
+               .:xXXXXX ;XX
+                  . .+XX+.
+</code>
+</pre>
+
+<h1 align="center">✦ RASS ✦</h1>
+
+<h3 align="center">Ryou Adaptive SDD System</h3>
+
+<p align="center">
+  <em>The definitive Sub-Agent Driven Development framework for OpenCode</em>
+</p>
 
 <!-- Badges Row 1 -->
 <p align="center">
