@@ -1,5 +1,5 @@
 /**
- * RASS Installer — TUI for global install/uninstall of the RASS OpenCode plugin.
+ * RASS Installer — Modern TUI with ASCII Art Banner
  *
  * Usage:
  *   node installer/index.js install    — Install RASS globally into OpenCode
@@ -19,7 +19,141 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RASS_DIR = path.resolve(__dirname, '..');
 const OPENCODE_DIR = path.join(RASS_DIR, '.opencode');
 
-// ─── Cross-platform helpers ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISUAL SYSTEM — Colors, Icons, Banner, Animations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ICONS = {
+  sparkle: '✦',
+  diamond: '◈',
+  triangle: '▲',
+  circle: '◉',
+  ring: '◐',
+  arrow: '➤',
+  star: '✶',
+  bullet: '●',
+  check: '✓',
+  cross: '✗',
+  wave: '∿',
+  dot: '·',
+  dash: '─',
+  cornerTL: '╭',
+  cornerTR: '╮',
+  cornerBL: '╰',
+  cornerBR: '╯',
+  line: '│',
+  shadow: '░',
+  shadowMed: '▒',
+  shadowDark: '▓',
+  block: '█',
+};
+
+const THEME = {
+  primary: pc.cyan,
+  primaryBright: (s) => pc.bold(pc.cyan(s)),
+  secondary: pc.magenta,
+  secondaryBright: (s) => pc.bold(pc.magenta(s)),
+  accent: pc.blue,
+  accentBright: (s) => pc.bold(pc.blue(s)),
+  success: pc.green,
+  successBright: (s) => pc.bold(pc.green(s)),
+  warning: pc.yellow,
+  warningBright: (s) => pc.bold(pc.yellow(s)),
+  error: pc.red,
+  errorBright: (s) => pc.bold(pc.red(s)),
+  info: pc.gray,
+  infoBright: (s) => pc.white(s),
+  dim: pc.dim,
+  bgPrimary: pc.bgCyan,
+  bgSecondary: pc.bgMagenta,
+};
+
+// ─── Banner ASCII Art — Modern Italic Style with Shadows ────────────────────
+
+const BANNER_LINES = [
+  '        ' + ICONS.cornerTL + '────────────────────────────────────────────' + ICONS.cornerTR,
+  '       ' + ICONS.cornerTL + '                                              ' + ICONS.cornerTR,
+  '      ' + ICONS.line + '    ' + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + '╗   ' + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + '╗   ' + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + '╗   ' + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + ICONS.shadowDark + '╗    ' + ICONS.line,
+  '      ' + ICONS.line + '    ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗  ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗  ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗  ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗   ' + ICONS.line,
+  '      ' + ICONS.line + '    ' + ICONS.shadowDark + '█████╔╝  ' + ICONS.shadowDark + '███████║  ' + ICONS.shadowDark + '█████╔╝  ' + ICONS.shadowDark + '█████╔╝   ' + ICONS.line,
+  '      ' + ICONS.line + '    ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗  ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗  ' + ICONS.shadowDark + '╔══' + ICONS.shadowDark + '╗   ' + ICONS.line,
+  '      ' + ICONS.line + '    ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║  ' + ICONS.shadowDark + '║   ' + ICONS.line,
+  '      ' + ICONS.line + '    ' + '╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝   ' + ICONS.line,
+  '      ' + ICONS.line + '                                                ' + ICONS.line,
+  '      ' + ICONS.line + '         Ryou Adaptive SDD System v3.0           ' + ICONS.line,
+  '      ' + ICONS.line + '                                                ' + ICONS.line,
+  '       ' + ICONS.cornerBL + '                                              ' + ICONS.cornerBR,
+  '        ' + ICONS.cornerBL + '────────────────────────────────────────────' + ICONS.cornerBR,
+];
+
+const BANNER_COLORED = [
+  THEME.dim('        ' + ICONS.cornerTL + '────────────────────────────────────────────' + ICONS.cornerTR),
+  THEME.dim('       ' + ICONS.cornerTL + '                                              ' + ICONS.cornerTR),
+  THEME.secondary('      ' + ICONS.line + '    ▓▓▓▓▓▓╗   ▓▓▓▓▓▓╗   ▓▓▓▓▓▓╗   ▓▓▓▓▓▓╗    ' + ICONS.line),
+  THEME.secondaryBright('      ' + ICONS.line + '    ▓▓╔══▓▓╗  ▓▓╔══▓▓╗  ▓▓╔══▓▓╗  ▓▓╔══▓▓╗   ' + ICONS.line),
+  THEME.primary('      ' + ICONS.line + '    ▓▓▓▓▓▓╔╝  ▓▓▓▓▓▓▓║  ▓▓▓▓▓▓╔╝  ▓▓▓▓▓▓╔╝   ' + ICONS.line),
+  THEME.primaryBright('      ' + ICONS.line + '    ▓▓╔══▓▓╗  ▓▓╔══▓▓║  ▓▓╔══▓▓╗  ▓▓╔══▓▓╗   ' + ICONS.line),
+  THEME.accent('      ' + ICONS.line + '    ▓▓║  ▓▓║  ▓▓║  ▓▓║  ▓▓║  ▓▓║  ▓▓║  ▓▓║   ' + ICONS.line),
+  THEME.accentBright('      ' + ICONS.line + '    ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚═╝   ' + ICONS.line),
+  THEME.dim('      ' + ICONS.line + '                                                ' + ICONS.line),
+  THEME.infoBright('      ' + ICONS.line + '         Ryou Adaptive SDD System v3.0           ' + ICONS.line),
+  THEME.dim('      ' + ICONS.line + '                                                ' + ICONS.line),
+  THEME.dim('       ' + ICONS.cornerBL + '                                              ' + ICONS.cornerBR),
+  THEME.dim('        ' + ICONS.cornerBL + '────────────────────────────────────────────' + ICONS.cornerBR),
+];
+
+// ─── Animation: Line-by-line reveal ───────────────────────────────────────
+
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function animateBanner() {
+  console.clear();
+  for (let i = 0; i < BANNER_COLORED.length; i++) {
+    process.stdout.write(BANNER_COLORED[i] + '\n');
+    await sleep(60);
+  }
+  await sleep(200);
+}
+
+function printBannerInstant() {
+  console.clear();
+  for (const line of BANNER_COLORED) {
+    console.log(line);
+  }
+}
+
+// ─── Decorative helpers ─────────────────────────────────────────────────────
+
+function printDivider(width = 50) {
+  console.log(THEME.dim('  ' + ICONS.dash.repeat(width)));
+}
+
+function printHeader(title) {
+  console.log('\n  ' + THEME.primaryBright(ICONS.diamond + ' ' + title));
+  printDivider(48);
+}
+
+function printSuccess(message) {
+  console.log('  ' + THEME.successBright(ICONS.sparkle + ' ' + message));
+}
+
+function printWarning(message) {
+  console.log('  ' + THEME.warningBright(ICONS.triangle + ' ' + message));
+}
+
+function printError(message) {
+  console.log('  ' + THEME.errorBright(ICONS.circle + ' ' + message));
+}
+
+function printInfo(message) {
+  console.log('  ' + THEME.info(ICONS.dot + ' ' + message));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CROSS-PLATFORM HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function getHomeDir() {
   return process.env.USERPROFILE || process.env.HOME || os.homedir();
@@ -29,7 +163,6 @@ function getMeridianUIPathPatterns() {
   const home = getHomeDir();
   const isWindows = process.platform === 'win32';
   const meridianDir = path.join(home, '.MeridianUI');
-  // OpenCode uses glob patterns; use forward slashes for consistency
   const meridianGlob = meridianDir.replace(/\\/g, '/');
   const starPattern = `${meridianGlob}/*`;
   const starStarPattern = `${meridianGlob}/**`;
@@ -40,12 +173,7 @@ function getDefaultShell() {
   return process.platform === 'win32' ? 'pwsh' : 'bash';
 }
 
-/**
- * Find the opencode CLI command, trying multiple strategies.
- * Returns the command string or null if not found.
- */
 function findOpenCodeCommand() {
-  // 1. Try 'opencode' in PATH
   try {
     execSync('opencode --version', { stdio: 'pipe' });
     return 'opencode';
@@ -53,7 +181,6 @@ function findOpenCodeCommand() {
     // not in PATH
   }
 
-  // 2. Try npx opencode-ai
   try {
     execSync('npx opencode-ai --version', { stdio: 'pipe' });
     return 'npx opencode-ai';
@@ -61,7 +188,6 @@ function findOpenCodeCommand() {
     // npx fallback failed
   }
 
-  // 3. Try common install locations
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA || path.join(getHomeDir(), 'AppData', 'Roaming');
     const winPaths = [
@@ -85,7 +211,6 @@ function findOpenCodeCommand() {
     ];
     for (const p of unixPaths) {
       if (p.includes('*')) {
-        // Handle glob-like paths (e.g., nvm versions)
         const dir = path.dirname(p);
         if (fs.existsSync(dir)) {
           const entries = fs.readdirSync(dir);
@@ -105,11 +230,12 @@ function findOpenCodeCommand() {
   return null;
 }
 
-// ─── Global install paths ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// GLOBAL INSTALL PATHS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function getGlobalOpenCodeDir() {
   const home = getHomeDir();
-  // OpenCode reads global config from ~/.config/opencode/ on all platforms
   return path.join(home, '.config', 'opencode');
 }
 
@@ -117,7 +243,9 @@ function getGlobalConfigPath() {
   return path.join(getGlobalOpenCodeDir(), 'opencode.json');
 }
 
-// ─── Core operations ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// CORE OPERATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function copyDirRecursiveSync(source, target) {
   if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
@@ -138,22 +266,19 @@ function removeDirRecursiveSync(dir) {
   }
 }
 
-/**
- * Install RASS plugin globally into OpenCode.
- * This copies the .opencode directory content into the global OpenCode config,
- * deploys Ryou agents, and registers the plugin using the opencode CLI.
- */
+// ═══════════════════════════════════════════════════════════════════════════════
+// INSTALL GLOBALLY
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function installGlobally() {
   const globalDir = getGlobalOpenCodeDir();
   const globalConfigPath = getGlobalConfigPath();
   const { starPattern, starStarPattern } = getMeridianUIPathPatterns();
 
-  // 1. Ensure global .opencode directory exists
   if (!fs.existsSync(globalDir)) {
     fs.mkdirSync(globalDir, { recursive: true });
   }
 
-  // 2. Copy sdd-profiles, phases, runtime to global .opencode
   const dirsToCopy = ['sdd-profiles', 'phases', 'runtime'];
   for (const dir of dirsToCopy) {
     const src = path.join(OPENCODE_DIR, dir);
@@ -163,7 +288,6 @@ function installGlobally() {
     }
   }
 
-  // 3. Copy agents and rules to global .opencode
   const contentDirs = ['agents', 'rules'];
   for (const dir of contentDirs) {
     const src = path.join(OPENCODE_DIR, dir);
@@ -173,13 +297,11 @@ function installGlobally() {
     }
   }
 
-  // 4. Copy sdd.config.json to global
   const configSrc = path.join(OPENCODE_DIR, 'sdd.config.json');
   if (fs.existsSync(configSrc)) {
     fs.copyFileSync(configSrc, path.join(globalDir, 'sdd.config.json'));
   }
 
-  // 5. Copy plugin files to global
   const pluginFiles = ['plugin.js', 'tui.js', 'rass-core.js'];
   for (const file of pluginFiles) {
     const src = path.join(OPENCODE_DIR, file);
@@ -188,26 +310,22 @@ function installGlobally() {
     }
   }
 
-  // 6. Copy package.json to global
   const pkgSrc = path.join(OPENCODE_DIR, 'package.json');
   if (fs.existsSync(pkgSrc)) {
     fs.copyFileSync(pkgSrc, path.join(globalDir, 'package.json'));
   }
 
-  // 7. Install npm dependencies in global dir
   let npmInstalled = false;
   try {
     execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
     npmInstalled = true;
   } catch (e) {
     const stderr = e.stderr || '';
-    console.log(pc.yellow('  Warning: npm install failed in global dir.'));
-    if (stderr.trim()) console.log(pc.gray(`  ${stderr.trim().split('\n').pop()}`));
-    console.log(pc.gray('  Plugin registration may fail without dependencies.'));
+    printWarning('npm install failed in global dir');
+    if (stderr.trim()) printInfo(stderr.trim().split('\n').pop());
+    printInfo('Plugin registration may fail without dependencies');
   }
 
-  // 8. Register plugins using opencode CLI (this is the correct way)
-  // opencode plugin requires an absolute file:// URL, not a relative path
   const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
   const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
 
@@ -224,10 +342,10 @@ function installGlobally() {
     } catch (e) {
       const stderr = e.stderr || '';
       const stdout = e.stdout || '';
-      console.log(pc.yellow(`  Warning: opencode plugin command failed.`));
-      if (stderr.trim()) console.log(pc.gray(`  stderr: ${stderr.trim()}`));
-      if (stdout.trim()) console.log(pc.gray(`  stdout: ${stdout.trim()}`));
-      console.log(pc.yellow('  Falling back to manual config registration.'));
+      printWarning('opencode plugin command failed');
+      if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
+      if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
+      printWarning('Falling back to manual config registration');
       registerPluginManually(globalConfigPath, globalDir);
     }
 
@@ -237,19 +355,18 @@ function installGlobally() {
       } catch (e) {
         const stderr = e.stderr || '';
         const stdout = e.stdout || '';
-        console.log(pc.yellow(`  Warning: opencode plugin for TUI failed.`));
-        if (stderr.trim()) console.log(pc.gray(`  stderr: ${stderr.trim()}`));
-        if (stdout.trim()) console.log(pc.gray(`  stdout: ${stdout.trim()}`));
+        printWarning('opencode plugin for TUI failed');
+        if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
+        if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
       }
     }
   } else {
-    console.log(pc.yellow('  Warning: opencode CLI not found in PATH or common locations.'));
-    console.log(pc.gray('  Tried: opencode, npx opencode-ai, and common install directories.'));
-    console.log(pc.yellow('  Falling back to manual config registration.'));
+    printWarning('opencode CLI not found in PATH or common locations');
+    printInfo('Tried: opencode, npx opencode-ai, and common install directories');
+    printWarning('Falling back to manual config registration');
     registerPluginManually(globalConfigPath, globalDir);
   }
 
-  // 9. Merge Ryou agents into OpenCode config
   let config = {};
   if (fs.existsSync(globalConfigPath)) {
     try {
@@ -259,7 +376,6 @@ function installGlobally() {
     }
   }
 
-  // Merge Ryou agents (don't overwrite existing ones)
   if (!config.agent) config.agent = {};
 
   const ryouAgents = {
@@ -331,12 +447,10 @@ function installGlobally() {
     }
   }
 
-  // Set default_agent if not set
   if (!config.default_agent) {
     config.default_agent = 'ryou-orchestrator';
   }
 
-  // Set model if not set
   if (!config.model) {
     config.model = 'opencode-go/kimi-k2.6';
   }
@@ -347,7 +461,6 @@ function installGlobally() {
     config.shell = getDefaultShell();
   }
 
-  // Merge permissions (add missing skills)
   if (!config.permission) config.permission = {};
   if (!config.permission.skill) config.permission.skill = {};
   const defaultSkills = {
@@ -362,7 +475,6 @@ function installGlobally() {
     }
   }
 
-  // Merge instructions (add missing ones)
   if (!config.instructions) config.instructions = [];
   const defaultInstructions = ['rules/global-rules.md', 'rules/meridianui.md'];
   for (const instruction of defaultInstructions) {
@@ -371,7 +483,6 @@ function installGlobally() {
     }
   }
 
-  // Merge watcher ignores (add missing ones)
   if (!config.watcher) config.watcher = {};
   if (!config.watcher.ignore) config.watcher.ignore = [];
   const defaultIgnores = ['**/.git/**', '**/.vs/**', '**/bin/**', '**/obj/**', '**/node_modules/**', '**/dist/**', '**/publish/**'];
@@ -386,10 +497,10 @@ function installGlobally() {
   return { globalDir, globalConfigPath };
 }
 
-/**
- * Fallback: manually register plugin entries in opencode.json
- * Used when opencode CLI is not available.
- */
+// ═══════════════════════════════════════════════════════════════════════════════
+// FALLBACK: MANUAL PLUGIN REGISTRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function registerPluginManually(globalConfigPath, globalDir) {
   let config = {};
   const configExists = fs.existsSync(globalConfigPath);
@@ -402,18 +513,15 @@ function registerPluginManually(globalConfigPath, globalDir) {
     }
   }
 
-  // Ensure $schema is present (OpenCode requires this)
   if (!config.$schema) {
     config.$schema = 'https://opencode.ai/schema.json';
   }
 
   if (!config.plugin) config.plugin = [];
 
-  // Use absolute file:// URLs — OpenCode requires these for plugin registration
   const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
   const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
 
-  // Remove old RASS entries if they exist
   config.plugin = config.plugin.filter((p) => {
     if (typeof p === 'string') {
       return !p.includes('rass') && !p.includes('RASS') &&
@@ -431,20 +539,19 @@ function registerPluginManually(globalConfigPath, globalDir) {
   fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
 }
 
-/**
- * Uninstall RASS plugin globally from OpenCode.
- */
+// ═══════════════════════════════════════════════════════════════════════════════
+// UNINSTALL GLOBALLY
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function uninstallGlobally() {
   const globalDir = getGlobalOpenCodeDir();
   const globalConfigPath = getGlobalConfigPath();
 
-  // 1. Remove RASS directories from global .opencode
   const dirsToRemove = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules'];
   for (const dir of dirsToRemove) {
     removeDirRecursiveSync(path.join(globalDir, dir));
   }
 
-  // 2. Remove RASS files from global .opencode
   const filesToRemove = [
     'sdd.config.json', 'plugin.js', 'tui.js', 'rass-core.js',
     'package.json', 'package-lock.json',
@@ -454,10 +561,8 @@ function uninstallGlobally() {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 
-  // 3. Remove node_modules if it was created by RASS
   removeDirRecursiveSync(path.join(globalDir, 'node_modules'));
 
-  // 4. Remove RASS plugin entries and Ryou agents from OpenCode config
   if (fs.existsSync(globalConfigPath)) {
     let config;
     try {
@@ -476,7 +581,6 @@ function uninstallGlobally() {
       if (config.plugin.length === 0) delete config.plugin;
     }
 
-    // Remove Ryou agents
     if (config.agent) {
       const ryouAgentNames = ['ryou-orchestrator', 'planner', 'builder', 'architect', 'reviewer', 'debugger', 'documentation'];
       for (const name of ryouAgentNames) {
@@ -485,12 +589,10 @@ function uninstallGlobally() {
       if (Object.keys(config.agent).length === 0) delete config.agent;
     }
 
-    // Remove default_agent if it was set by RASS
     if (config.default_agent === 'ryou-orchestrator') {
       delete config.default_agent;
     }
 
-    // Remove RASS-added instructions
     if (config.instructions) {
       config.instructions = config.instructions.filter((i) => i !== 'rules/global-rules.md' && i !== 'rules/meridianui.md');
       if (config.instructions.length === 0) delete config.instructions;
@@ -502,13 +604,13 @@ function uninstallGlobally() {
   return { globalDir, globalConfigPath };
 }
 
-/**
- * Install RASS into the current workspace (local .opencode).
- */
+// ═══════════════════════════════════════════════════════════════════════════════
+// INSTALL LOCALLY
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function installLocally() {
   const targetOpencode = path.join(process.cwd(), '.opencode');
 
-  // Copy RASS .opencode content to workspace .opencode
   const dirsToCopy = ['sdd-profiles', 'phases', 'runtime'];
   for (const dir of dirsToCopy) {
     const src = path.join(OPENCODE_DIR, dir);
@@ -529,60 +631,67 @@ function installLocally() {
   return targetOpencode;
 }
 
-// ─── TUI ────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERACTIVE TUI — REDESIGNED WITH VISUAL SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
 
 async function interactiveInstall() {
-  console.clear();
-  intro(pc.bgCyan(pc.black(' RASS v3.0 — Ryou Adaptive SDD System ')));
+  // Animate banner on entry
+  await animateBanner();
 
   const action = await select({
-    message: 'What would you like to do?',
+    message: THEME.primaryBright(ICONS.arrow + ' What would you like to do?'),
     options: [
-      { value: 'global', label: 'Install globally', hint: 'Register RASS plugin in OpenCode for all projects' },
-      { value: 'local', label: 'Install in workspace', hint: 'Copy RASS to .opencode/ in current directory' },
-      { value: 'uninstall', label: 'Uninstall globally', hint: 'Remove RASS plugin from OpenCode' },
+      { value: 'global', label: THEME.successBright(ICONS.sparkle + ' Install globally'), hint: THEME.dim('Register RASS plugin in OpenCode for all projects') },
+      { value: 'local', label: THEME.accentBright(ICONS.diamond + ' Install in workspace'), hint: THEME.dim('Copy RASS to .opencode/ in current directory') },
+      { value: 'uninstall', label: THEME.errorBright(ICONS.cross + ' Uninstall globally'), hint: THEME.dim('Remove RASS plugin from OpenCode') },
     ],
   });
 
   if (isCancel(action)) {
-    outro(pc.yellow('Cancelled.'));
+    outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
     return;
   }
 
   if (action === 'global') {
     const confirmed = await confirm({
-      message: 'This will install RASS as a global OpenCode plugin. Continue?',
+      message: THEME.warningBright(ICONS.triangle + ' This will install RASS as a global OpenCode plugin. Continue?'),
     });
 
     if (isCancel(confirmed) || !confirmed) {
-      outro(pc.yellow('Cancelled.'));
+      outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
       return;
     }
 
     const s = spinner();
-    s.start('Installing RASS globally...');
+    s.start(THEME.primary('  ' + ICONS.ring + ' Installing RASS globally...'));
 
     try {
       const { globalDir } = installGlobally();
-      s.stop(pc.green('RASS installed globally.'));
+      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' RASS installed globally'));
 
-      // Configure default ModeProfile
+      printDivider();
+      printHeader('Configuration');
+
       const configureNow = await confirm({
-        message: 'Configure default ModeProfile now?',
+        message: THEME.infoBright(ICONS.diamond + ' Configure default ModeProfile now?'),
       });
 
       if (configureNow && !isCancel(configureNow)) {
+        printDivider();
+        printHeader('Select ModeProfile');
+
         const modeProfile = await select({
-          message: 'Select default SDD ModeProfile:',
+          message: THEME.primaryBright(ICONS.arrow + ' Select default SDD ModeProfile:'),
           options: [
-            { value: 'ryouset', label: 'RyouSet (Recommended)', hint: 'Full pipeline — GLM-5.1 orchestrates, all 8 phases, per-phase models' },
-            { value: 'fast', label: 'Fast', hint: 'Orchestrator → Apply → Verify, low effort' },
-            { value: 'architecture', label: 'Architecture', hint: 'Full pipeline for complex systems, high reasoning' },
-            { value: 'ui', label: 'UI', hint: 'Orchestrator → Design → Apply → Verify, UI-focused' },
-            { value: 'debug', label: 'Debug', hint: 'Explore → Verify → Apply loop, high reasoning' },
-            { value: 'enterprise', label: 'Enterprise', hint: 'Maximum robustness, all phases, extreme reasoning' },
-            { value: 'legacy', label: 'Legacy', hint: 'For refactors and modernization' },
-            { value: 'minimal', label: 'Minimal', hint: 'Explore → Apply only, low cost' },
+            { value: 'ryouset', label: THEME.successBright(ICONS.star + ' RyouSet (Recommended)'), hint: THEME.dim('Full pipeline — GLM-5.1 orchestrates, all 8 phases, per-phase models') },
+            { value: 'fast', label: THEME.accentBright(ICONS.bullet + ' Fast'), hint: THEME.dim('Orchestrator → Apply → Verify, low effort') },
+            { value: 'architecture', label: THEME.secondaryBright(ICONS.diamond + ' Architecture'), hint: THEME.dim('Full pipeline for complex systems, high reasoning') },
+            { value: 'ui', label: THEME.primaryBright(ICONS.sparkle + ' UI'), hint: THEME.dim('Orchestrator → Design → Apply → Verify, UI-focused') },
+            { value: 'debug', label: THEME.warningBright(ICONS.triangle + ' Debug'), hint: THEME.dim('Explore → Verify → Apply loop, high reasoning') },
+            { value: 'enterprise', label: THEME.errorBright(ICONS.circle + ' Enterprise'), hint: THEME.dim('Maximum robustness, all phases, extreme reasoning') },
+            { value: 'legacy', label: THEME.infoBright(ICONS.dot + ' Legacy'), hint: THEME.dim('For refactors and modernization') },
+            { value: 'minimal', label: THEME.dim(ICONS.dash + ' Minimal'), hint: THEME.dim('Explore → Apply only, low cost') },
           ],
         });
 
@@ -591,74 +700,101 @@ async function interactiveInstall() {
           if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
           fs.writeFileSync(path.join(runtimeDir, 'current-modeprofile.json'), JSON.stringify({ modeprofile: modeProfile }, null, 2));
 
-          note(
-            `ModeProfile: ${modeProfile}\n\nUse /sdd in OpenCode to switch ModeProfiles at any time.`,
-            'Configuration'
-          );
+          printSuccess(`ModeProfile set to: ${modeProfile}`);
+          printInfo('Use /sdd in OpenCode to switch ModeProfiles at any time');
         }
       }
 
+      printDivider();
+      printHeader('RASS Installed');
+
       note(
-        `Installed to: ${globalDir}\n\nCommands available in OpenCode:\n  /sdd — Switch or create SDD ModeProfiles\n  /sdd-mode — Alias for /sdd (backward compatible)\n  /sdd-profile — Alias for /sdd (backward compatible)\n  /rass-setup — View status, switch to RyouSet, view agents\n  /s — Alias for /sdd\n  /rs — Alias for /rass-setup\n\nAI tools available:\n  sdd_mode_profile — Manage ModeProfiles programmatically\n  rass_setup — View RASS status and agent info\n\nRyou agents deployed:\n  ryou-orchestrator (primary), planner, builder, architect, reviewer, debugger, documentation`,
-        'RASS Installed'
+        THEME.infoBright('Installed to:') + ' ' + THEME.primary(globalDir) + '\n\n' +
+        THEME.secondaryBright('Commands available in OpenCode:') + '\n' +
+        '  ' + THEME.success('/sdd') + THEME.dim(' — Switch or create SDD ModeProfiles') + '\n' +
+        '  ' + THEME.success('/sdd-mode') + THEME.dim(' — Alias for /sdd (backward compatible)') + '\n' +
+        '  ' + THEME.success('/sdd-profile') + THEME.dim(' — Alias for /sdd (backward compatible)') + '\n' +
+        '  ' + THEME.success('/rass-setup') + THEME.dim(' — View status, switch to RyouSet, view agents') + '\n' +
+        '  ' + THEME.success('/s') + THEME.dim(' — Alias for /sdd') + '\n' +
+        '  ' + THEME.success('/rs') + THEME.dim(' — Alias for /rass-setup') + '\n\n' +
+        THEME.secondaryBright('AI tools available:') + '\n' +
+        '  ' + THEME.accent('sdd_mode_profile') + THEME.dim(' — Manage ModeProfiles programmatically') + '\n' +
+        '  ' + THEME.accent('rass_setup') + THEME.dim(' — View RASS status and agent info') + '\n\n' +
+        THEME.secondaryBright('Ryou agents deployed:') + '\n' +
+        '  ' + THEME.primary('ryou-orchestrator') + THEME.dim(' (primary)') + ', ' +
+        THEME.info('planner') + ', ' + THEME.info('builder') + ', ' + THEME.info('architect') + ', ' +
+        THEME.info('reviewer') + ', ' + THEME.info('debugger') + ', ' + THEME.info('documentation'),
+        THEME.successBright(ICONS.sparkle + ' Installation Complete')
       );
 
-      outro(pc.cyan('RASS is ready. Open OpenCode and start using /sdd and /rass-setup.'));
+      outro(THEME.successBright('  ' + ICONS.sparkle + ' RASS is ready. Open OpenCode and start using /sdd and /rass-setup'));
     } catch (err) {
-      s.stop(pc.red('Installation failed.'));
-      outro(pc.red(err.message));
+      s.stop(THEME.errorBright('  ' + ICONS.cross + ' Installation failed'));
+      outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
     }
 
   } else if (action === 'local') {
     const s = spinner();
-    s.start('Installing RASS in workspace...');
+    s.start(THEME.primary('  ' + ICONS.ring + ' Installing RASS in workspace...'));
 
     try {
       const target = installLocally();
-      s.stop(pc.green('RASS installed in workspace.'));
+      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' RASS installed in workspace'));
+
+      printDivider();
+      printHeader('Local Install');
 
       note(
-        `Installed to: ${target}\n\nThis only affects the current project.\nFor global installation, run again and choose "Install globally".`,
-        'Local Install'
+        THEME.infoBright('Installed to:') + ' ' + THEME.primary(target) + '\n\n' +
+        'This only affects the current project.\n' +
+        'For global installation, run again and choose ' + THEME.successBright('"Install globally"'),
+        THEME.successBright(ICONS.sparkle + ' Workspace Ready')
       );
 
-      outro(pc.cyan('RASS is ready in this workspace.'));
+      outro(THEME.successBright('  ' + ICONS.sparkle + ' RASS is ready in this workspace'));
     } catch (err) {
-      s.stop(pc.red('Installation failed.'));
-      outro(pc.red(err.message));
+      s.stop(THEME.errorBright('  ' + ICONS.cross + ' Installation failed'));
+      outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
     }
 
   } else if (action === 'uninstall') {
     const confirmed = await confirm({
-      message: 'This will remove RASS from OpenCode globally. Continue?',
+      message: THEME.errorBright(ICONS.circle + ' This will remove RASS from OpenCode globally. Continue?'),
     });
 
     if (isCancel(confirmed) || !confirmed) {
-      outro(pc.yellow('Cancelled.'));
+      outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
       return;
     }
 
     const s = spinner();
-    s.start('Uninstalling RASS...');
+    s.start(THEME.error('  ' + ICONS.ring + ' Uninstalling RASS...'));
 
     try {
       const { globalDir } = uninstallGlobally();
-      s.stop(pc.green('RASS uninstalled.'));
+      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' RASS uninstalled'));
+
+      printDivider();
+      printHeader('Uninstalled');
 
       note(
-        `Removed from: ${globalDir}\n\nRASS plugin, sdd-profiles, and runtime have been removed.\nOpenCode config has been cleaned up.`,
-        'Uninstalled'
+        THEME.infoBright('Removed from:') + ' ' + THEME.primary(globalDir) + '\n\n' +
+        'RASS plugin, sdd-profiles, and runtime have been removed.\n' +
+        'OpenCode config has been cleaned up.',
+        THEME.warningBright(ICONS.triangle + ' RASS Removed')
       );
 
-      outro(pc.cyan('RASS has been removed. Restart OpenCode to apply changes.'));
+      outro(THEME.warningBright('  ' + ICONS.triangle + ' RASS has been removed. Restart OpenCode to apply changes'));
     } catch (err) {
-      s.stop(pc.red('Uninstall failed.'));
-      outro(pc.red(err.message));
+      s.stop(THEME.errorBright('  ' + ICONS.cross + ' Uninstall failed'));
+      outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
     }
   }
 }
 
-// ─── CLI ────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLI MODE — REDESIGNED WITH VISUAL SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
 
 const args = process.argv.slice(2);
 
@@ -666,41 +802,59 @@ if (args.length > 0) {
   const command = args[0].toLowerCase();
 
   if (command === 'install') {
-    console.log(pc.cyan('Installing RASS globally...'));
+    printBannerInstant();
+    printDivider();
+    printHeader('Global Installation');
+    printInfo('Installing RASS globally...');
+
     try {
       const { globalDir } = installGlobally();
-      console.log(pc.green(`RASS installed globally to: ${globalDir}`));
-      console.log(pc.gray('Use /sdd in OpenCode.'));
+      printSuccess(`RASS installed globally to: ${globalDir}`);
+      printInfo('Use /sdd in OpenCode');
     } catch (err) {
-      console.error(pc.red(`Installation failed: ${err.message}`));
+      printError(`Installation failed: ${err.message}`);
       process.exit(1);
     }
   } else if (command === 'uninstall') {
-    console.log(pc.cyan('Uninstalling RASS globally...'));
+    printBannerInstant();
+    printDivider();
+    printHeader('Global Uninstallation');
+    printInfo('Uninstalling RASS globally...');
+
     try {
       const { globalDir } = uninstallGlobally();
-      console.log(pc.green(`RASS uninstalled from: ${globalDir}`));
+      printSuccess(`RASS uninstalled from: ${globalDir}`);
     } catch (err) {
-      console.error(pc.red(`Uninstall failed: ${err.message}`));
+      printError(`Uninstall failed: ${err.message}`);
       process.exit(1);
     }
   } else if (command === 'local') {
-    console.log(pc.cyan('Installing RASS in workspace...'));
+    printBannerInstant();
+    printDivider();
+    printHeader('Workspace Installation');
+    printInfo('Installing RASS in workspace...');
+
     try {
       const target = installLocally();
-      console.log(pc.green(`RASS installed locally to: ${target}`));
+      printSuccess(`RASS installed locally to: ${target}`);
     } catch (err) {
-      console.error(pc.red(`Local install failed: ${err.message}`));
+      printError(`Local install failed: ${err.message}`);
       process.exit(1);
     }
   } else {
-    console.log(pc.yellow('Usage: node installer/index.js [install|uninstall|local]'));
-    console.log(pc.gray('  install    — Install RASS globally into OpenCode'));
-    console.log(pc.gray('  uninstall  — Uninstall RASS globally from OpenCode'));
-    console.log(pc.gray('  local      — Install RASS in current workspace .opencode/'));
-    console.log(pc.gray('  (no args)  — Interactive TUI mode'));
+    printBannerInstant();
+    printDivider();
+    printHeader('Usage');
+    console.log('  ' + THEME.warningBright('Usage:') + ' node installer/index.js [install|uninstall|local]');
+    console.log('  ' + THEME.success(ICONS.sparkle + ' install') + THEME.dim('    — Install RASS globally into OpenCode'));
+    console.log('  ' + THEME.error(ICONS.cross + ' uninstall') + THEME.dim('  — Uninstall RASS globally from OpenCode'));
+    console.log('  ' + THEME.accent(ICONS.diamond + ' local') + THEME.dim('      — Install RASS in current workspace .opencode/'));
+    console.log('  ' + THEME.info(ICONS.dot + ' (no args)') + THEME.dim('  — Interactive TUI mode'));
     process.exit(1);
   }
 } else {
-  interactiveInstall().catch(console.error);
+  interactiveInstall().catch((err) => {
+    printError(err.message);
+    process.exit(1);
+  });
 }
