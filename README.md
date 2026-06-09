@@ -1,42 +1,59 @@
 <div align="center">
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
-<!-- RASS — Visual Header Banner -->
+<!-- RASS — Visual Header Banner with SVG -->
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 
-<pre align="center" style="background: transparent; border: none;">
-<code style="background: transparent; color: #00d4ff;">
-           :+XXXXXXx:
-        xXXXXx;....;XX;
-      ;XXX+    +Xx  .XX+
-     .xXX    :XX+   ;XX+  :;    ;:     .+xx:     x.    +
-      .;.   +XX.   +XXx  xXX.  XXX.  xXX:.xX.  ;XX+  +XX:
-           xXX:.;XXXX: .XXX  :XXX  ;XX+X  xX. +XX:  xXX.
-         .XXXxxXXx:   .XXx  xXXX: ;XX+.xX+X;:XXX: .XXX.  x;
-        +XXX: ;XX.    xXX.:X:XX::XXXX  .XXXxxXX+ xXXX; +X.
-    :XXXXXX.  :XXX   .XXXX:.XXXX:.XXXXXXX.  xXXXX.xXXXX:
-    .;XXX:    .xXXx  .::  XXX;    .:+;:     :+;   :+;
-               :XXXXxxxX+;XX:
-               .:xXXXXX ;XX
-                  . .+XX+.
-</code>
-</pre>
+<svg width="800" height="320" viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="320" fill="#0d1117"/>
+  
+  <!-- Decorative corner elements -->
+  <text x="20" y="30" fill="#00d4ff" font-size="14" opacity="0.3">◈</text>
+  <text x="770" y="30" fill="#ff00ff" font-size="14" opacity="0.3">◈</text>
+  <text x="20" y="300" fill="#ff00ff" font-size="14" opacity="0.3">◈</text>
+  <text x="770" y="300" fill="#00d4ff" font-size="14" opacity="0.3">◈</text>
+  
+  <!-- Top decorative line -->
+  <line x1="100" y1="50" x2="700" y2="50" stroke="#00d4ff" stroke-width="1" opacity="0.2"/>
+  <text x="400" y="48" fill="#00d4ff" font-size="10" text-anchor="middle" opacity="0.4">✦ ✦ ✦</text>
+  
+  <!-- ASCII Art Logo -->
+  <text x="400" y="90" fill="#00d4ff" font-family="monospace" font-size="11" text-anchor="middle" opacity="0.9">
+    <tspan x="400" dy="0">           :+XXXXXXx:</tspan>
+    <tspan x="400" dy="14">        xXXXXx;....;XX;</tspan>
+    <tspan x="400" dy="14">      ;XXX+    +Xx  .XX+</tspan>
+    <tspan x="400" dy="14">     .xXX    :XX+   ;XX+  :;    ;:     .+xx:     x.    +</tspan>
+    <tspan x="400" dy="14">      .;.   +XX.   +XXx  xXX.  XXX.  xXX:.xX.  ;XX+  +XX:</tspan>
+    <tspan x="400" dy="14">           xXX:.;XXXX: .XXX  :XXX  ;XX+X  xX. +XX:  xXX.</tspan>
+    <tspan x="400" dy="14">         .XXXxxXXx:   .XXx  xXXX: ;XX+.xX+X;:XXX: .XXX.  x;</tspan>
+    <tspan x="400" dy="14">        +XXX: ;XX.    xXX.:X:XX::XXXX  .XXXxxXX+ xXXX; +X.</tspan>
+    <tspan x="400" dy="14">    :XXXXXX.  :XXX   .XXXX:.XXXX:.XXXXXXX.  xXXXX.xXXXX:</tspan>
+    <tspan x="400" dy="14">    .;XXX:    .xXXx  .::  XXX;    .:+;:     :+;   :+;</tspan>
+    <tspan x="400" dy="14">               :XXXXxxxX+;XX:</tspan>
+    <tspan x="400" dy="14">               .:xXXXXX ;XX</tspan>
+    <tspan x="400" dy="14">                  . .+XX+.</tspan>
+  </text>
+  
+  <!-- Title -->
+  <text x="400" y="245" fill="#00d4ff" font-family="Arial, sans-serif" font-size="42" font-weight="bold" text-anchor="middle">RASS</text>
+  
+  <!-- Subtitle -->
+  <text x="400" y="270" fill="#ff00ff" font-family="Arial, sans-serif" font-size="16" text-anchor="middle">Ryou Adaptive SDD System</text>
+  
+  <!-- Tagline -->
+  <text x="400" y="290" fill="#8b949e" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">The definitive Sub-Agent Driven Development framework for OpenCode</text>
+  
+  <!-- Bottom decorative line -->
+  <line x1="100" y1="310" x2="700" y2="310" stroke="#ff00ff" stroke-width="1" opacity="0.2"/>
+  <text x="400" y="318" fill="#ff00ff" font-size="10" text-anchor="middle" opacity="0.4">◈ ◈ ◈</text>
+  
+  <!-- Side decorations -->
+  <text x="60" y="160" fill="#00d4ff" font-size="20" opacity="0.15">✦</text>
+  <text x="730" y="160" fill="#ff00ff" font-size="20" opacity="0.15">✦</text>
+</svg>
 
-<h1 align="center">
-  <span style="background: linear-gradient(135deg, #00d4ff 0%, #ff00ff 50%, #00d4ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    RASS
-  </span>
-</h1>
-
-<p align="center">
-  <strong style="font-size: 1.2em; color: #00d4ff;">Ryou Adaptive SDD System</strong>
-</p>
-
-<p align="center">
-  <em>The definitive Sub-Agent Driven Development framework for OpenCode</em>
-</p>
-
-<!-- Badges -->
+<!-- Badges Row 1 -->
 <p align="center">
   <img src="https://img.shields.io/badge/version-3.0.0-00d4ff?style=for-the-badge&logo=github&logoColor=white" alt="Version 3.0.0">
   <img src="https://img.shields.io/badge/OpenCode-Plugin-ff00ff?style=for-the-badge&logo=codeium&logoColor=white" alt="OpenCode Plugin">
@@ -45,11 +62,21 @@
   <img src="https://img.shields.io/badge/MeridianUI-Design-00d4ff?style=for-the-badge&logo=figma&logoColor=white" alt="MeridianUI">
 </p>
 
+<!-- Badges Row 2 - AI Models -->
 <p align="center">
-  <img src="https://img.shields.io/badge/AI-GLM--5.1-00d4ff?style=flat-square&logo=openai&logoColor=white" alt="GLM-5.1">
-  <img src="https://img.shields.io/badge/AI-Kimi%20K2.6-ff00ff?style=flat-square&logo=anthropic&logoColor=white" alt="Kimi K2.6">
-  <img src="https://img.shields.io/badge/AI-DeepSeek%20V4%20Pro-ff6b6b?style=flat-square&logo=deepseek&logoColor=white" alt="DeepSeek V4 Pro">
-  <img src="https://img.shields.io/badge/AI-DeepSeek%20V4%20Flash-ffd93d?style=flat-square&logo=deepseek&logoColor=black" alt="DeepSeek V4 Flash">
+  <img src="https://img.shields.io/badge/🧠_GLM--5.1-Orchestration-00d4ff?style=flat-square&logoColor=white" alt="GLM-5.1">
+  <img src="https://img.shields.io/badge/🔨_Kimi_K2.6-Implementation-ff00ff?style=flat-square&logoColor=white" alt="Kimi K2.6">
+  <img src="https://img.shields.io/badge/🔍_DeepSeek_V4_Pro-Review-ff6b6b?style=flat-square&logoColor=white" alt="DeepSeek V4 Pro">
+  <img src="https://img.shields.io/badge/📝_DeepSeek_V4_Flash-Docs-ffd93d?style=flat-square&logoColor=black" alt="DeepSeek V4 Flash">
+</p>
+
+<!-- Feature Icons Row -->
+<p align="center">
+  <img src="https://img.shields.io/badge/⚡_Adaptive_Pipeline-8A2BE2?style=flat-square" alt="Adaptive">
+  <img src="https://img.shields.io/badge/🎯_Per--Phase_Routing-8A2BE2?style=flat-square" alt="Routing">
+  <img src="https://img.shields.io/badge/🤖_7_AI_Agents-8A2BE2?style=flat-square" alt="Agents">
+  <img src="https://img.shields.io/badge/🎨_Modern_TUI-8A2BE2?style=flat-square" alt="TUI">
+  <img src="https://img.shields.io/badge/📊_8_ModeProfiles-8A2BE2?style=flat-square" alt="Profiles">
 </p>
 
 </div>
