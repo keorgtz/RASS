@@ -1,29 +1,21 @@
 /**
  * RASS TUI Plugin — Ryou Adaptive SDD System
- * Provides /sdd-mode, /sdd-profile, and /rass-setup slash commands
+ * Provides /sdd, /sdd-mode, /sdd-profile, and /rass-setup slash commands
  * with interactive dialogs, editors, multi-select toggles, and delete options.
  */
 
 import {
-  listModes,
-  listProfiles,
-  switchMode,
-  switchProfile,
-  createMode,
-  createProfile,
-  updateMode,
-  updateProfile,
-  deleteMode,
-  deleteProfile,
-  getMode,
-  getProfile,
-  getCurrentMode,
-  getCurrentProfile,
+  listModeProfiles,
+  getModeProfile,
+  switchModeProfile,
+  createModeProfile,
+  updateModeProfile,
+  deleteModeProfile,
+  getCurrentModeProfile,
   getStatus,
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   RYOU_AGENTS,
-  RYOU_CONFIG_TEMPLATE,
 } from './rass-core.js';
 
 // ─── Dynamic Model Discovery ─────────────────────────────────────────────
@@ -63,8 +55,6 @@ function discoverModels(api) {
   }
 
   // Fallback: import from rass-core
-  // This is only reached if api.state.provider is not available
-  // This is only reached if api.state.provider is not available
   return [
     { id: 'opencode-go/glm-5.1', label: 'GLM-5.1', description: 'Orchestration, planning, architecture, complex reasoning' },
     { id: 'opencode-go/kimi-k2.6', label: 'Kimi K2.6', description: 'Implementation, refactors, C#/.NET code generation' },
@@ -99,23 +89,14 @@ function getEffortDescription(effort) {
   return descriptions[effort] || effort;
 }
 
-function getModelLabel(modelId) {
+function getModelLabel(modelId, models) {
   const model = models.find((m) => m.id === modelId);
   return model ? model.label : modelId;
 }
 
-function buildDefaultPhases(primaryPhase) {
-  const presets = {
-    orchestrator: ['orchestrator', 'apply', 'verify'],
-    init: ['orchestrator', 'init', 'apply', 'verify'],
-    explore: ['orchestrator', 'explore', 'apply', 'verify'],
-    propose: ['orchestrator', 'explore', 'propose', 'apply', 'verify'],
-    design: ['orchestrator', 'design', 'apply', 'verify'],
-    apply: ['orchestrator', 'apply', 'verify'],
-    verify: ['orchestrator', 'apply', 'verify'],
-    archive: ['orchestrator', 'apply', 'verify', 'archive'],
-  };
-  return presets[primaryPhase] || ['orchestrator', 'apply', 'verify'];
+function buildPhaseSummary(phases) {
+  if (!phases || phases.length === 0) return 'No phases';
+  return phases.join(' → ');
 }
 
 // ─── Plugin Entry ────────────────────────────────────────────────────────────
@@ -127,95 +108,96 @@ export default {
     const models = discoverModels(api);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // /sdd-mode — Switch, Create, Edit, or Delete SDD Modes
+    // /sdd — Main Unified ModeProfile Command
     // ═══════════════════════════════════════════════════════════════════════
 
-    const showModeDialog = (dialog) => {
-      const modes = listModes();
-      const currentMode = getCurrentMode();
+    const showModeProfileDialog = (dialog) => {
+      const modeProfiles = listModeProfiles();
+      const currentMp = getCurrentModeProfile();
 
       const options = [
-        ...modes.map((m) => ({
-          title: m.id === currentMode ? `${m.name} (active)` : m.name,
-          value: m.id,
-          description: m.description || m.phases.join(' → '),
+        ...modeProfiles.map((mp) => ({
+          title: mp.id === currentMp ? `${mp.name} (active)` : mp.name,
+          value: mp.id,
+          description: `${buildPhaseSummary(mp.phases)} | ${mp.model_strategy === 'single' ? 'Single model' : 'Per-phase models'}`,
         })),
         {
-          title: '+ Create New Mode...',
+          title: '+ Create New ModeProfile...',
           value: '__create__',
-          description: 'Create a custom SDD mode with your own phases',
+          description: 'Create a custom SDD ModeProfile with your own phases and model routing',
         },
       ];
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: 'SDD Mode',
-          placeholder: 'Select a mode or create new...',
+          title: 'SDD ModeProfile',
+          placeholder: 'Select a ModeProfile or create new...',
           options,
-          current: currentMode,
+          current: currentMp,
           onSelect: (option) => {
             if (option.value === '__create__') {
-              showCreateModeNameDialog(dialog);
+              showCreateModeProfileNameDialog(dialog);
             } else {
-              showModeActionsDialog(dialog, option.value);
+              showModeProfileActionsDialog(dialog, option.value);
             }
           },
         }),
       );
     };
 
-    // ── Mode Actions (Switch / Edit / Delete) ─────────────────────────────
+    // ── ModeProfile Actions (Switch / Edit / Delete) ────────────────────────
 
-    const showModeActionsDialog = (dialog, modeId) => {
-      const mode = getMode(modeId);
-      if (!mode) {
+    const showModeProfileActionsDialog = (dialog, mpId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
         dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Mode '${modeId}' not found` });
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
         return;
       }
-      const currentMode = getCurrentMode();
-      const isActive = modeId === currentMode;
+      const currentMp = getCurrentModeProfile();
+      const isActive = mpId === currentMp;
+      const mpName = mp.name || mpId;
 
       const options = [
         ...(isActive
           ? []
           : [{
-              title: 'Switch to this mode',
+              title: 'Switch to this ModeProfile',
               value: 'switch',
-              description: `Activate "${mode.name}" — ${mode.phases.join(' → ')}`,
+              description: `Activate "${mpName}" — ${buildPhaseSummary(mp.phases)}`,
             }]),
         {
-          title: 'Edit mode',
+          title: 'Edit ModeProfile',
           value: 'edit',
-          description: `Modify phases, effort, or description of "${mode.name}"`,
+          description: `Modify phases, model strategy, or per-phase settings of "${mpName}"`,
         },
         {
-          title: 'Delete mode',
+          title: 'Delete ModeProfile',
           value: 'delete',
-          description: `Permanently delete "${mode.name}"`,
+          description: `Permanently delete "${mpName}"`,
         },
         {
           title: '← Back',
           value: 'back',
-          description: 'Return to mode list',
+          description: 'Return to ModeProfile list',
         },
       ];
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Mode: ${mode.name}`,
+          title: `ModeProfile: ${mpName}`,
           placeholder: 'Choose an action...',
           options,
           onSelect: (opt) => {
             switch (opt.value) {
               case 'switch': {
                 try {
-                  switchMode(modeId);
+                  switchModeProfile(mpId);
                   dialog.clear();
                   api.ui.toast({
                     variant: 'success',
-                    title: 'Mode Switched',
-                    message: `Now using "${mode.name}" — ${mode.phases.join(' → ')}`,
+                    title: 'ModeProfile Switched',
+                    message: `Now using "${mpName}" — ${buildPhaseSummary(mp.phases)}`,
                   });
                 } catch (err) {
                   dialog.clear();
@@ -224,13 +206,13 @@ export default {
                 break;
               }
               case 'edit':
-                showEditModePhasesDialog(dialog, modeId);
+                showEditModeProfileDialog(dialog, mpId);
                 break;
               case 'delete':
-                showDeleteModeConfirmDialog(dialog, modeId, mode.name);
+                showDeleteModeProfileConfirmDialog(dialog, mpId, mpName);
                 break;
               case 'back':
-                showModeDialog(dialog);
+                showModeProfileDialog(dialog);
                 break;
             }
           },
@@ -238,55 +220,69 @@ export default {
       );
     };
 
-    // ── Delete Mode Confirmation ──────────────────────────────────────────
+    // ── Delete ModeProfile Confirmation ───────────────────────────────────
 
-    const showDeleteModeConfirmDialog = (dialog, modeId, modeName) => {
+    const showDeleteModeProfileConfirmDialog = (dialog, mpId, mpName) => {
       dialog.replace(
         () => api.ui.DialogConfirm({
-          title: `Delete "${modeName}"?`,
-          message: `This will permanently delete the mode "${modeName}" (${modeId}). This cannot be undone.`,
+          title: `Delete "${mpName}"?`,
+          message: `This will permanently delete the ModeProfile "${mpName}" (${mpId}). This cannot be undone.`,
           onConfirm: () => {
             try {
-              deleteMode(modeId);
+              deleteModeProfile(mpId);
               dialog.clear();
-              api.ui.toast({ variant: 'success', title: 'Mode Deleted', message: `"${modeName}" has been deleted` });
+              api.ui.toast({ variant: 'success', title: 'ModeProfile Deleted', message: `"${mpName}" has been deleted` });
             } catch (err) {
               dialog.clear();
               api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
             }
           },
-          onCancel: () => showModeActionsDialog(dialog, modeId),
+          onCancel: () => showModeProfileActionsDialog(dialog, mpId),
         }),
       );
     };
 
-    // ── Create Mode: Step 1 — Name ────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+    // Create New ModeProfile Flow
+    // ═══════════════════════════════════════════════════════════════════════
 
-    const showCreateModeNameDialog = (dialog) => {
+    // Step 1: Name
+    const showCreateModeProfileNameDialog = (dialog) => {
       dialog.replace(
         () => api.ui.DialogPrompt({
-          title: 'Create New SDD Mode — Enter a name (e.g., "custom-api", "rapid-prototype")',
-          placeholder: 'mode-name',
+          title: 'Create New ModeProfile — Enter a name (e.g., "custom-api", "rapid-prototype")',
+          placeholder: 'modeprofile-name',
           onConfirm: (name) => {
             if (!name || !name.trim()) {
               dialog.clear();
-              api.ui.toast({ variant: 'error', title: 'Error', message: 'Mode name cannot be empty' });
+              api.ui.toast({ variant: 'error', title: 'Error', message: 'ModeProfile name cannot be empty' });
               return;
             }
-            showCreateModePhasesDialog(dialog, name.trim());
+            showCreateModeProfileDescriptionDialog(dialog, name.trim());
           },
-          onCancel: () => showModeDialog(dialog),
+          onCancel: () => showModeProfileDialog(dialog),
         }),
       );
     };
 
-    // ── Create Mode: Step 2 — Select Phases (toggle multi-select) ─────────
+    // Step 2: Description
+    const showCreateModeProfileDescriptionDialog = (dialog, mpName) => {
+      dialog.replace(
+        () => api.ui.DialogPrompt({
+          title: `Description for "${mpName}" (optional)`,
+          placeholder: 'What is this ModeProfile for?',
+          onConfirm: (description) => {
+            showCreateModeProfilePhasesDialog(dialog, mpName, description || '', ['orchestrator', 'apply', 'verify']);
+          },
+          onCancel: () => showCreateModeProfilePhasesDialog(dialog, mpName, '', ['orchestrator', 'apply', 'verify']),
+        }),
+      );
+    };
 
-    const showCreateModePhasesDialog = (dialog, modeName, selectedPhases = null) => {
-      const phases = selectedPhases || ['orchestrator', 'apply', 'verify'];
-
+    // Step 3: Select Phases (toggle multi-select)
+    const showCreateModeProfilePhasesDialog = (dialog, mpName, description, selectedPhases) => {
       const options = AVAILABLE_PHASES.map((p) => ({
-        title: phases.includes(p) ? `✓ ${p.charAt(0).toUpperCase() + p.slice(1)}` : `  ${p.charAt(0).toUpperCase() + p.slice(1)}`,
+        title: selectedPhases.includes(p) ? `✓ ${p.charAt(0).toUpperCase() + p.slice(1)}` : `  ${p.charAt(0).toUpperCase() + p.slice(1)}`,
         value: p,
         description: getPhaseDescription(p),
       }));
@@ -294,363 +290,65 @@ export default {
       options.push({
         title: '✓ Done — Confirm phase selection',
         value: '__done__',
-        description: `Selected: ${phases.join(', ') || 'none'}`,
+        description: `Selected: ${selectedPhases.join(', ') || 'none'}`,
       });
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Phases for "${modeName}" — Select to toggle, Done to confirm`,
+          title: `Phases for "${mpName}" — Select to toggle, Done to confirm`,
           placeholder: 'Select a phase to toggle it on/off...',
           options,
           onSelect: (option) => {
             if (option.value === '__done__') {
-              if (phases.length === 0) {
-                // Re-render with same state to show error
-                showCreateModePhasesDialog(dialog, modeName, phases);
+              if (selectedPhases.length === 0) {
+                showCreateModeProfilePhasesDialog(dialog, mpName, description, selectedPhases);
                 return;
               }
-              showCreateModeEffortDialog(dialog, modeName, phases);
+              showCreateModeProfileStrategyDialog(dialog, mpName, description, selectedPhases);
             } else {
-              // Toggle the phase
-              const newPhases = phases.includes(option.value)
-                ? phases.filter((p) => p !== option.value)
-                : [...phases, option.value];
-              showCreateModePhasesDialog(dialog, modeName, newPhases);
+              const newPhases = selectedPhases.includes(option.value)
+                ? selectedPhases.filter((p) => p !== option.value)
+                : [...selectedPhases, option.value];
+              showCreateModeProfilePhasesDialog(dialog, mpName, description, newPhases);
             }
           },
         }),
       );
     };
 
-    // ── Create Mode: Step 3 — Effort Level ────────────────────────────────
-
-    const showCreateModeEffortDialog = (dialog, modeName, phases) => {
-      const effortOptions = EFFORT_LEVELS.map((e) => ({
-        title: e.charAt(0).toUpperCase() + e.slice(1),
-        value: e,
-        description: getEffortDescription(e),
-      }));
-
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `Default effort for "${modeName}"`,
-          placeholder: 'Select effort level...',
-          options: effortOptions,
-          current: 'medium',
-          onSelect: (effortOption) => {
-            try {
-              createMode(modeName, phases, `Custom mode: ${modeName}`, effortOption.value);
-              switchMode(modeName);
-              dialog.clear();
-              api.ui.toast({
-                variant: 'success',
-                title: 'Mode Created',
-                message: `Created "${modeName}" with phases: ${phases.join(' → ')} at ${effortOption.value} effort`,
-              });
-            } catch (err) {
-              dialog.clear();
-              api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
-            }
-          },
-        }),
-      );
-    };
-
-    // ── Edit Mode: Step 1 — Edit Phases (toggle multi-select) ─────────────
-
-    const showEditModePhasesDialog = (dialog, modeId, selectedPhases = null) => {
-      const mode = getMode(modeId);
-      if (!mode) {
-        dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Mode '${modeId}' not found` });
-        return;
-      }
-      const phases = selectedPhases !== null ? selectedPhases : [...mode.phases];
-
-      const options = AVAILABLE_PHASES.map((p) => ({
-        title: phases.includes(p) ? `✓ ${p.charAt(0).toUpperCase() + p.slice(1)}` : `  ${p.charAt(0).toUpperCase() + p.slice(1)}`,
-        value: p,
-        description: getPhaseDescription(p),
-      }));
-
-      options.push({
-        title: '✓ Done — Save phases',
-        value: '__done__',
-        description: `Selected: ${phases.join(', ') || 'none'}`,
-      });
-      options.push({
-        title: '← Change effort level',
-        value: '__effort__',
-        description: `Current: ${mode.default_effort || 'medium'}`,
-      });
-      options.push({
-        title: '← Back to mode actions',
-        value: '__back__',
-        description: 'Return without saving',
-      });
-
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `Edit "${mode.name}" — Phases (toggle on/off, Done to save)`,
-          placeholder: 'Select a phase to toggle it...',
-          options,
-          onSelect: (option) => {
-            if (option.value === '__done__') {
-              if (phases.length === 0) {
-                showEditModePhasesDialog(dialog, modeId, phases);
-                return;
-              }
-              try {
-                updateMode(modeId, { phases });
-                dialog.clear();
-                api.ui.toast({
-                  variant: 'success',
-                  title: 'Mode Updated',
-                  message: `"${mode.name}" phases updated: ${phases.join(' → ')}`,
-                });
-              } catch (err) {
-                dialog.clear();
-                api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
-              }
-            } else if (option.value === '__effort__') {
-              showEditModeEffortDialog(dialog, modeId, phases);
-            } else if (option.value === '__back__') {
-              showModeActionsDialog(dialog, modeId);
-            } else {
-              const newPhases = phases.includes(option.value)
-                ? phases.filter((p) => p !== option.value)
-                : [...phases, option.value];
-              showEditModePhasesDialog(dialog, modeId, newPhases);
-            }
-          },
-        }),
-      );
-    };
-
-    // ── Edit Mode: Step 2 — Change Effort Level ───────────────────────────
-
-    const showEditModeEffortDialog = (dialog, modeId, currentPhases) => {
-      const mode = getMode(modeId);
-      if (!mode) {
-        dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Mode '${modeId}' not found` });
-        return;
-      }
-
-      const effortOptions = EFFORT_LEVELS.map((e) => ({
-        title: e === (mode.default_effort || 'medium') ? `${e.charAt(0).toUpperCase() + e.slice(1)} (current)` : e.charAt(0).toUpperCase() + e.slice(1),
-        value: e,
-        description: getEffortDescription(e),
-      }));
-
-      effortOptions.push({
-        title: '← Back to phases',
-        value: '__back__',
-        description: 'Return to phase editor',
-      });
-
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `Edit "${mode.name}" — Effort Level`,
-          placeholder: 'Select effort level...',
-          options: effortOptions,
-          current: mode.default_effort || 'medium',
-          onSelect: (option) => {
-            if (option.value === '__back__') {
-              showEditModePhasesDialog(dialog, modeId, currentPhases);
-            } else {
-              try {
-                updateMode(modeId, { default_effort: option.value, phases: currentPhases });
-                dialog.clear();
-                api.ui.toast({
-                  variant: 'success',
-                  title: 'Mode Updated',
-                  message: `"${mode.name}" effort changed to ${option.value}`,
-                });
-              } catch (err) {
-                dialog.clear();
-                api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
-              }
-            }
-          },
-        }),
-      );
-    };
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // /sdd-profile — Switch, Create, Edit, or Delete SDD Profiles
-    // ═══════════════════════════════════════════════════════════════════════
-
-    const showProfileDialog = (dialog) => {
-      const profiles = listProfiles();
-      const currentProfile = getCurrentProfile();
-
+    // Step 4: Model Strategy
+    const showCreateModeProfileStrategyDialog = (dialog, mpName, description, phases) => {
       const options = [
-        ...profiles.map((p) => ({
-          title: p.id === currentProfile ? `${p.name} (active)` : p.name,
-          value: p.id,
-          description: p.description || `Primary: ${p.default?.primary || 'unknown'}`,
-        })),
         {
-          title: '+ Create New Profile...',
-          value: '__create__',
-          description: 'Create a custom SDD profile with your model preferences',
+          title: 'Single model for all phases',
+          value: 'single',
+          description: 'One model, effort, and fallback set applies to every phase',
+        },
+        {
+          title: 'One model per phase',
+          value: 'per-phase',
+          description: 'Configure a different model, effort, and fallbacks for each phase individually',
         },
       ];
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: 'SDD Profile',
-          placeholder: 'Select a profile or create new...',
+          title: `Model strategy for "${mpName}"`,
+          placeholder: 'Choose how models are assigned to phases...',
           options,
-          current: currentProfile,
           onSelect: (option) => {
-            if (option.value === '__create__') {
-              showCreateProfileNameDialog(dialog);
+            if (option.value === 'single') {
+              showCreateModeProfileSingleModelDialog(dialog, mpName, description, phases);
             } else {
-              showProfileActionsDialog(dialog, option.value);
+              showCreateModeProfilePerPhaseModelDialog(dialog, mpName, description, phases, 0, {});
             }
           },
         }),
       );
     };
 
-    // ── Profile Actions (Switch / Edit / Delete) ──────────────────────────
-
-    const showProfileActionsDialog = (dialog, profileId) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
-        dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
-        return;
-      }
-      const currentProfile = getCurrentProfile();
-      const isActive = profileId === currentProfile;
-      const profileName = profileData.name || profileId;
-
-      const options = [
-        ...(isActive
-          ? []
-          : [{
-              title: 'Switch to this profile',
-              value: 'switch',
-              description: `Activate "${profileName}" — ${getModelLabel(profileData.default?.primary || 'unknown')}`,
-            }]),
-        {
-          title: 'Edit default model & effort',
-          value: 'edit_default',
-          description: `Current: ${getModelLabel(profileData.default?.primary || 'unknown')} at ${profileData.default?.effort || 'medium'} effort`,
-        },
-        {
-          title: 'Edit phase model overrides',
-          value: 'edit_phases',
-          description: 'Set per-phase model and effort overrides',
-        },
-        {
-          title: 'Edit fallback models',
-          value: 'edit_fallbacks',
-          description: `Current fallbacks: ${(profileData.default?.fallbacks || []).map(getModelLabel).join(', ') || 'none'}`,
-        },
-        {
-          title: 'Delete profile',
-          value: 'delete',
-          description: `Permanently delete "${profileName}"`,
-        },
-        {
-          title: '← Back',
-          value: 'back',
-          description: 'Return to profile list',
-        },
-      ];
-
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `Profile: ${profileName}`,
-          placeholder: 'Choose an action...',
-          options,
-          onSelect: (opt) => {
-            switch (opt.value) {
-              case 'switch': {
-                try {
-                  switchProfile(profileId);
-                  dialog.clear();
-                  api.ui.toast({
-                    variant: 'success',
-                    title: 'Profile Switched',
-                    message: `Now using "${profileName}" profile`,
-                  });
-                } catch (err) {
-                  dialog.clear();
-                  api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
-                }
-                break;
-              }
-              case 'edit_default':
-                showEditProfilePrimaryModelDialog(dialog, profileId);
-                break;
-              case 'edit_phases':
-                showEditProfilePhaseSelectDialog(dialog, profileId);
-                break;
-              case 'edit_fallbacks':
-                showEditProfileFallbacksDialog(dialog, profileId);
-                break;
-              case 'delete':
-                showDeleteProfileConfirmDialog(dialog, profileId, profileName);
-                break;
-              case 'back':
-                showProfileDialog(dialog);
-                break;
-            }
-          },
-        }),
-      );
-    };
-
-    // ── Delete Profile Confirmation ───────────────────────────────────────
-
-    const showDeleteProfileConfirmDialog = (dialog, profileId, profileName) => {
-      dialog.replace(
-        () => api.ui.DialogConfirm({
-          title: `Delete "${profileName}"?`,
-          message: `This will permanently delete the profile "${profileName}" (${profileId}). This cannot be undone.`,
-          onConfirm: () => {
-            try {
-              deleteProfile(profileId);
-              dialog.clear();
-              api.ui.toast({ variant: 'success', title: 'Profile Deleted', message: `"${profileName}" has been deleted` });
-            } catch (err) {
-              dialog.clear();
-              api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
-            }
-          },
-          onCancel: () => showProfileActionsDialog(dialog, profileId),
-        }),
-      );
-    };
-
-    // ── Create Profile: Step 1 — Name ──────────────────────────────────────
-
-    const showCreateProfileNameDialog = (dialog) => {
-      dialog.replace(
-        () => api.ui.DialogPrompt({
-          title: 'Create New SDD Profile — Enter a name (e.g., "my-custom", "focus-code")',
-          placeholder: 'profile-name',
-          onConfirm: (name) => {
-            if (!name || !name.trim()) {
-              dialog.clear();
-              api.ui.toast({ variant: 'error', title: 'Error', message: 'Profile name cannot be empty' });
-              return;
-            }
-            showCreateProfilePrimaryModelDialog(dialog, name.trim());
-          },
-          onCancel: () => showProfileDialog(dialog),
-        }),
-      );
-    };
-
-    // ── Create Profile: Step 2 — Primary Model ────────────────────────────
-
-    const showCreateProfilePrimaryModelDialog = (dialog, profileName) => {
+    // Step 5a (single model): Select model
+    const showCreateModeProfileSingleModelDialog = (dialog, mpName, description, phases) => {
       const modelOptions = models.map((m) => ({
         title: m.label,
         value: m.id,
@@ -659,19 +357,18 @@ export default {
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Primary model for "${profileName}"`,
+          title: `Primary model for "${mpName}" (all phases)`,
           placeholder: 'Select the primary AI model...',
           options: modelOptions,
           onSelect: (modelOption) => {
-            showCreateProfileEffortDialog(dialog, profileName, modelOption.value);
+            showCreateModeProfileSingleEffortDialog(dialog, mpName, description, phases, modelOption.value);
           },
         }),
       );
     };
 
-    // ── Create Profile: Step 3 — Effort Level ─────────────────────────────
-
-    const showCreateProfileEffortDialog = (dialog, profileName, primaryModel) => {
+    // Step 5a (single model): Select effort
+    const showCreateModeProfileSingleEffortDialog = (dialog, mpName, description, phases, primaryModel) => {
       const effortOptions = EFFORT_LEVELS.map((e) => ({
         title: e.charAt(0).toUpperCase() + e.slice(1),
         value: e,
@@ -680,20 +377,19 @@ export default {
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Default effort for "${profileName}"`,
+          title: `Default effort for "${mpName}"`,
           placeholder: 'Select effort level...',
           options: effortOptions,
           current: 'medium',
           onSelect: (effortOption) => {
-            showCreateProfileFallbacksDialog(dialog, profileName, primaryModel, effortOption.value);
+            showCreateModeProfileSingleFallbacksDialog(dialog, mpName, description, phases, primaryModel, effortOption.value, []);
           },
         }),
       );
     };
 
-    // ── Create Profile: Step 4 — Fallback Models (toggle multi-select) ────
-
-    const showCreateProfileFallbacksDialog = (dialog, profileName, primaryModel, effort, selectedFallbacks = []) => {
+    // Step 5a (single model): Select fallbacks (toggle multi-select)
+    const showCreateModeProfileSingleFallbacksDialog = (dialog, mpName, description, phases, primaryModel, effort, selectedFallbacks) => {
       const options = models.map((m) => {
         if (m.id === primaryModel) {
           return {
@@ -711,66 +407,387 @@ export default {
       });
 
       options.push({
-        title: '✓ Done — Create profile',
+        title: '✓ Done — Create ModeProfile',
         value: '__done__',
-        description: `Primary: ${getModelLabel(primaryModel)} | Fallbacks: ${selectedFallbacks.map(getModelLabel).join(', ') || 'none'}`,
+        description: `Primary: ${getModelLabel(primaryModel, models)} | Fallbacks: ${selectedFallbacks.map((f) => getModelLabel(f, models)).join(', ') || 'none'}`,
       });
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Fallback models for "${profileName}" — Toggle with Enter, Done to confirm`,
+          title: `Fallback models for "${mpName}" — Toggle with Enter, Done to confirm`,
           placeholder: 'Select a model to toggle it as fallback...',
           options,
           onSelect: (option) => {
             if (option.value === '__done__') {
               try {
-                createProfile(
-                  profileName,
-                  {
-                    default: {
-                      primary: primaryModel,
-                      effort,
-                      fallbacks: selectedFallbacks,
-                    },
+                createModeProfile(mpName, {
+                  name: mpName.charAt(0).toUpperCase() + mpName.slice(1).replace(/[-_]/g, ' '),
+                  description,
+                  phases,
+                  model_strategy: 'single',
+                  default: {
+                    primary: primaryModel,
+                    effort,
+                    fallbacks: selectedFallbacks,
                   },
-                  `Custom profile: ${profileName}`,
-                );
-                switchProfile(profileName);
+                });
+                switchModeProfile(mpName);
                 dialog.clear();
                 api.ui.toast({
                   variant: 'success',
-                  title: 'Profile Created',
-                  message: `Created "${profileName}" with ${getModelLabel(primaryModel)} at ${effort} effort`,
+                  title: 'ModeProfile Created',
+                  message: `Created "${mpName}" with ${phases.length} phases using ${getModelLabel(primaryModel, models)} at ${effort} effort`,
                 });
               } catch (err) {
                 dialog.clear();
                 api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
               }
             } else if (option.disabled) {
-              // Skip primary model, re-render same state
-              showCreateProfileFallbacksDialog(dialog, profileName, primaryModel, effort, selectedFallbacks);
+              showCreateModeProfileSingleFallbacksDialog(dialog, mpName, description, phases, primaryModel, effort, selectedFallbacks);
             } else {
-              // Toggle fallback
               const newFallbacks = selectedFallbacks.includes(option.value)
                 ? selectedFallbacks.filter((f) => f !== option.value)
                 : [...selectedFallbacks, option.value];
-              showCreateProfileFallbacksDialog(dialog, profileName, primaryModel, effort, newFallbacks);
+              showCreateModeProfileSingleFallbacksDialog(dialog, mpName, description, phases, primaryModel, effort, newFallbacks);
             }
           },
         }),
       );
     };
 
-    // ── Edit Profile: Default Model & Effort ───────────────────────────────
-
-    const showEditProfilePrimaryModelDialog = (dialog, profileId) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
-        dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
+    // Step 5b (per-phase): For EACH selected phase — model, effort, fallbacks
+    const showCreateModeProfilePerPhaseModelDialog = (dialog, mpName, description, phases, phaseIndex, phaseConfigs) => {
+      if (phaseIndex >= phases.length) {
+        // All phases configured — save
+        const config = {
+          name: mpName.charAt(0).toUpperCase() + mpName.slice(1).replace(/[-_]/g, ' '),
+          description,
+          phases,
+          model_strategy: 'per-phase',
+          default: phaseConfigs[phases[0]] || {},
+        };
+        for (const phase of phases) {
+          if (phaseConfigs[phase]) {
+            config[phase] = phaseConfigs[phase];
+          }
+        }
+        try {
+          createModeProfile(mpName, config);
+          switchModeProfile(mpName);
+          dialog.clear();
+          api.ui.toast({
+            variant: 'success',
+            title: 'ModeProfile Created',
+            message: `Created "${mpName}" with ${phases.length} phases and per-phase model routing`,
+          });
+        } catch (err) {
+          dialog.clear();
+          api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+        }
         return;
       }
-      const currentPrimary = profileData.default?.primary || 'opencode-go/glm-5.1';
+
+      const currentPhase = phases[phaseIndex];
+      const progress = `Phase ${phaseIndex + 1} of ${phases.length}`;
+
+      const modelOptions = models.map((m) => ({
+        title: m.label,
+        value: m.id,
+        description: m.description,
+      }));
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `${progress}: ${currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1)} — Select model`,
+          placeholder: `Choose the AI model for the ${currentPhase} phase...`,
+          options: modelOptions,
+          onSelect: (modelOption) => {
+            showCreateModeProfilePerPhaseEffortDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelOption.value);
+          },
+        }),
+      );
+    };
+
+    const showCreateModeProfilePerPhaseEffortDialog = (dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId) => {
+      const progress = `Phase ${phaseIndex + 1} of ${phases.length}`;
+
+      const effortOptions = EFFORT_LEVELS.map((e) => ({
+        title: e.charAt(0).toUpperCase() + e.slice(1),
+        value: e,
+        description: getEffortDescription(e),
+      }));
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `${progress}: ${currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1)} — Effort for ${getModelLabel(modelId, models)}`,
+          placeholder: 'Select effort level...',
+          options: effortOptions,
+          current: 'medium',
+          onSelect: (effortOption) => {
+            showCreateModeProfilePerPhaseFallbacksDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId, effortOption.value, []);
+          },
+        }),
+      );
+    };
+
+    const showCreateModeProfilePerPhaseFallbacksDialog = (dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId, effort, selectedFallbacks) => {
+      const progress = `Phase ${phaseIndex + 1} of ${phases.length}`;
+
+      const options = models.map((m) => {
+        if (m.id === modelId) {
+          return {
+            title: `${m.label} (primary)`,
+            value: m.id,
+            description: m.description,
+            disabled: true,
+          };
+        }
+        return {
+          title: selectedFallbacks.includes(m.id) ? `✓ ${m.label}` : `  ${m.label}`,
+          value: m.id,
+          description: m.description,
+        };
+      });
+
+      options.push({
+        title: '✓ Done — Confirm fallbacks',
+        value: '__done__',
+        description: `Fallbacks: ${selectedFallbacks.map((f) => getModelLabel(f, models)).join(', ') || 'none'}`,
+      });
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `${progress}: ${currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1)} — Fallbacks for ${getModelLabel(modelId, models)}`,
+          placeholder: 'Toggle fallbacks with Enter, Done to confirm...',
+          options,
+          onSelect: (option) => {
+            if (option.value === '__done__') {
+              const newPhaseConfigs = {
+                ...phaseConfigs,
+                [currentPhase]: {
+                  primary: modelId,
+                  effort,
+                  fallbacks: selectedFallbacks,
+                },
+              };
+              showCreateModeProfilePerPhaseModelDialog(dialog, mpName, description, phases, phaseIndex + 1, newPhaseConfigs);
+            } else if (option.disabled) {
+              showCreateModeProfilePerPhaseFallbacksDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId, effort, selectedFallbacks);
+            } else {
+              const newFallbacks = selectedFallbacks.includes(option.value)
+                ? selectedFallbacks.filter((f) => f !== option.value)
+                : [...selectedFallbacks, option.value];
+              showCreateModeProfilePerPhaseFallbacksDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId, effort, newFallbacks);
+            }
+          },
+        }),
+      );
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Edit ModeProfile Flow
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const showEditModeProfileDialog = (dialog, mpId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
+        dialog.clear();
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
+        return;
+      }
+      const mpName = mp.name || mpId;
+
+      const options = [
+        {
+          title: 'Edit phases',
+          value: 'edit_phases',
+          description: `Current: ${buildPhaseSummary(mp.phases)}`,
+        },
+        {
+          title: 'Edit model strategy',
+          value: 'edit_strategy',
+          description: `Current: ${mp.model_strategy || 'per-phase'}`,
+        },
+        {
+          title: 'Edit default model & effort',
+          value: 'edit_default',
+          description: `Current: ${getModelLabel(mp.default?.primary || 'unknown', models)} at ${mp.default?.effort || 'medium'} effort`,
+        },
+        {
+          title: 'Edit per-phase models',
+          value: 'edit_phase_models',
+          description: 'Configure model, effort, and fallbacks for each phase',
+        },
+        {
+          title: 'Edit description',
+          value: 'edit_description',
+          description: `Current: ${mp.description || 'none'}`,
+        },
+        {
+          title: '← Back to actions',
+          value: 'back',
+          description: 'Return without saving',
+        },
+      ];
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `Edit "${mpName}"`,
+          placeholder: 'Choose what to edit...',
+          options,
+          onSelect: (opt) => {
+            switch (opt.value) {
+              case 'edit_phases':
+                showEditModeProfilePhasesDialog(dialog, mpId);
+                break;
+              case 'edit_strategy':
+                showEditModeProfileStrategyDialog(dialog, mpId);
+                break;
+              case 'edit_default':
+                showEditModeProfileDefaultModelDialog(dialog, mpId);
+                break;
+              case 'edit_phase_models':
+                showEditModeProfilePhaseSelectDialog(dialog, mpId);
+                break;
+              case 'edit_description':
+                showEditModeProfileDescriptionDialog(dialog, mpId);
+                break;
+              case 'back':
+                showModeProfileActionsDialog(dialog, mpId);
+                break;
+            }
+          },
+        }),
+      );
+    };
+
+    // Edit: Phases
+    const showEditModeProfilePhasesDialog = (dialog, mpId, selectedPhases = null) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
+        dialog.clear();
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
+        return;
+      }
+      const phases = selectedPhases !== null ? selectedPhases : [...(mp.phases || [])];
+
+      const options = AVAILABLE_PHASES.map((p) => ({
+        title: phases.includes(p) ? `✓ ${p.charAt(0).toUpperCase() + p.slice(1)}` : `  ${p.charAt(0).toUpperCase() + p.slice(1)}`,
+        value: p,
+        description: getPhaseDescription(p),
+      }));
+
+      options.push({
+        title: '✓ Done — Save phases',
+        value: '__done__',
+        description: `Selected: ${phases.join(', ') || 'none'}`,
+      });
+      options.push({
+        title: '← Back to edit menu',
+        value: '__back__',
+        description: 'Return without saving',
+      });
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `Edit "${mp.name || mpId}" — Phases (toggle on/off, Done to save)`,
+          placeholder: 'Select a phase to toggle it...',
+          options,
+          onSelect: (option) => {
+            if (option.value === '__done__') {
+              if (phases.length === 0) {
+                showEditModeProfilePhasesDialog(dialog, mpId, phases);
+                return;
+              }
+              try {
+                updateModeProfile(mpId, { phases });
+                dialog.clear();
+                api.ui.toast({
+                  variant: 'success',
+                  title: 'ModeProfile Updated',
+                  message: `"${mp.name || mpId}" phases updated: ${phases.join(' → ')}`,
+                });
+              } catch (err) {
+                dialog.clear();
+                api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+              }
+            } else if (option.value === '__back__') {
+              showEditModeProfileDialog(dialog, mpId);
+            } else {
+              const newPhases = phases.includes(option.value)
+                ? phases.filter((p) => p !== option.value)
+                : [...phases, option.value];
+              showEditModeProfilePhasesDialog(dialog, mpId, newPhases);
+            }
+          },
+        }),
+      );
+    };
+
+    // Edit: Model Strategy
+    const showEditModeProfileStrategyDialog = (dialog, mpId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
+        dialog.clear();
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
+        return;
+      }
+      const currentStrategy = mp.model_strategy || 'per-phase';
+
+      const options = [
+        {
+          title: currentStrategy === 'single' ? 'Single model for all phases (current)' : 'Single model for all phases',
+          value: 'single',
+          description: 'One model, effort, and fallback set applies to every phase',
+        },
+        {
+          title: currentStrategy === 'per-phase' ? 'One model per phase (current)' : 'One model per phase',
+          value: 'per-phase',
+          description: 'Configure a different model, effort, and fallbacks for each phase individually',
+        },
+        {
+          title: '← Back to edit menu',
+          value: '__back__',
+          description: 'Return without saving',
+        },
+      ];
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `Edit "${mp.name || mpId}" — Model Strategy`,
+          placeholder: 'Choose model strategy...',
+          options,
+          onSelect: (option) => {
+            if (option.value === '__back__') {
+              showEditModeProfileDialog(dialog, mpId);
+            } else {
+              try {
+                updateModeProfile(mpId, { model_strategy: option.value });
+                dialog.clear();
+                api.ui.toast({
+                  variant: 'success',
+                  title: 'ModeProfile Updated',
+                  message: `"${mp.name || mpId}" model strategy changed to ${option.value}`,
+                });
+              } catch (err) {
+                dialog.clear();
+                api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+              }
+            }
+          },
+        }),
+      );
+    };
+
+    // Edit: Default Model
+    const showEditModeProfileDefaultModelDialog = (dialog, mpId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
+        dialog.clear();
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
+        return;
+      }
+      const currentPrimary = mp.default?.primary || 'opencode-go/glm-5.1';
 
       const modelOptions = models.map((m) => ({
         title: m.id === currentPrimary ? `${m.label} (current)` : m.label,
@@ -779,38 +796,37 @@ export default {
       }));
 
       modelOptions.push({
-        title: '← Back to profile actions',
+        title: '← Back to edit menu',
         value: '__back__',
         description: 'Return without saving',
       });
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Edit "${profileData.name || profileId}" — Primary Model`,
+          title: `Edit "${mp.name || mpId}" — Default Primary Model`,
           placeholder: 'Select the primary AI model...',
           options: modelOptions,
           current: currentPrimary,
           onSelect: (option) => {
             if (option.value === '__back__') {
-              showProfileActionsDialog(dialog, profileId);
+              showEditModeProfileDialog(dialog, mpId);
             } else {
-              showEditProfileEffortDialog(dialog, profileId, option.value);
+              showEditModeProfileDefaultEffortDialog(dialog, mpId, option.value);
             }
           },
         }),
       );
     };
 
-    // ── Edit Profile: Default Effort ───────────────────────────────────────
-
-    const showEditProfileEffortDialog = (dialog, profileId, newPrimary) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
+    // Edit: Default Effort
+    const showEditModeProfileDefaultEffortDialog = (dialog, mpId, newPrimary) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
         dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
         return;
       }
-      const currentEffort = profileData.default?.effort || 'medium';
+      const currentEffort = mp.default?.effort || 'medium';
 
       const effortOptions = EFFORT_LEVELS.map((e) => ({
         title: e === currentEffort ? `${e.charAt(0).toUpperCase() + e.slice(1)} (current)` : e.charAt(0).toUpperCase() + e.slice(1),
@@ -826,91 +842,185 @@ export default {
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Edit "${profileData.name || profileId}" — Default Effort`,
+          title: `Edit "${mp.name || mpId}" — Default Effort`,
           placeholder: 'Select effort level...',
           options: effortOptions,
           current: currentEffort,
           onSelect: (option) => {
             if (option.value === '__back__') {
-              showEditProfilePrimaryModelDialog(dialog, profileId);
+              showEditModeProfileDefaultModelDialog(dialog, mpId);
             } else {
+              showEditModeProfileDefaultFallbacksDialog(dialog, mpId, newPrimary, option.value);
+            }
+          },
+        }),
+      );
+    };
+
+    // Edit: Default Fallbacks
+    const showEditModeProfileDefaultFallbacksDialog = (dialog, mpId, newPrimary, newEffort, selectedFallbacks = null) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
+        dialog.clear();
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
+        return;
+      }
+      const fallbacks = selectedFallbacks !== null ? selectedFallbacks : [...(mp.default?.fallbacks || [])];
+
+      const options = models.map((m) => {
+        if (m.id === newPrimary) {
+          return {
+            title: `${m.label} (primary)`,
+            value: m.id,
+            description: m.description,
+            disabled: true,
+          };
+        }
+        return {
+          title: fallbacks.includes(m.id) ? `✓ ${m.label}` : `  ${m.label}`,
+          value: m.id,
+          description: m.description,
+        };
+      });
+
+      options.push({
+        title: '✓ Done — Save defaults',
+        value: '__done__',
+        description: `Primary: ${getModelLabel(newPrimary, models)} | Fallbacks: ${fallbacks.map((f) => getModelLabel(f, models)).join(', ') || 'none'}`,
+      });
+      options.push({
+        title: '← Back to effort selection',
+        value: '__back__',
+        description: 'Return without saving',
+      });
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `Edit "${mp.name || mpId}" — Default Fallback Models`,
+          placeholder: 'Toggle fallbacks with Enter, Done to save...',
+          options,
+          onSelect: (option) => {
+            if (option.value === '__done__') {
               try {
-                updateProfile(profileId, {
+                updateModeProfile(mpId, {
                   default: {
                     primary: newPrimary,
-                    effort: option.value,
-                    fallbacks: profileData.default?.fallbacks || [],
+                    effort: newEffort,
+                    fallbacks,
                   },
                 });
                 dialog.clear();
                 api.ui.toast({
                   variant: 'success',
-                  title: 'Profile Updated',
-                  message: `Default set to ${getModelLabel(newPrimary)} at ${option.value} effort`,
+                  title: 'ModeProfile Updated',
+                  message: `Default set to ${getModelLabel(newPrimary, models)} at ${newEffort} effort`,
                 });
               } catch (err) {
                 dialog.clear();
                 api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
               }
+            } else if (option.value === '__back__') {
+              showEditModeProfileDefaultEffortDialog(dialog, mpId, newPrimary);
+            } else if (option.disabled) {
+              showEditModeProfileDefaultFallbacksDialog(dialog, mpId, newPrimary, newEffort, fallbacks);
+            } else {
+              const newFallbacks = fallbacks.includes(option.value)
+                ? fallbacks.filter((f) => f !== option.value)
+                : [...fallbacks, option.value];
+              showEditModeProfileDefaultFallbacksDialog(dialog, mpId, newPrimary, newEffort, newFallbacks);
             }
           },
         }),
       );
     };
 
-    // ── Edit Profile: Phase Model Overrides ───────────────────────────────
-
-    const showEditProfilePhaseSelectDialog = (dialog, profileId) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
+    // Edit: Description
+    const showEditModeProfileDescriptionDialog = (dialog, mpId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
         dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
+        return;
+      }
+
+      dialog.replace(
+        () => api.ui.DialogPrompt({
+          title: `Edit description for "${mp.name || mpId}"`,
+          placeholder: mp.description || 'Enter a description...',
+          onConfirm: (description) => {
+            try {
+              updateModeProfile(mpId, { description });
+              dialog.clear();
+              api.ui.toast({
+                variant: 'success',
+                title: 'ModeProfile Updated',
+                message: `Description updated for "${mp.name || mpId}"`,
+              });
+            } catch (err) {
+              dialog.clear();
+              api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+            }
+          },
+          onCancel: () => showEditModeProfileDialog(dialog, mpId),
+        }),
+      );
+    };
+
+    // Edit: Per-Phase Model Select
+    const showEditModeProfilePhaseSelectDialog = (dialog, mpId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
+        dialog.clear();
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
         return;
       }
 
       const options = AVAILABLE_PHASES.map((p) => {
-        const override = profileData[p];
+        const override = mp[p];
         const hasOverride = !!override;
         return {
-          title: hasOverride ? `✓ ${p.charAt(0).toUpperCase() + p.slice(1)} — ${getModelLabel(override.primary)} / ${override.effort || 'default'}` : `  ${p.charAt(0).toUpperCase() + p.slice(1)} — (uses default)`,
+          title: hasOverride
+            ? `✓ ${p.charAt(0).toUpperCase() + p.slice(1)} — ${getModelLabel(override.primary, models)} / ${override.effort || 'default'}`
+            : `  ${p.charAt(0).toUpperCase() + p.slice(1)} — (uses default)`,
           value: p,
-          description: hasOverride ? `Override: ${getModelLabel(override.primary)}, effort: ${override.effort || 'default'}` : `Inherits default: ${getModelLabel(profileData.default?.primary || 'unknown')}`,
+          description: hasOverride
+            ? `Override: ${getModelLabel(override.primary, models)}, effort: ${override.effort || 'default'}`
+            : `Inherits default: ${getModelLabel(mp.default?.primary || 'unknown', models)}`,
         };
       });
 
       options.push({
-        title: '← Back to profile actions',
+        title: '← Back to edit menu',
         value: '__back__',
-        description: 'Return to profile actions',
+        description: 'Return to edit menu',
       });
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Edit "${profileData.name || profileId}" — Phase Overrides`,
+          title: `Edit "${mp.name || mpId}" — Per-Phase Models`,
           placeholder: 'Select a phase to set its model override...',
           options,
           onSelect: (option) => {
             if (option.value === '__back__') {
-              showProfileActionsDialog(dialog, profileId);
+              showEditModeProfileDialog(dialog, mpId);
             } else {
-              showEditProfilePhaseModelDialog(dialog, profileId, option.value);
+              showEditModeProfilePhaseModelDialog(dialog, mpId, option.value);
             }
           },
         }),
       );
     };
 
-    // ── Edit Profile: Phase Override — Model Selection ─────────────────────
-
-    const showEditProfilePhaseModelDialog = (dialog, profileId, phase) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
+    // Edit: Phase Override — Model Selection
+    const showEditModeProfilePhaseModelDialog = (dialog, mpId, phase) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
         dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
         return;
       }
-      const currentOverride = profileData[phase];
-      const currentModel = currentOverride?.primary || profileData.default?.primary || 'opencode-go/glm-5.1';
+      const currentOverride = mp[phase];
+      const currentModel = currentOverride?.primary || mp.default?.primary || 'opencode-go/glm-5.1';
 
       const modelOptions = models.map((m) => ({
         title: m.id === currentModel ? `${m.label} (current)` : m.label,
@@ -937,10 +1047,10 @@ export default {
           current: currentModel,
           onSelect: (option) => {
             if (option.value === '__back__') {
-              showEditProfilePhaseSelectDialog(dialog, profileId);
+              showEditModeProfilePhaseSelectDialog(dialog, mpId);
             } else if (option.value === '__remove__') {
               try {
-                updateProfile(profileId, { removePhases: [phase] });
+                updateModeProfile(mpId, { removePhases: [phase] });
                 dialog.clear();
                 api.ui.toast({
                   variant: 'success',
@@ -952,24 +1062,23 @@ export default {
                 api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
               }
             } else {
-              showEditProfilePhaseEffortDialog(dialog, profileId, phase, option.value);
+              showEditModeProfilePhaseEffortDialog(dialog, mpId, phase, option.value);
             }
           },
         }),
       );
     };
 
-    // ── Edit Profile: Phase Override — Effort Selection ────────────────────
-
-    const showEditProfilePhaseEffortDialog = (dialog, profileId, phase, modelId) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
+    // Edit: Phase Override — Effort Selection
+    const showEditModeProfilePhaseEffortDialog = (dialog, mpId, phase, modelId) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
         dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
         return;
       }
-      const currentOverride = profileData[phase];
-      const currentEffort = currentOverride?.effort || profileData.default?.effort || 'medium';
+      const currentOverride = mp[phase];
+      const currentEffort = currentOverride?.effort || mp.default?.effort || 'medium';
 
       const effortOptions = EFFORT_LEVELS.map((e) => ({
         title: e === currentEffort ? `${e.charAt(0).toUpperCase() + e.slice(1)} (current)` : e.charAt(0).toUpperCase() + e.slice(1),
@@ -985,52 +1094,34 @@ export default {
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `${phase.charAt(0).toUpperCase() + phase.slice(1)} — Effort for ${getModelLabel(modelId)}`,
+          title: `${phase.charAt(0).toUpperCase() + phase.slice(1)} — Effort for ${getModelLabel(modelId, models)}`,
           placeholder: 'Select effort level...',
           options: effortOptions,
           current: currentEffort,
           onSelect: (option) => {
             if (option.value === '__back__') {
-              showEditProfilePhaseModelDialog(dialog, profileId, phase);
+              showEditModeProfilePhaseModelDialog(dialog, mpId, phase);
             } else {
-              try {
-                updateProfile(profileId, {
-                  [phase]: {
-                    primary: modelId,
-                    effort: option.value,
-                    fallbacks: currentOverride?.fallbacks || profileData.default?.fallbacks || [],
-                  },
-                });
-                dialog.clear();
-                api.ui.toast({
-                  variant: 'success',
-                  title: 'Override Set',
-                  message: `${phase} will use ${getModelLabel(modelId)} at ${option.value} effort`,
-                });
-              } catch (err) {
-                dialog.clear();
-                api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
-              }
+              showEditModeProfilePhaseFallbacksDialog(dialog, mpId, phase, modelId, option.value);
             }
           },
         }),
       );
     };
 
-    // ── Edit Profile: Fallback Models (toggle multi-select) ───────────────
-
-    const showEditProfileFallbacksDialog = (dialog, profileId, selectedFallbacks = null) => {
-      const profileData = getProfile(profileId);
-      if (!profileData) {
+    // Edit: Phase Override — Fallbacks
+    const showEditModeProfilePhaseFallbacksDialog = (dialog, mpId, phase, modelId, effort, selectedFallbacks = null) => {
+      const mp = getModeProfile(mpId);
+      if (!mp) {
         dialog.clear();
-        api.ui.toast({ variant: 'error', title: 'Error', message: `Profile '${profileId}' not found` });
+        api.ui.toast({ variant: 'error', title: 'Error', message: `ModeProfile '${mpId}' not found` });
         return;
       }
-      const primary = profileData.default?.primary || 'opencode-go/glm-5.1';
-      const fallbacks = selectedFallbacks !== null ? selectedFallbacks : [...(profileData.default?.fallbacks || [])];
+      const currentOverride = mp[phase];
+      const fallbacks = selectedFallbacks !== null ? selectedFallbacks : [...(currentOverride?.fallbacks || mp.default?.fallbacks || [])];
 
       const options = models.map((m) => {
-        if (m.id === primary) {
+        if (m.id === modelId) {
           return {
             title: `${m.label} (primary)`,
             value: m.id,
@@ -1046,50 +1137,50 @@ export default {
       });
 
       options.push({
-        title: '✓ Done — Save fallbacks',
+        title: '✓ Done — Save override',
         value: '__done__',
-        description: `Fallbacks: ${fallbacks.map(getModelLabel).join(', ') || 'none'}`,
+        description: `Fallbacks: ${fallbacks.map((f) => getModelLabel(f, models)).join(', ') || 'none'}`,
       });
       options.push({
-        title: '← Back to profile actions',
+        title: '← Back to effort selection',
         value: '__back__',
         description: 'Return without saving',
       });
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: `Edit "${profileData.name || profileId}" — Fallback Models`,
+          title: `${phase.charAt(0).toUpperCase() + phase.slice(1)} — Fallbacks for ${getModelLabel(modelId, models)}`,
           placeholder: 'Toggle fallbacks with Enter, Done to save...',
           options,
           onSelect: (option) => {
             if (option.value === '__done__') {
               try {
-                updateProfile(profileId, {
-                  default: {
-                    primary,
-                    effort: profileData.default?.effort || 'medium',
+                updateModeProfile(mpId, {
+                  [phase]: {
+                    primary: modelId,
+                    effort,
                     fallbacks,
                   },
                 });
                 dialog.clear();
                 api.ui.toast({
                   variant: 'success',
-                  title: 'Fallbacks Updated',
-                  message: `Fallbacks: ${fallbacks.map(getModelLabel).join(', ') || 'none'}`,
+                  title: 'Override Set',
+                  message: `${phase} will use ${getModelLabel(modelId, models)} at ${effort} effort`,
                 });
               } catch (err) {
                 dialog.clear();
                 api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
               }
             } else if (option.value === '__back__') {
-              showProfileActionsDialog(dialog, profileId);
+              showEditModeProfilePhaseEffortDialog(dialog, mpId, phase, modelId);
             } else if (option.disabled) {
-              showEditProfileFallbacksDialog(dialog, profileId, fallbacks);
+              showEditModeProfilePhaseFallbacksDialog(dialog, mpId, phase, modelId, effort, fallbacks);
             } else {
               const newFallbacks = fallbacks.includes(option.value)
                 ? fallbacks.filter((f) => f !== option.value)
                 : [...fallbacks, option.value];
-              showEditProfileFallbacksDialog(dialog, profileId, newFallbacks);
+              showEditModeProfilePhaseFallbacksDialog(dialog, mpId, phase, modelId, effort, newFallbacks);
             }
           },
         }),
@@ -1107,12 +1198,12 @@ export default {
         {
           title: 'View Status',
           value: 'status',
-          description: `Mode: ${status.current_mode || 'none'} | Profile: ${status.current_profile || 'none'}`,
+          description: `ModeProfile: ${status.current_modeprofile || 'none'} | Phases: ${buildPhaseSummary(status.modeprofile?.phases)}`,
         },
         {
-          title: 'RyouSet Mode + Profile',
+          title: 'Switch to RyouSet',
           value: 'ryouset',
-          description: 'Switch to RyouSet mode and profile (your exact config)',
+          description: 'Switch to RyouSet ModeProfile (full pipeline with all subagents)',
         },
         {
           title: 'View Ryou Agents',
@@ -1133,19 +1224,18 @@ export default {
                 api.ui.toast({
                   variant: 'info',
                   title: 'RASS Status',
-                  message: `Mode: ${status.current_mode || 'none'} | Profile: ${status.current_profile || 'none'} | Phases: ${status.mode?.phases?.join(' → ') || 'none'}`,
+                  message: `ModeProfile: ${status.current_modeprofile || 'none'} | Phases: ${buildPhaseSummary(status.modeprofile?.phases)} | Strategy: ${status.modeprofile?.model_strategy || 'unknown'}`,
                 });
                 break;
               }
               case 'ryouset': {
                 try {
-                  switchMode('ryouset');
-                  switchProfile('ryouset');
+                  switchModeProfile('ryouset');
                   dialog.clear();
                   api.ui.toast({
                     variant: 'success',
                     title: 'Switched to RyouSet',
-                    message: 'Mode: RyouSet | Profile: RyouSet — Full pipeline with your exact model routing',
+                    message: 'ModeProfile: RyouSet — Full pipeline with per-phase model routing',
                   });
                 } catch (err) {
                   dialog.clear();
@@ -1174,20 +1264,28 @@ export default {
 
     const disposeCommands = api.command?.register(() => [
       {
-        title: 'SDD Mode',
-        value: 'sdd-mode',
-        description: 'Switch, create, edit, or delete SDD modes',
+        title: 'SDD ModeProfile',
+        value: 'sdd',
+        description: 'Switch, create, edit, or delete SDD ModeProfiles',
         category: 'RASS',
-        slash: { name: 'sdd-mode', aliases: ['sm'] },
-        onSelect: (dialog) => showModeDialog(dialog),
+        slash: { name: 'sdd', aliases: ['s'] },
+        onSelect: (dialog) => showModeProfileDialog(dialog),
       },
       {
-        title: 'SDD Profile',
+        title: 'SDD Mode (legacy alias)',
+        value: 'sdd-mode',
+        description: 'Alias for /sdd — use /sdd instead',
+        category: 'RASS',
+        slash: { name: 'sdd-mode', aliases: ['sm'] },
+        onSelect: (dialog) => showModeProfileDialog(dialog),
+      },
+      {
+        title: 'SDD Profile (legacy alias)',
         value: 'sdd-profile',
-        description: 'Switch, create, edit, or delete SDD profiles',
+        description: 'Alias for /sdd — use /sdd instead',
         category: 'RASS',
         slash: { name: 'sdd-profile', aliases: ['sp'] },
-        onSelect: (dialog) => showProfileDialog(dialog),
+        onSelect: (dialog) => showModeProfileDialog(dialog),
       },
       {
         title: 'RASS Setup',

@@ -1,6 +1,0 @@
-{
-  "name": "Minimal",
-  "description": "Low consumption mode. Only explore and apply phases for quick iterations.",
-  "phases": ["explore", "apply"],
-  "default_effort": "low"
-}

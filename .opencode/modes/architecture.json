@@ -1,6 +1,0 @@
-{
-  "name": "Architecture",
-  "description": "For complex systems, offline-first, billing, synchronization, and large refactors. Full pipeline.",
-  "phases": ["orchestrator", "init", "explore", "propose", "apply", "verify", "archive"],
-  "default_effort": "high"
-}

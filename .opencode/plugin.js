@@ -1,20 +1,15 @@
 /**
  * RASS Server Plugin — Ryou Adaptive SDD System
- * Provides sdd_mode, sdd_profile, and rass_setup tools for AI agent interaction.
+ * Provides sdd_mode_profile and rass_setup tools for AI agent interaction.
  */
 
 import { tool } from '@opencode-ai/plugin/tool';
 import {
-  listModes,
-  listProfiles,
-  getMode,
-  getProfile,
-  switchMode,
-  switchProfile,
-  createMode,
-  createProfile,
-  getCurrentMode,
-  getCurrentProfile,
+  listModeProfiles,
+  getModeProfile,
+  switchModeProfile,
+  createModeProfile,
+  getCurrentModeProfile,
   generateRuntime,
   getStatus,
   AVAILABLE_PHASES,
@@ -32,122 +27,31 @@ export default {
   server: async (_input) => {
     return {
       tool: {
-        // ─── /sdd-mode ───────────────────────────────────────────────────
-        sdd_mode: tool({
+        // ─── /sdd-mode-profile ───────────────────────────────────────────
+        sdd_mode_profile: tool({
           description:
-            'Manage SDD modes. List available modes, switch to a mode, create a new custom mode, or get current status. ' +
-            'Modes define which phases (orchestrator, init, explore, propose, design, apply, verify, archive) are active in the SDD pipeline.',
+            'Manage unified SDD ModeProfiles. List, switch, create, edit, or get status. ' +
+            'A ModeProfile combines phases (what steps run) with model routing (which AI model each phase uses).',
           args: {
             action: tool.schema
               .enum(['list', 'switch', 'create', 'status'])
-              .describe('Action to perform: list modes, switch to a mode, create a new mode, or get current status'),
+              .describe('Action: list modeprofiles, switch to one, create new, or get current status'),
             name: tool.schema
               .string()
               .optional()
-              .describe('Mode name (required for switch and create). Available base modes: fast, architecture, ui, debug, legacy, enterprise, minimal'),
+              .describe('ModeProfile name (required for switch and create). Available base modeprofiles: ryouset, fast, architecture, ui, debug, enterprise, legacy, minimal'),
             phases: tool.schema
               .string()
               .optional()
-              .describe('Comma-separated phases for create action (e.g., "orchestrator,apply,verify"). Available: orchestrator, init, explore, propose, design, apply, verify, archive'),
-            description: tool.schema
-              .string()
+              .describe('Comma-separated phases for create (e.g., "orchestrator,apply,verify"). Available: orchestrator, init, explore, propose, design, apply, verify, archive'),
+            model_strategy: tool.schema
+              .enum(['single', 'per-phase'])
               .optional()
-              .describe('Human-readable description for the new mode'),
-            effort: tool.schema
-              .enum(EFFORT_LEVELS)
-              .optional()
-              .describe('Default effort level for the mode: low (speed), medium (balanced), high (reasoning), extreme (deep analysis)'),
-          },
-          async execute(args, _context) {
-            try {
-              switch (args.action) {
-                case 'list': {
-                  const modes = listModes();
-                  const current = getCurrentMode();
-                  const lines = modes.map((m) => {
-                    const active = m.id === current ? ' ← active' : '';
-                    return `  **${m.id}**${active} — ${m.description || m.phases.join(' → ')}`;
-                  });
-                  return {
-                    title: 'SDD Modes',
-                    output: `Available SDD modes:\n\n${lines.join('\n')}\n\nCurrent mode: **${current || 'none'}**`,
-                  };
-                }
-
-                case 'switch': {
-                  if (!args.name) {
-                    return {
-                      title: 'Error',
-                      output: `Mode name is required. Available: ${listModes().map((m) => m.id).join(', ')}`,
-                    };
-                  }
-                  const mode = switchMode(args.name);
-                  return {
-                    title: `Switched to ${args.name} mode`,
-                    output: `Active mode: **${mode.id}**\nDescription: ${mode.description}\nPhases: ${mode.phases.join(' → ')}\nDefault effort: ${mode.default_effort}`,
-                  };
-                }
-
-                case 'create': {
-                  if (!args.name) return { title: 'Error', output: 'Mode name is required for create action.' };
-                  if (!args.phases) return { title: 'Error', output: `Phases are required. Available: ${AVAILABLE_PHASES.join(', ')}` };
-
-                  const phases = args.phases.split(',').map((s) => s.trim()).filter((p) => AVAILABLE_PHASES.includes(p));
-                  if (phases.length === 0) {
-                    return { title: 'Error', output: `No valid phases found. Available: ${AVAILABLE_PHASES.join(', ')}` };
-                  }
-
-                  const newMode = createMode(args.name, phases, args.description || '', args.effort || 'medium');
-                  switchMode(args.name);
-                  return {
-                    title: `Created mode: ${args.name}`,
-                    output: `Mode **${newMode.id}** created and activated.\nPhases: ${phases.join(' → ')}\nEffort: ${args.effort || 'medium'}\nDescription: ${args.description || 'None'}`,
-                  };
-                }
-
-                case 'status': {
-                  const status = getStatus();
-                  const phases = status.mode?.phases || [];
-                  return {
-                    title: 'SDD Status',
-                    output:
-                      `**Mode:** ${status.current_mode || 'none'}\n` +
-                      `**Profile:** ${status.current_profile || 'none'}\n` +
-                      `**Phases:** ${phases.join(' → ') || 'none'}\n` +
-                      `**Default model:** ${status.profile?.default_model || 'none'}`,
-                  };
-                }
-
-                default:
-                  return { title: 'Error', output: `Unknown action: ${args.action}. Use: list, switch, create, status` };
-              }
-            } catch (err) {
-              return { title: 'RASS Error', output: `Error: ${err.message}` };
-            }
-          },
-        }),
-
-        // ─── /sdd-profile ─────────────────────────────────────────────────
-        sdd_profile: tool({
-          description:
-            'Manage SDD profiles. List available profiles, switch to a profile, create a new custom profile, or get current status. ' +
-            'Profiles define which AI models and effort levels are used for each phase.',
-          args: {
-            action: tool.schema
-              .enum(['list', 'switch', 'create', 'status'])
-              .describe('Action to perform: list profiles, switch to a profile, create a new profile, or get current status'),
-            name: tool.schema
-              .string()
-              .optional()
-              .describe('Profile name (required for switch and create). Available base profiles: premium, balanced, minimal, local'),
+              .describe('Model strategy: single (one model for all) or per-phase (different model per phase)'),
             primary: tool.schema
               .string()
               .optional()
-              .describe('Primary model for create action (e.g., "opencode-go/glm-5.1"). Available: opencode-go/glm-5.1, opencode-go/kimi-k2.6, opencode-go/deepseek-v4-pro, opencode-go/deepseek-v4-flash'),
-            fallbacks: tool.schema
-              .string()
-              .optional()
-              .describe('Comma-separated fallback models for create action'),
+              .describe('Primary model for create with single strategy (e.g., "opencode-go/glm-5.1")'),
             effort: tool.schema
               .enum(EFFORT_LEVELS)
               .optional()
@@ -155,21 +59,21 @@ export default {
             description: tool.schema
               .string()
               .optional()
-              .describe('Human-readable description for the new profile'),
+              .describe('Human-readable description'),
           },
           async execute(args, _context) {
             try {
               switch (args.action) {
                 case 'list': {
-                  const profiles = listProfiles();
-                  const current = getCurrentProfile();
-                  const lines = profiles.map((p) => {
-                    const active = p.id === current ? ' ← active' : '';
-                    return `  **${p.id}**${active} — ${p.description || p.default?.primary || 'Custom'}`;
+                  const modeProfiles = listModeProfiles();
+                  const current = getCurrentModeProfile();
+                  const lines = modeProfiles.map((mp) => {
+                    const active = mp.id === current ? ' ← active' : '';
+                    return `  **${mp.id}**${active} — ${mp.description || mp.phases.join(' → ')}`;
                   });
                   return {
-                    title: 'SDD Profiles',
-                    output: `Available SDD profiles:\n\n${lines.join('\n')}\n\nCurrent profile: **${current || 'none'}**`,
+                    title: 'SDD ModeProfiles',
+                    output: `Available SDD ModeProfiles:\n\n${lines.join('\n')}\n\nCurrent ModeProfile: **${current || 'none'}**`,
                   };
                 }
 
@@ -177,55 +81,66 @@ export default {
                   if (!args.name) {
                     return {
                       title: 'Error',
-                      output: `Profile name is required. Available: ${listProfiles().map((p) => p.id).join(', ')}`,
+                      output: `ModeProfile name is required. Available: ${listModeProfiles().map((mp) => mp.id).join(', ')}`,
                     };
                   }
-                  const profile = switchProfile(args.name);
-                  const profileInfo = listProfiles().find((p) => p.id === args.name);
+                  const mp = switchModeProfile(args.name);
                   return {
-                    title: `Switched to ${args.name} profile`,
-                    output: `Active profile: **${args.name}**\nDescription: ${profileInfo?.description || 'Custom'}\nDefault model: ${profile.default?.primary || 'unknown'}`,
+                    title: `Switched to ${args.name}`,
+                    output: `Active ModeProfile: **${args.name}**\nDescription: ${mp.description || 'N/A'}\nPhases: ${mp.phases?.join(' → ') || 'none'}\nModel strategy: ${mp.model_strategy || 'per-phase'}\nDefault model: ${mp.default?.primary || 'unknown'}`,
                   };
                 }
 
                 case 'create': {
-                  if (!args.name) return { title: 'Error', output: 'Profile name is required for create action.' };
-                  if (!args.primary) {
-                    return {
-                      title: 'Error',
-                      output: `Primary model is required. Available models:\n${AVAILABLE_MODELS.map((m) => `  - ${m.id}: ${m.description}`).join('\n')}`,
-                    };
+                  if (!args.name) return { title: 'Error', output: 'ModeProfile name is required for create action.' };
+                  if (!args.phases) return { title: 'Error', output: `Phases are required. Available: ${AVAILABLE_PHASES.join(', ')}` };
+
+                  const phases = args.phases.split(',').map((s) => s.trim()).filter((p) => AVAILABLE_PHASES.includes(p));
+                  if (phases.length === 0) {
+                    return { title: 'Error', output: `No valid phases found. Available: ${AVAILABLE_PHASES.join(', ')}` };
                   }
 
-                  const fallbacks = args.fallbacks ? args.fallbacks.split(',').map((s) => s.trim()) : [];
+                  const strategy = args.model_strategy || 'per-phase';
                   const effort = args.effort || 'medium';
+                  const primary = args.primary || 'opencode-go/glm-5.1';
 
-                  const profileData = createProfile(
-                    args.name,
-                    {
-                      default: {
-                        primary: args.primary,
-                        effort,
-                        fallbacks,
-                      },
+                  const config = {
+                    name: args.name.charAt(0).toUpperCase() + args.name.slice(1).replace(/[-_]/g, ' '),
+                    description: args.description || `Custom ModeProfile: ${args.name}`,
+                    phases,
+                    model_strategy: strategy,
+                    default: {
+                      primary,
+                      effort,
+                      fallbacks: [],
                     },
-                    args.description || `Custom profile: ${args.name}`
-                  );
-                  switchProfile(args.name);
+                  };
+
+                  // For per-phase, copy default to each phase
+                  if (strategy === 'per-phase') {
+                    for (const phase of phases) {
+                      config[phase] = { ...config.default };
+                    }
+                  }
+
+                  createModeProfile(args.name, config);
+                  switchModeProfile(args.name);
                   return {
-                    title: `Created profile: ${args.name}`,
-                    output: `Profile **${args.name}** created and activated.\nPrimary: ${args.primary}\nEffort: ${effort}\nFallbacks: ${fallbacks.join(', ') || 'none'}`,
+                    title: `Created ModeProfile: ${args.name}`,
+                    output: `ModeProfile **${args.name}** created and activated.\nPhases: ${phases.join(' → ')}\nStrategy: ${strategy}\nDefault model: ${primary}\nEffort: ${effort}\nDescription: ${config.description}`,
                   };
                 }
 
                 case 'status': {
                   const status = getStatus();
+                  const phases = status.modeprofile?.phases || [];
                   return {
-                    title: 'SDD Profile Status',
+                    title: 'SDD Status',
                     output:
-                      `**Profile:** ${status.current_profile || 'none'}\n` +
-                      `**Default model:** ${status.profile?.default_model || 'none'}\n` +
-                      `**Description:** ${status.profile?.description || 'N/A'}`,
+                      `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
+                      `**Phases:** ${phases.join(' → ') || 'none'}\n` +
+                      `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
+                      `**Default model:** ${status.modeprofile?.default_model || 'none'}`,
                   };
                 }
 
@@ -242,7 +157,7 @@ export default {
         rass_setup: tool({
           description:
             'Manage RASS setup. Check if Ryou agents are configured, deploy agents to OpenCode config, ' +
-            'or show the current RASS status including mode, profile, and agent configuration.',
+            'or show the current RASS status including ModeProfile and agent configuration.',
           args: {
             action: tool.schema
               .enum(['status', 'deploy', 'check'])
@@ -257,10 +172,10 @@ export default {
                   return {
                     title: 'RASS Full Status',
                     output:
-                      `**Mode:** ${status.current_mode || 'none'}\n` +
-                      `**Profile:** ${status.current_profile || 'none'}\n` +
-                      `**Default model:** ${status.profile?.default_model || 'none'}\n` +
-                      `**Phases:** ${status.mode?.phases?.join(' → ') || 'none'}\n\n` +
+                      `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
+                      `**Phases:** ${status.modeprofile?.phases?.join(' → ') || 'none'}\n` +
+                      `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
+                      `**Default model:** ${status.modeprofile?.default_model || 'none'}\n\n` +
                       `**Ryou Agents:** ${agents.length} configured\n` +
                       agents.map((a) => `  - ${a}: ${RYOU_AGENTS[a].description}`).join('\n'),
                   };
@@ -298,7 +213,7 @@ export default {
                       `2. Deploy Ryou agents to your OpenCode config\n` +
                       `3. Deploy rules and agent prompts\n` +
                       `4. Set ryou-orchestrator as default agent\n` +
-                      `5. Configure SDD mode "ryouset" and profile "ryouset" as defaults`,
+                      `5. Configure SDD ModeProfile "ryouset" as default`,
                   };
                 }
 

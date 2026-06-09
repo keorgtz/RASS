@@ -1,0 +1,19 @@
+{
+  "name": "Enterprise",
+  "description": "Maximum robustness, all phases with high reasoning. For mission-critical systems.",
+  "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
+  "model_strategy": "per-phase",
+  "default": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "high",
+    "fallbacks": ["opencode-go/deepseek-v4-pro"]
+  },
+  "orchestrator": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "init": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "explore": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "propose": { "primary": "opencode-go/glm-5.1", "effort": "extreme", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "design": { "primary": "opencode-go/kimi-k2.6", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] },
+  "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] },
+  "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "extreme", "fallbacks": ["opencode-go/glm-5.1"] },
+  "archive": { "primary": "opencode-go/deepseek-v4-flash", "effort": "medium", "fallbacks": [] }
+}

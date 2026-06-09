@@ -153,8 +153,8 @@ function installGlobally() {
     fs.mkdirSync(globalDir, { recursive: true });
   }
 
-  // 2. Copy modes, profiles, phases, runtime to global .opencode
-  const dirsToCopy = ['modes', 'profiles', 'phases', 'runtime'];
+  // 2. Copy sdd-profiles, phases, runtime to global .opencode
+  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime'];
   for (const dir of dirsToCopy) {
     const src = path.join(OPENCODE_DIR, dir);
     const dest = path.join(globalDir, dir);
@@ -439,7 +439,7 @@ function uninstallGlobally() {
   const globalConfigPath = getGlobalConfigPath();
 
   // 1. Remove RASS directories from global .opencode
-  const dirsToRemove = ['modes', 'profiles', 'phases', 'runtime', 'agents', 'rules'];
+  const dirsToRemove = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules'];
   for (const dir of dirsToRemove) {
     removeDirRecursiveSync(path.join(globalDir, dir));
   }
@@ -509,7 +509,7 @@ function installLocally() {
   const targetOpencode = path.join(process.cwd(), '.opencode');
 
   // Copy RASS .opencode content to workspace .opencode
-  const dirsToCopy = ['modes', 'profiles', 'phases', 'runtime'];
+  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime'];
   for (const dir of dirsToCopy) {
     const src = path.join(OPENCODE_DIR, dir);
     const dest = path.join(targetOpencode, dir);
@@ -533,7 +533,7 @@ function installLocally() {
 
 async function interactiveInstall() {
   console.clear();
-  intro(pc.bgCyan(pc.black(' RASS v2.0 — Ryou Adaptive SDD System ')));
+  intro(pc.bgCyan(pc.black(' RASS v3.0 — Ryou Adaptive SDD System ')));
 
   const action = await select({
     message: 'What would you like to do?',
@@ -566,56 +566,44 @@ async function interactiveInstall() {
       const { globalDir } = installGlobally();
       s.stop(pc.green('RASS installed globally.'));
 
-      // Configure default mode and profile
+      // Configure default ModeProfile
       const configureNow = await confirm({
-        message: 'Configure default mode and profile now?',
+        message: 'Configure default ModeProfile now?',
       });
 
       if (configureNow && !isCancel(configureNow)) {
-        const mode = await select({
-          message: 'Select default SDD mode:',
+        const modeProfile = await select({
+          message: 'Select default SDD ModeProfile:',
           options: [
-            { value: 'ryouset', label: 'RyouSet (Recommended)', hint: 'Full pipeline — GLM-5.1 orchestrates, all 8 phases' },
-            { value: 'fast', label: 'Fast', hint: 'Orchestrator → Apply → Verify' },
-            { value: 'architecture', label: 'Architecture', hint: 'Full pipeline for complex systems' },
-            { value: 'ui', label: 'UI', hint: 'Orchestrator → Design → Apply → Verify' },
-            { value: 'debug', label: 'Debug', hint: 'Explore → Verify → Apply → Verify' },
-            { value: 'enterprise', label: 'Enterprise', hint: 'Maximum robustness, all phases' },
+            { value: 'ryouset', label: 'RyouSet (Recommended)', hint: 'Full pipeline — GLM-5.1 orchestrates, all 8 phases, per-phase models' },
+            { value: 'fast', label: 'Fast', hint: 'Orchestrator → Apply → Verify, low effort' },
+            { value: 'architecture', label: 'Architecture', hint: 'Full pipeline for complex systems, high reasoning' },
+            { value: 'ui', label: 'UI', hint: 'Orchestrator → Design → Apply → Verify, UI-focused' },
+            { value: 'debug', label: 'Debug', hint: 'Explore → Verify → Apply loop, high reasoning' },
+            { value: 'enterprise', label: 'Enterprise', hint: 'Maximum robustness, all phases, extreme reasoning' },
             { value: 'legacy', label: 'Legacy', hint: 'For refactors and modernization' },
-            { value: 'minimal', label: 'Minimal', hint: 'Explore → Apply only' },
+            { value: 'minimal', label: 'Minimal', hint: 'Explore → Apply only, low cost' },
           ],
         });
 
-        const profile = await select({
-          message: 'Select default SDD profile:',
-          options: [
-            { value: 'ryouset', label: 'RyouSet (Recommended)', hint: 'GLM-5.1 orchestrates, Kimi K2.6 builds, DeepSeek reviews' },
-            { value: 'premium', label: 'Premium', hint: 'GLM-5.1 + Kimi K2.6 + DeepSeek V4 Pro' },
-            { value: 'balanced', label: 'Balanced', hint: 'GLM-5.1 + Kimi K2.6 + DeepSeek V4 Flash' },
-            { value: 'minimal', label: 'Minimal', hint: 'DeepSeek V4 Flash + Kimi K2.6' },
-            { value: 'local', label: 'Local', hint: 'GLM-5.1 only (OpenCode Go)' },
-          ],
-        });
-
-        if (!isCancel(mode) && !isCancel(profile)) {
+        if (!isCancel(modeProfile)) {
           const runtimeDir = path.join(globalDir, 'runtime');
           if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
-          fs.writeFileSync(path.join(runtimeDir, 'current-mode.json'), JSON.stringify({ mode: mode }, null, 2));
-          fs.writeFileSync(path.join(runtimeDir, 'current-profile.json'), JSON.stringify({ profile: profile }, null, 2));
+          fs.writeFileSync(path.join(runtimeDir, 'current-modeprofile.json'), JSON.stringify({ modeprofile: modeProfile }, null, 2));
 
           note(
-            `Mode: ${mode}\nProfile: ${profile}\n\nUse /sdd-mode and /sdd-profile in OpenCode to switch at any time.`,
+            `ModeProfile: ${modeProfile}\n\nUse /sdd in OpenCode to switch ModeProfiles at any time.`,
             'Configuration'
           );
         }
       }
 
       note(
-        `Installed to: ${globalDir}\n\nCommands available in OpenCode:\n  /sdd-mode — Switch or create SDD modes\n  /sdd-profile — Switch or create SDD profiles\n  /rass-setup — View status, switch to RyouSet, view agents\n  /sm — Alias for /sdd-mode\n  /sp — Alias for /sdd-profile\n  /rs — Alias for /rass-setup\n\nAI tools available:\n  sdd_mode — Manage modes programmatically\n  sdd_profile — Manage profiles programmatically\n  rass_setup — View RASS status and agent info\n\nRyou agents deployed:\n  ryou-orchestrator (primary), planner, builder, architect, reviewer, debugger, documentation`,
+        `Installed to: ${globalDir}\n\nCommands available in OpenCode:\n  /sdd — Switch or create SDD ModeProfiles\n  /sdd-mode — Alias for /sdd (backward compatible)\n  /sdd-profile — Alias for /sdd (backward compatible)\n  /rass-setup — View status, switch to RyouSet, view agents\n  /s — Alias for /sdd\n  /rs — Alias for /rass-setup\n\nAI tools available:\n  sdd_mode_profile — Manage ModeProfiles programmatically\n  rass_setup — View RASS status and agent info\n\nRyou agents deployed:\n  ryou-orchestrator (primary), planner, builder, architect, reviewer, debugger, documentation`,
         'RASS Installed'
       );
 
-      outro(pc.cyan('RASS is ready. Open OpenCode and start using /sdd-mode, /sdd-profile, and /rass-setup.'));
+      outro(pc.cyan('RASS is ready. Open OpenCode and start using /sdd and /rass-setup.'));
     } catch (err) {
       s.stop(pc.red('Installation failed.'));
       outro(pc.red(err.message));
@@ -658,7 +646,7 @@ async function interactiveInstall() {
       s.stop(pc.green('RASS uninstalled.'));
 
       note(
-        `Removed from: ${globalDir}\n\nRASS plugin, modes, profiles, and runtime have been removed.\nOpenCode config has been cleaned up.`,
+        `Removed from: ${globalDir}\n\nRASS plugin, sdd-profiles, and runtime have been removed.\nOpenCode config has been cleaned up.`,
         'Uninstalled'
       );
 
@@ -682,7 +670,7 @@ if (args.length > 0) {
     try {
       const { globalDir } = installGlobally();
       console.log(pc.green(`RASS installed globally to: ${globalDir}`));
-      console.log(pc.gray('Use /sdd-mode and /sdd-profile in OpenCode.'));
+      console.log(pc.gray('Use /sdd in OpenCode.'));
     } catch (err) {
       console.error(pc.red(`Installation failed: ${err.message}`));
       process.exit(1);

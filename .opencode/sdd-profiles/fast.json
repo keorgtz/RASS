@@ -1,0 +1,14 @@
+{
+  "name": "Fast",
+  "description": "For CRUDs, simple UI, APIs, and quick tasks. Minimal pipeline for speed.",
+  "phases": ["orchestrator", "apply", "verify"],
+  "model_strategy": "per-phase",
+  "default": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "low",
+    "fallbacks": ["opencode-go/deepseek-v4-flash"]
+  },
+  "orchestrator": { "primary": "opencode-go/glm-5.1", "effort": "low", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
+  "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "low", "fallbacks": ["opencode-go/glm-5.1"] },
+  "verify": { "primary": "opencode-go/deepseek-v4-flash", "effort": "low", "fallbacks": [] }
+}

@@ -1,6 +1,0 @@
-{
-  "name": "Legacy",
-  "description": "For legacy systems, massive refactors, and code modernization.",
-  "phases": ["orchestrator", "init", "explore", "propose", "apply", "verify"],
-  "default_effort": "high"
-}

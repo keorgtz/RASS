@@ -1,0 +1,14 @@
+{
+  "name": "Minimal",
+  "description": "Quick iteration, low cost. Explore → Apply only.",
+  "phases": ["orchestrator", "explore", "apply"],
+  "model_strategy": "per-phase",
+  "default": {
+    "primary": "opencode-go/deepseek-v4-flash",
+    "effort": "low",
+    "fallbacks": ["opencode-go/kimi-k2.6"]
+  },
+  "orchestrator": { "primary": "opencode-go/deepseek-v4-flash", "effort": "low", "fallbacks": ["opencode-go/kimi-k2.6"] },
+  "explore": { "primary": "opencode-go/deepseek-v4-flash", "effort": "low", "fallbacks": ["opencode-go/kimi-k2.6"] },
+  "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "low", "fallbacks": ["opencode-go/deepseek-v4-flash"] }
+}

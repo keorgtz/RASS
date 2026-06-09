@@ -1,6 +1,5 @@
 {
-  "active_mode": "ryouset",
-  "active_profile": "ryouset",
+  "active_modeprofile": "ryouset",
   "enabled_phases": [
     "orchestrator",
     "init",
@@ -11,6 +10,7 @@
     "verify",
     "archive"
   ],
+  "model_strategy": "per-phase",
   "phases": {
     "orchestrator": {
       "model": "opencode-go/glm-5.1",
@@ -67,5 +67,5 @@
       "fallbacks": []
     }
   },
-  "generated_at": "2026-06-09T05:17:47.832Z"
+  "generated_at": "2026-06-09T07:50:53.037Z"
 }

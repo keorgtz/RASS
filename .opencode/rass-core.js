@@ -1,6 +1,6 @@
 /**
  * RASS Core — Ryou Adaptive SDD System
- * Core logic for mode/profile management and runtime generation.
+ * Core logic for unified ModeProfile management and runtime generation.
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
@@ -28,139 +28,22 @@ function writeJson(filePath, data) {
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-function getModesDir() { return join(__dirname, 'modes'); }
-function getProfilesDir() { return join(__dirname, 'profiles'); }
+function getModeProfilesDir() { return join(__dirname, 'sdd-profiles'); }
 function getRuntimeDir() { return join(__dirname, 'runtime'); }
 
-function getModePath(name) { return join(getModesDir(), `${name}.json`); }
-function getProfilePath(name) { return join(getProfilesDir(), `${name}.json`); }
-function getCurrentModePath() { return join(getRuntimeDir(), 'current-mode.json'); }
-function getCurrentProfilePath() { return join(getRuntimeDir(), 'current-profile.json'); }
+function getModeProfilePath(name) { return join(getModeProfilesDir(), `${name}.json`); }
+function getCurrentModeProfilePath() { return join(getRuntimeDir(), 'current-modeprofile.json'); }
 function getRuntimePath() { return join(getRuntimeDir(), 'runtime.generated.json'); }
 function getConfigPath() { return join(__dirname, 'sdd.config.json'); }
 
-// ─── Modes ──────────────────────────────────────────────────────────────────
+// ─── ModeProfiles ───────────────────────────────────────────────────────────
 
 /**
- * List all available SDD modes.
- * @returns {Array<{id: string, name: string, description: string, phases: string[], default_effort: string}>}
+ * List all available SDD ModeProfiles.
+ * @returns {Array<{id: string, name: string, description: string, phases: string[], model_strategy: string, default: object}>}
  */
-export function listModes() {
-  const dir = getModesDir();
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter(f => f.endsWith('.json'))
-    .map(f => {
-      const id = f.replace('.json', '');
-      const data = readJson(join(dir, f));
-      if (!data) return null;
-      // Handle both old format (array) and new format (object with phases)
-      const phases = Array.isArray(data) ? data : (data.phases || []);
-      return {
-        id,
-        name: data.name || id,
-        description: data.description || '',
-        phases,
-        default_effort: data.default_effort || 'medium',
-      };
-    })
-    .filter(Boolean);
-}
-
-/**
- * Get a specific mode by name.
- * @param {string} name
- * @returns {{id: string, name: string, description: string, phases: string[], default_effort: string}|null}
- */
-export function getMode(name) {
-  const data = readJson(getModePath(name));
-  if (!data) return null;
-  const phases = Array.isArray(data) ? data : (data.phases || []);
-  return {
-    id: name,
-    name: data.name || name,
-    description: data.description || '',
-    phases,
-    default_effort: data.default_effort || 'medium',
-  };
-}
-
-/**
- * Switch to a different SDD mode.
- * @param {string} name
- * @returns {{id: string, name: string, description: string, phases: string[], default_effort: string}}
- */
-export function switchMode(name) {
-  const mode = getMode(name);
-  if (!mode) throw new Error(`Mode '${name}' not found. Available: ${listModes().map(m => m.id).join(', ')}`);
-  writeJson(getCurrentModePath(), { mode: name });
-  generateRuntime();
-  return mode;
-}
-
-/**
- * Create a new SDD mode.
- * @param {string} name - Mode identifier (e.g., "custom-api")
- * @param {string[]} phases - Array of phase names
- * @param {string} [description] - Human-readable description
- * @param {string} [defaultEffort] - Default effort level (low, medium, high, extreme)
- */
-export function createMode(name, phases, description = '', defaultEffort = 'medium') {
-  const modeData = {
-    name: name.charAt(0).toUpperCase() + name.slice(1).replace(/[-_]/g, ' '),
-    description,
-    phases,
-    default_effort: defaultEffort,
-  };
-  writeJson(getModePath(name), modeData);
-  return { id: name, ...modeData };
-}
-
-/**
- * Update an existing SDD mode.
- * @param {string} name - Mode identifier
- * @param {object} updates - Partial updates to merge (phases, description, default_effort, name)
- * @returns {{id: string, name: string, description: string, phases: string[], default_effort: string}}
- */
-export function updateMode(name, updates) {
-  const existing = readJson(getModePath(name));
-  if (!existing) throw new Error(`Mode '${name}' not found`);
-  const phases = updates.phases || (Array.isArray(existing) ? existing : existing.phases || []);
-  const merged = {
-    ...existing,
-    ...(updates.name && { name: updates.name }),
-    ...(updates.description !== undefined && { description: updates.description }),
-    ...(updates.phases && { phases: updates.phases }),
-    ...(updates.default_effort && { default_effort: updates.default_effort }),
-  };
-  // Ensure phases is always in the object format
-  if (Array.isArray(merged)) {
-    writeJson(getModePath(name), merged);
-    return { id: name, name, description: '', phases: merged, default_effort: 'medium' };
-  }
-  writeJson(getModePath(name), merged);
-  return { id: name, name: merged.name || name, description: merged.description || '', phases: merged.phases || [], default_effort: merged.default_effort || 'medium' };
-}
-
-/**
- * Delete an SDD mode.
- * @param {string} name
- */
-export function deleteMode(name) {
-  const filePath = getModePath(name);
-  if (existsSync(filePath)) {
-    unlinkSync(filePath);
-  }
-}
-
-// ─── Profiles ───────────────────────────────────────────────────────────────
-
-/**
- * List all available SDD profiles.
- * @returns {Array<{id: string, name: string, description: string, default: object}>}
- */
-export function listProfiles() {
-  const dir = getProfilesDir();
+export function listModeProfiles() {
+  const dir = getModeProfilesDir();
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter(f => f.endsWith('.json'))
@@ -172,6 +55,8 @@ export function listProfiles() {
         id,
         name: data.name || id,
         description: data.description || '',
+        phases: data.phases || [],
+        model_strategy: data.model_strategy || 'per-phase',
         default: data.default || {},
       };
     })
@@ -179,58 +64,64 @@ export function listProfiles() {
 }
 
 /**
- * Get a specific profile by name.
+ * Get a specific ModeProfile by name.
  * @param {string} name
  * @returns {object|null}
  */
-export function getProfile(name) {
-  return readJson(getProfilePath(name));
+export function getModeProfile(name) {
+  return readJson(getModeProfilePath(name));
 }
 
 /**
- * Switch to a different SDD profile.
+ * Switch to a different SDD ModeProfile.
  * @param {string} name
  * @returns {object}
  */
-export function switchProfile(name) {
-  const profile = getProfile(name);
-  if (!profile) throw new Error(`Profile '${name}' not found. Available: ${listProfiles().map(p => p.id).join(', ')}`);
-  writeJson(getCurrentProfilePath(), { profile: name });
+export function switchModeProfile(name) {
+  const mp = getModeProfile(name);
+  if (!mp) throw new Error(`ModeProfile '${name}' not found. Available: ${listModeProfiles().map(m => m.id).join(', ')}`);
+  writeJson(getCurrentModeProfilePath(), { modeprofile: name });
   generateRuntime();
-  return profile;
+  return mp;
 }
 
 /**
- * Create a new SDD profile.
- * @param {string} name - Profile identifier
- * @param {object} config - Profile configuration with default and per-phase overrides
- * @param {string} [description] - Human-readable description
+ * Create a new SDD ModeProfile.
+ * @param {string} name - ModeProfile identifier
+ * @param {object} config - ModeProfile configuration with phases, model_strategy, default, and per-phase overrides
  */
-export function createProfile(name, config, description = '') {
-  const profileData = {
-    name: name.charAt(0).toUpperCase() + name.slice(1).replace(/[-_]/g, ' '),
-    description,
+export function createModeProfile(name, config) {
+  const modeProfileData = {
+    name: config.name || name.charAt(0).toUpperCase() + name.slice(1).replace(/[-_]/g, ' '),
+    description: config.description || '',
+    phases: config.phases || [],
+    model_strategy: config.model_strategy || 'per-phase',
+    default: config.default || {},
     ...config,
   };
-  writeJson(getProfilePath(name), profileData);
-  return profileData;
+  writeJson(getModeProfilePath(name), modeProfileData);
+  return modeProfileData;
 }
 
 /**
- * Update an existing SDD profile.
- * @param {string} name - Profile identifier
- * @param {object} updates - Partial updates to merge (default, per-phase overrides, description, name)
+ * Update an existing SDD ModeProfile.
+ * @param {string} name - ModeProfile identifier
+ * @param {object} updates - Partial updates to merge
  * @returns {object}
  */
-export function updateProfile(name, updates) {
-  const existing = readJson(getProfilePath(name));
-  if (!existing) throw new Error(`Profile '${name}' not found`);
+export function updateModeProfile(name, updates) {
+  const existing = readJson(getModeProfilePath(name));
+  if (!existing) throw new Error(`ModeProfile '${name}' not found`);
+
   const merged = {
     ...existing,
     ...(updates.name && { name: updates.name }),
     ...(updates.description !== undefined && { description: updates.description }),
+    ...(updates.phases && { phases: updates.phases }),
+    ...(updates.model_strategy && { model_strategy: updates.model_strategy }),
     ...(updates.default && { default: updates.default }),
   };
+
   // Merge per-phase overrides
   for (const phase of AVAILABLE_PHASES) {
     if (updates[phase]) {
@@ -239,16 +130,17 @@ export function updateProfile(name, updates) {
       delete merged[phase];
     }
   }
-  writeJson(getProfilePath(name), merged);
+
+  writeJson(getModeProfilePath(name), merged);
   return merged;
 }
 
 /**
- * Delete an SDD profile.
+ * Delete an SDD ModeProfile.
  * @param {string} name
  */
-export function deleteProfile(name) {
-  const filePath = getProfilePath(name);
+export function deleteModeProfile(name) {
+  const filePath = getModeProfilePath(name);
   if (existsSync(filePath)) {
     unlinkSync(filePath);
   }
@@ -257,56 +149,44 @@ export function deleteProfile(name) {
 // ─── Runtime ────────────────────────────────────────────────────────────────
 
 /**
- * Get the current active mode name.
+ * Get the current active ModeProfile name.
  * @returns {string|null}
  */
-export function getCurrentMode() {
-  const data = readJson(getCurrentModePath());
-  return data?.mode || null;
+export function getCurrentModeProfile() {
+  const data = readJson(getCurrentModeProfilePath());
+  return data?.modeprofile || null;
 }
 
 /**
- * Get the current active profile name.
- * @returns {string|null}
- */
-export function getCurrentProfile() {
-  const data = readJson(getCurrentProfilePath());
-  return data?.profile || null;
-}
-
-/**
- * Generate the runtime configuration by combining current mode + profile.
+ * Generate the runtime configuration from the current ModeProfile.
  * Writes runtime.generated.json and returns the result.
- * @returns {object}
+ * @returns {object|null}
  */
 export function generateRuntime() {
-  const currentModeName = getCurrentMode() || 'fast';
-  const currentProfileName = getCurrentProfile() || 'balanced';
+  const currentName = getCurrentModeProfile() || 'ryouset';
+  const mp = getModeProfile(currentName);
+  if (!mp) return null;
 
-  const mode = getMode(currentModeName);
-  const profile = getProfile(currentProfileName);
-
-  if (!mode || !profile) return null;
-
-  const phases = mode.phases || [];
-  const defaultEffort = mode.default_effort || 'medium';
+  const phases = mp.phases || [];
+  const defaultConfig = mp.default || {};
+  const strategy = mp.model_strategy || 'per-phase';
 
   const resolvedPhases = {};
   for (const phase of phases) {
-    const phaseProfile = profile[phase] || profile.default;
-    if (phaseProfile) {
+    const phaseConfig = strategy === 'single' ? defaultConfig : (mp[phase] || defaultConfig);
+    if (phaseConfig) {
       resolvedPhases[phase] = {
-        model: phaseProfile.primary,
-        effort: phaseProfile.effort || defaultEffort,
-        fallbacks: phaseProfile.fallbacks || [],
+        model: phaseConfig.primary,
+        effort: phaseConfig.effort || defaultConfig.effort || 'medium',
+        fallbacks: phaseConfig.fallbacks || [],
       };
     }
   }
 
   const runtime = {
-    active_mode: currentModeName,
-    active_profile: currentProfileName,
+    active_modeprofile: currentName,
     enabled_phases: phases,
+    model_strategy: strategy,
     phases: resolvedPhases,
     generated_at: new Date().toISOString(),
   };
@@ -316,25 +196,23 @@ export function generateRuntime() {
 }
 
 /**
- * Get the full RASS status: current mode, profile, and resolved runtime.
+ * Get the full RASS status: current ModeProfile and resolved runtime.
  * @returns {object}
  */
 export function getStatus() {
-  const currentModeName = getCurrentMode();
-  const currentProfileName = getCurrentProfile();
-  const mode = currentModeName ? getMode(currentModeName) : null;
-  const profile = currentProfileName ? getProfile(currentProfileName) : null;
+  const currentName = getCurrentModeProfile();
+  const mp = currentName ? getModeProfile(currentName) : null;
   const runtime = generateRuntime();
 
   return {
-    current_mode: currentModeName,
-    current_profile: currentProfileName,
-    mode,
-    profile: profile ? {
-      id: currentProfileName,
-      name: profile.name || currentProfileName,
-      description: profile.description || '',
-      default_model: profile.default?.primary || 'unknown',
+    current_modeprofile: currentName,
+    modeprofile: mp ? {
+      id: currentName,
+      name: mp.name || currentName,
+      description: mp.description || '',
+      phases: mp.phases || [],
+      model_strategy: mp.model_strategy || 'per-phase',
+      default_model: mp.default?.primary || 'unknown',
     } : null,
     runtime,
   };
@@ -348,14 +226,13 @@ export function getConfig() {
   return readJson(getConfigPath()) || {
     system_name: 'RASS',
     full_name: 'Ryou Adaptive SDD System',
-    version: '2.0.0',
-    default_mode: 'fast',
-    default_profile: 'balanced',
+    version: '3.0.0',
+    default_modeprofile: 'ryouset',
   };
 }
 
 /**
- * Available phases for mode creation.
+ * Available phases for ModeProfile creation.
  */
 export const AVAILABLE_PHASES = [
   'orchestrator',
@@ -374,7 +251,7 @@ export const AVAILABLE_PHASES = [
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'extreme'];
 
 /**
- * Available OpenCode Go models for profile creation.
+ * Available OpenCode Go models for ModeProfile creation.
  */
 export const AVAILABLE_MODELS = [
   { id: 'opencode-go/glm-5.1', label: 'GLM-5.1', description: 'Orchestration, planning, architecture, complex reasoning' },

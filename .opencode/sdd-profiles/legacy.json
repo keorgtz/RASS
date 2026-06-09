@@ -1,0 +1,17 @@
+{
+  "name": "Legacy",
+  "description": "For refactors and modernization. Init → Explore → Propose before Apply.",
+  "phases": ["orchestrator", "init", "explore", "propose", "apply", "verify"],
+  "model_strategy": "per-phase",
+  "default": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "medium",
+    "fallbacks": ["opencode-go/deepseek-v4-flash"]
+  },
+  "orchestrator": { "primary": "opencode-go/glm-5.1", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
+  "init": { "primary": "opencode-go/glm-5.1", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
+  "explore": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "propose": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
+  "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] }
+}
