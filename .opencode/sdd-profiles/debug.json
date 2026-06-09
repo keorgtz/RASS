@@ -1,14 +1,14 @@
 {
   "name": "Debug",
-  "description": "Bug investigation, failing tests, runtime errors. Explore → Verify → Apply loop.",
+  "description": "Bug investigation, failing tests, runtime errors. DeepSeek V4 Pro for explore and verify, Kimi K2.6 for apply.",
   "phases": ["orchestrator", "explore", "apply", "verify"],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "opencode-go/glm-5.1",
+    "primary": "opencode-go/kimi-k2.6",
     "effort": "medium",
-    "fallbacks": ["opencode-go/deepseek-v4-flash"]
+    "fallbacks": ["opencode-go/glm-5.1"]
   },
-  "orchestrator": { "primary": "opencode-go/glm-5.1", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
+  "orchestrator": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
   "explore": { "primary": "opencode-go/deepseek-v4-pro", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] },
   "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
   "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] }

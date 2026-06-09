@@ -1,16 +1,19 @@
 {
   "name": "Architecture",
-  "description": "Full pipeline for complex systems and architecture decisions. High reasoning for propose and verify.",
+  "description": "Full pipeline for complex systems. Kimi K2.6 for daily work, GLM-5.1 reserved for propose and verify.",
   "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "opencode-go/glm-5.1",
+    "primary": "opencode-go/kimi-k2.6",
     "effort": "medium",
-    "fallbacks": ["opencode-go/deepseek-v4-pro"]
+    "fallbacks": ["opencode-go/glm-5.1"]
   },
-  "orchestrator": { "primary": "opencode-go/glm-5.1", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
-  "propose": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/deepseek-v4-pro"] },
+  "orchestrator": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
+  "init": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
+  "explore": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
+  "propose": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/kimi-k2.6"] },
   "design": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
   "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
-  "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] }
+  "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] },
+  "archive": { "primary": "opencode-go/deepseek-v4-flash", "effort": "low", "fallbacks": [] }
 }

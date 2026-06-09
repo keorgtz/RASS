@@ -13,31 +13,31 @@
   "model_strategy": "per-phase",
   "phases": {
     "orchestrator": {
-      "model": "opencode-go/glm-5.1",
+      "model": "opencode-go/kimi-k2.6",
       "effort": "medium",
       "fallbacks": [
-        "opencode-go/deepseek-v4-flash"
+        "opencode-go/glm-5.1"
       ]
     },
     "init": {
-      "model": "opencode-go/glm-5.1",
-      "effort": "medium",
+      "model": "opencode-go/kimi-k2.6",
+      "effort": "low",
       "fallbacks": [
         "opencode-go/deepseek-v4-flash"
       ]
     },
     "explore": {
-      "model": "opencode-go/glm-5.1",
+      "model": "opencode-go/kimi-k2.6",
       "effort": "medium",
       "fallbacks": [
-        "opencode-go/deepseek-v4-flash"
+        "opencode-go/glm-5.1"
       ]
     },
     "propose": {
       "model": "opencode-go/glm-5.1",
       "effort": "high",
       "fallbacks": [
-        "opencode-go/deepseek-v4-pro"
+        "opencode-go/kimi-k2.6"
       ]
     },
     "design": {
@@ -67,5 +67,5 @@
       "fallbacks": []
     }
   },
-  "generated_at": "2026-06-09T07:50:53.037Z"
+  "generated_at": "2026-06-09T15:31:00.805Z"
 }

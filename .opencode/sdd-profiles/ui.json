@@ -1,14 +1,14 @@
 {
   "name": "UI",
-  "description": "UI-focused pipeline with design phase. MeridianUI, layouts, UX, responsive, accessibility.",
+  "description": "UI-focused pipeline with design phase. Kimi K2.6 for implementation, DeepSeek V4 Pro for verify.",
   "phases": ["orchestrator", "design", "apply", "verify"],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "opencode-go/glm-5.1",
+    "primary": "opencode-go/kimi-k2.6",
     "effort": "medium",
-    "fallbacks": ["opencode-go/deepseek-v4-flash"]
+    "fallbacks": ["opencode-go/glm-5.1"]
   },
-  "orchestrator": { "primary": "opencode-go/glm-5.1", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
+  "orchestrator": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
   "design": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
   "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
   "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "medium", "fallbacks": ["opencode-go/deepseek-v4-flash"] }
