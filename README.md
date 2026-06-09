@@ -4,54 +4,13 @@
 <!-- RASS — Visual Header Banner -->
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 
-<table align="center" style="background-color:#0d1117; border-radius:12px; padding:30px 50px; border:1px solid #30363d;">
-  <tr>
-    <td align="center">
-      <!-- Top decorative line -->
-      <p style="color:#00d4ff; font-size:14px; margin:0 0 15px 0; letter-spacing:8px;">
-        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
-      </p>
-      
-      <!-- Corner decorations -->
-      <table width="100%" style="margin-bottom:10px;">
-        <tr>
-          <td align="left" style="color:#00d4ff; font-size:18px;">◈</td>
-          <td align="right" style="color:#ff00ff; font-size:18px;">◈</td>
-        </tr>
-      </table>
-      
-      <!-- Main Title -->
-      <h1 style="color:#00d4ff; font-family:'Segoe UI',Arial,sans-serif; font-size:72px; font-weight:900; margin:10px 0; letter-spacing:12px; text-shadow:0 0 20px rgba(0,212,255,0.3);">
-        RASS
-      </h1>
-      
-      <!-- Subtitle -->
-      <p style="color:#ff00ff; font-family:'Segoe UI',Arial,sans-serif; font-size:20px; font-weight:600; margin:8px 0; letter-spacing:3px;">
-        ◈ Ryou Adaptive SDD System ◈
-      </p>
-      
-      <!-- Tagline -->
-      <p style="color:#8b949e; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; margin:12px 0 20px 0; font-style:italic;">
-        The definitive Sub-Agent Driven Development framework for OpenCode
-      </p>
-      
-      <!-- Bottom decorative line -->
-      <p style="color:#ff00ff; font-size:14px; margin:15px 0 0 0; letter-spacing:8px;">
-        ◈ ◈ ◈ ◈ ◈ ◈ ◈ ◈ ◈ ◈
-      </p>
-      
-      <!-- Corner decorations bottom -->
-      <table width="100%" style="margin-top:10px;">
-        <tr>
-          <td align="left" style="color:#ff00ff; font-size:18px;">◈</td>
-          <td align="right" style="color:#00d4ff; font-size:18px;">◈</td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
+# ✦ RASS ✦
 
-<br/>
+### ◈ Ryou Adaptive SDD System ◈
+
+*The definitive Sub-Agent Driven Development framework for OpenCode*
+
+---
 
 <!-- Badges Row 1 -->
 <p align="center">
