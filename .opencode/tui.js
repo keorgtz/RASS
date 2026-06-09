@@ -13,6 +13,7 @@ import {
   listModeProfiles,
   getModeProfile,
   switchModeProfile,
+  syncAgentsWithModeProfile,
   createModeProfile,
   updateModeProfile,
   deleteModeProfile,
@@ -193,7 +194,7 @@ export default {
                   api.ui.toast({
                     variant: 'success',
                     title: 'ModeProfile Switched',
-                    message: `Now using "${mpName}" — ${buildPhaseSummary(mp.phases)}`,
+                    message: `Now using "${mpName}" — ${buildPhaseSummary(mp.phases)}. Agent models synchronized.`,
                   });
                 } catch (err) {
                   dialog.clear();
@@ -1000,7 +1001,7 @@ export default {
                   api.ui.toast({
                     variant: 'success',
                     title: 'Switched to RyouSet',
-                    message: 'ModeProfile: RyouSet — Full pipeline with per-phase model routing',
+                    message: 'ModeProfile: RyouSet — Full pipeline with per-phase model routing. Agent models synchronized.',
                   });
                 } catch (err) {
                   dialog.clear();

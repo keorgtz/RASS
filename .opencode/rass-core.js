@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +36,14 @@ function getModeProfilePath(name) { return join(getModeProfilesDir(), `${name}.j
 function getCurrentModeProfilePath() { return join(getRuntimeDir(), 'current-modeprofile.json'); }
 function getRuntimePath() { return join(getRuntimeDir(), 'runtime.generated.json'); }
 function getConfigPath() { return join(__dirname, 'sdd.config.json'); }
+
+function getHomeDir() {
+  return process.env.USERPROFILE || process.env.HOME || os.homedir();
+}
+
+function getGlobalConfigPath() {
+  return join(getHomeDir(), '.config', 'opencode', 'opencode.json');
+}
 
 // ─── ModeProfiles ───────────────────────────────────────────────────────────
 
@@ -73,7 +82,64 @@ export function getModeProfile(name) {
 }
 
 /**
+ * Synchronize Ryou agent models with the active ModeProfile configuration.
+ * Maps ModeProfile phases to agent roles and updates opencode.json.
+ * @param {string} modeProfileName
+ * @returns {boolean} true if sync succeeded
+ */
+export function syncAgentsWithModeProfile(modeProfileName) {
+  const mp = getModeProfile(modeProfileName);
+  if (!mp) return false;
+
+  const configPath = getGlobalConfigPath();
+  if (!existsSync(configPath)) return false;
+
+  let config;
+  try {
+    config = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch {
+    return false;
+  }
+
+  if (!config.agent) return false;
+
+  // Map ModeProfile phases to Ryou agent roles
+  const phaseToAgent = {
+    orchestrator: 'ryou-orchestrator',
+    propose: 'planner',
+    apply: 'builder',
+    design: 'architect',
+    verify: 'reviewer',
+    archive: 'documentation',
+  };
+
+  const defaultConfig = mp.default || {};
+
+  // Update agent models based on ModeProfile phase configuration
+  for (const [phase, agentName] of Object.entries(phaseToAgent)) {
+    const phaseConfig = mp[phase] || defaultConfig;
+    if (phaseConfig?.primary && config.agent[agentName]) {
+      config.agent[agentName].model = phaseConfig.primary;
+    }
+  }
+
+  // Debugger uses the same model as reviewer (verify phase)
+  const verifyConfig = mp.verify || defaultConfig;
+  if (verifyConfig?.primary && config.agent.debugger) {
+    config.agent.debugger.model = verifyConfig.primary;
+  }
+
+  try {
+    writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Switch to a different SDD ModeProfile.
+ * Also synchronizes agent models with the new ModeProfile configuration.
  * @param {string} name
  * @returns {object}
  */
@@ -82,6 +148,7 @@ export function switchModeProfile(name) {
   if (!mp) throw new Error(`ModeProfile '${name}' not found. Available: ${listModeProfiles().map(m => m.id).join(', ')}`);
   writeJson(getCurrentModeProfilePath(), { modeprofile: name });
   generateRuntime();
+  syncAgentsWithModeProfile(name);
   return mp;
 }
 

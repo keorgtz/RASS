@@ -143,6 +143,68 @@ function printWarning(message) {
   console.log('  ' + THEME.warningBright(ICONS.triangle + ' ' + message));
 }
 
+// ─── Progress Bar System ──────────────────────────────────────────────────
+
+const PROGRESS_STEPS = [
+  { label: 'Preparing directories', icon: ICONS.diamond },
+  { label: 'Copying SDD profiles & phases', icon: ICONS.bullet },
+  { label: 'Copying agents & rules', icon: ICONS.bullet },
+  { label: 'Copying configuration files', icon: ICONS.bullet },
+  { label: 'Copying plugin files', icon: ICONS.bullet },
+  { label: 'Installing npm dependencies', icon: ICONS.ring },
+  { label: 'Registering plugin server', icon: ICONS.sparkle },
+  { label: 'Registering plugin TUI', icon: ICONS.sparkle },
+  { label: 'Configuring Ryou agents', icon: ICONS.star },
+  { label: 'Finalizing installation', icon: ICONS.check },
+];
+
+function renderProgressBar(currentStep, totalSteps, message) {
+  const width = 40;
+  const filled = Math.round((currentStep / totalSteps) * width);
+  const empty = width - filled;
+  const percent = Math.round((currentStep / totalSteps) * 100);
+
+  const barFilled = THEME.primary(ICONS.block.repeat(filled));
+  const barEmpty = THEME.dim(ICONS.shadow.repeat(empty));
+  const bar = barFilled + barEmpty;
+
+  const stepInfo = `  ${THEME.infoBright(`${percent}%`)} ${THEME.dim(ICONS.line)} ${THEME.accentBright(`${currentStep}/${totalSteps}`)}`;
+  const stepLabel = message ? `  ${THEME.info(message)}` : '';
+
+  // Clear previous lines if not first render
+  if (process.stdout.isTTY && currentStep > 0) {
+    process.stdout.write('\x1b[2A\x1b[G\x1b[J');
+  }
+
+  console.log(`${stepInfo}`);
+  console.log(`  ${THEME.dim(ICONS.cornerTL)}${bar}${THEME.dim(ICONS.cornerTR)}${stepLabel}`);
+}
+
+function createProgressTracker() {
+  let currentStep = 0;
+  const totalSteps = PROGRESS_STEPS.length;
+
+  return {
+    next(message) {
+      currentStep = Math.min(currentStep + 1, totalSteps);
+      const stepInfo = PROGRESS_STEPS[currentStep - 1] || { label: message || 'Processing...', icon: ICONS.ring };
+      const fullMessage = `${stepInfo.icon} ${stepInfo.label}`;
+      renderProgressBar(currentStep, totalSteps, fullMessage);
+      return currentStep;
+    },
+    update(step, message) {
+      currentStep = Math.min(step, totalSteps);
+      const stepInfo = PROGRESS_STEPS[currentStep - 1] || { label: message || 'Processing...', icon: ICONS.ring };
+      const fullMessage = `${stepInfo.icon} ${stepInfo.label}`;
+      renderProgressBar(currentStep, totalSteps, fullMessage);
+      return currentStep;
+    },
+    finish() {
+      renderProgressBar(totalSteps, totalSteps, `${ICONS.check} Installation complete`);
+    },
+  };
+}
+
 function printError(message) {
   console.log('  ' + THEME.errorBright(ICONS.circle + ' ' + message));
 }
@@ -267,18 +329,119 @@ function removeDirRecursiveSync(dir) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// MODEPROFILE AGENT RESOLUTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Read a ModeProfile and resolve agent models from its phase configuration.
+ * @param {string} modeProfileName - e.g., 'ryouset', 'fast'
+ * @returns {object} Map of agent names to model IDs
+ */
+function resolveAgentModels(modeProfileName) {
+  const mpPath = path.join(OPENCODE_DIR, 'sdd-profiles', `${modeProfileName}.json`);
+  let mp = null;
+  if (fs.existsSync(mpPath)) {
+    try {
+      mp = JSON.parse(fs.readFileSync(mpPath, 'utf8'));
+    } catch {
+      mp = null;
+    }
+  }
+
+  // Fallback defaults (legacy hardcoded values)
+  const defaults = {
+    'ryou-orchestrator': 'opencode-go/glm-5.1',
+    planner: 'opencode-go/glm-5.1',
+    builder: 'opencode-go/kimi-k2.6',
+    architect: 'opencode-go/glm-5.1',
+    reviewer: 'opencode-go/deepseek-v4-pro',
+    debugger: 'opencode-go/deepseek-v4-pro',
+    documentation: 'opencode-go/deepseek-v4-flash',
+  };
+
+  if (!mp) return defaults;
+
+  // Map ModeProfile phases to Ryou agent roles
+  const phaseToAgent = {
+    orchestrator: 'ryou-orchestrator',
+    propose: 'planner',
+    apply: 'builder',
+    design: 'architect',
+    verify: 'reviewer',
+    archive: 'documentation',
+  };
+
+  const defaultConfig = mp.default || {};
+  const models = { ...defaults };
+
+  for (const [phase, agentName] of Object.entries(phaseToAgent)) {
+    const phaseConfig = mp[phase] || defaultConfig;
+    if (phaseConfig?.primary) {
+      models[agentName] = phaseConfig.primary;
+    }
+  }
+
+  // Debugger uses the same model as reviewer (verify phase)
+  const verifyConfig = mp.verify || defaultConfig;
+  if (verifyConfig?.primary) {
+    models.debugger = verifyConfig.primary;
+  }
+
+  return models;
+}
+
+/**
+ * Synchronize agent models in opencode.json with a ModeProfile configuration.
+ * @param {string} modeProfileName
+ * @param {string} globalConfigPath
+ * @returns {boolean}
+ */
+function syncAgentsWithModeProfile(modeProfileName, globalConfigPath) {
+  const agentModels = resolveAgentModels(modeProfileName);
+
+  if (!fs.existsSync(globalConfigPath)) return false;
+
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
+  } catch {
+    return false;
+  }
+
+  if (!config.agent) return false;
+
+  for (const [agentName, modelId] of Object.entries(agentModels)) {
+    if (config.agent[agentName]) {
+      config.agent[agentName].model = modelId;
+    }
+  }
+
+  try {
+    fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // INSTALL GLOBALLY
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function installGlobally() {
+function installGlobally(modeProfileName = 'ryouset', progress = null) {
   const globalDir = getGlobalOpenCodeDir();
   const globalConfigPath = getGlobalConfigPath();
   const { starPattern, starStarPattern } = getMeridianUIPathPatterns();
+  const agentModels = resolveAgentModels(modeProfileName);
 
+  // Step 1: Preparing directories
+  if (progress) progress.next();
   if (!fs.existsSync(globalDir)) {
     fs.mkdirSync(globalDir, { recursive: true });
   }
 
+  // Step 2: Copying SDD profiles & phases
+  if (progress) progress.next();
   const dirsToCopy = ['sdd-profiles', 'phases', 'runtime'];
   for (const dir of dirsToCopy) {
     const src = path.join(OPENCODE_DIR, dir);
@@ -288,6 +451,8 @@ function installGlobally() {
     }
   }
 
+  // Step 3: Copying agents & rules
+  if (progress) progress.next();
   const contentDirs = ['agents', 'rules'];
   for (const dir of contentDirs) {
     const src = path.join(OPENCODE_DIR, dir);
@@ -297,11 +462,15 @@ function installGlobally() {
     }
   }
 
+  // Step 4: Copying configuration files
+  if (progress) progress.next();
   const configSrc = path.join(OPENCODE_DIR, 'sdd.config.json');
   if (fs.existsSync(configSrc)) {
     fs.copyFileSync(configSrc, path.join(globalDir, 'sdd.config.json'));
   }
 
+  // Step 5: Copying plugin files
+  if (progress) progress.next();
   const pluginFiles = ['plugin.js', 'tui.js', 'rass-core.js'];
   for (const file of pluginFiles) {
     const src = path.join(OPENCODE_DIR, file);
@@ -315,13 +484,19 @@ function installGlobally() {
     fs.copyFileSync(pkgSrc, path.join(globalDir, 'package.json'));
   }
 
+  // Step 6: Installing npm dependencies
+  if (progress) progress.next();
   let npmInstalled = false;
   try {
     execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
     npmInstalled = true;
   } catch (e) {
     const stderr = e.stderr || '';
-    printWarning('npm install failed in global dir');
+    if (progress) {
+      console.log('  ' + THEME.warningBright(ICONS.triangle + ' npm install failed in global dir'));
+    } else {
+      printWarning('npm install failed in global dir');
+    }
     if (stderr.trim()) printInfo(stderr.trim().split('\n').pop());
     printInfo('Plugin registration may fail without dependencies');
   }
@@ -331,6 +506,8 @@ function installGlobally() {
 
   const opencodeCmd = findOpenCodeCommand();
 
+  // Step 7: Registering plugin server
+  if (progress) progress.next();
   if (opencodeCmd) {
     let pluginRegistered = false;
     try {
@@ -342,31 +519,47 @@ function installGlobally() {
     } catch (e) {
       const stderr = e.stderr || '';
       const stdout = e.stdout || '';
-      printWarning('opencode plugin command failed');
+      if (progress) {
+        console.log('  ' + THEME.warningBright(ICONS.triangle + ' opencode plugin command failed'));
+      } else {
+        printWarning('opencode plugin command failed');
+      }
       if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
       if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
       printWarning('Falling back to manual config registration');
       registerPluginManually(globalConfigPath, globalDir);
     }
 
+    // Step 8: Registering plugin TUI
+    if (progress) progress.next();
     if (pluginRegistered) {
       try {
         execSync(`${opencodeCmd} plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
       } catch (e) {
         const stderr = e.stderr || '';
         const stdout = e.stdout || '';
-        printWarning('opencode plugin for TUI failed');
+        if (progress) {
+          console.log('  ' + THEME.warningBright(ICONS.triangle + ' opencode plugin for TUI failed'));
+        } else {
+          printWarning('opencode plugin for TUI failed');
+        }
         if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
         if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
       }
     }
   } else {
-    printWarning('opencode CLI not found in PATH or common locations');
+    if (progress) {
+      console.log('  ' + THEME.warningBright(ICONS.triangle + ' opencode CLI not found'));
+    } else {
+      printWarning('opencode CLI not found in PATH or common locations');
+    }
     printInfo('Tried: opencode, npx opencode-ai, and common install directories');
     printWarning('Falling back to manual config registration');
     registerPluginManually(globalConfigPath, globalDir);
   }
 
+  // Step 9: Configuring Ryou agents
+  if (progress) progress.next();
   let config = {};
   if (fs.existsSync(globalConfigPath)) {
     try {
@@ -382,7 +575,7 @@ function installGlobally() {
     'ryou-orchestrator': {
       description: 'Primary orchestrator for pragmatic .NET work using Ryou workflow and MeridianUI.',
       mode: 'primary',
-      model: 'opencode-go/glm-5.1',
+      model: agentModels['ryou-orchestrator'],
       temperature: 0.2,
       steps: 40,
       prompt: '{file:./agents/ryou-orchestrator.md}',
@@ -395,14 +588,14 @@ function installGlobally() {
     },
     planner: {
       description: 'Subagent for planning medium or complex work before implementation.',
-      mode: 'subagent', model: 'opencode-go/glm-5.1', temperature: 0.1, steps: 14,
+      mode: 'subagent', model: agentModels.planner, temperature: 0.1, steps: 14,
       prompt: '{file:./agents/planner.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'deny', task: 'deny',
         external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     builder: {
       description: 'Subagent for C#, .NET, EF Core, XAML, Blazor, MAUI, and MeridianUI implementation.',
-      mode: 'subagent', model: 'opencode-go/kimi-k2.6', temperature: 0.2, steps: 40,
+      mode: 'subagent', model: agentModels.builder, temperature: 0.2, steps: 40,
       prompt: '{file:./agents/builder.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
         edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
@@ -411,28 +604,28 @@ function installGlobally() {
     },
     architect: {
       description: 'Subagent for architecture decisions, boundaries, data flow, and pragmatic design tradeoffs.',
-      mode: 'subagent', model: 'opencode-go/glm-5.1', temperature: 0.1, steps: 16,
+      mode: 'subagent', model: agentModels.architect, temperature: 0.1, steps: 16,
       prompt: '{file:./agents/architect.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'deny', task: 'deny',
         external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     reviewer: {
       description: 'Subagent for code review, regressions, maintainability, performance, and security risks.',
-      mode: 'subagent', model: 'opencode-go/deepseek-v4-pro', temperature: 0.1, steps: 18,
+      mode: 'subagent', model: agentModels.reviewer, temperature: 0.1, steps: 18,
       prompt: '{file:./agents/reviewer.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'allow', task: 'deny',
         external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     debugger: {
       description: 'Subagent for bug investigation, failing tests, runtime errors, EF issues, and async/concurrency problems.',
-      mode: 'subagent', model: 'opencode-go/deepseek-v4-pro', temperature: 0.1, steps: 26,
+      mode: 'subagent', model: agentModels.debugger, temperature: 0.1, steps: 26,
       prompt: '{file:./agents/debugger.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'allow', task: 'deny',
         external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
     },
     documentation: {
       description: 'Subagent for concise Markdown and visual HTML implementation summaries.',
-      mode: 'subagent', model: 'opencode-go/deepseek-v4-flash', temperature: 0.2, steps: 12,
+      mode: 'subagent', model: agentModels.documentation, temperature: 0.2, steps: 12,
       prompt: '{file:./agents/documentation.md}',
       permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
         edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
@@ -443,7 +636,11 @@ function installGlobally() {
 
   for (const [name, agentConfig] of Object.entries(ryouAgents)) {
     if (!config.agent[name]) {
+      // Agent doesn't exist — create it with ModeProfile-resolved model
       config.agent[name] = agentConfig;
+    } else {
+      // Agent exists — update its model to match the ModeProfile configuration
+      config.agent[name].model = agentConfig.model;
     }
   }
 
@@ -493,6 +690,9 @@ function installGlobally() {
   }
 
   fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
+
+  // Step 10: Finalizing
+  if (progress) progress.finish();
 
   return { globalDir, globalConfigPath };
 }
@@ -663,12 +863,15 @@ async function interactiveInstall() {
       return;
     }
 
-    const s = spinner();
-    s.start(THEME.primary('  ' + ICONS.ring + ' Installing RASS globally...'));
+    console.log('\n  ' + THEME.primaryBright(ICONS.ring + ' Installing RASS globally...'));
+    console.log('');
+
+    const progress = createProgressTracker();
+    progress.next(); // Initialize display
 
     try {
-      const { globalDir } = installGlobally();
-      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' RASS installed globally'));
+      const { globalDir } = installGlobally('ryouset', progress);
+      console.log('\n  ' + THEME.successBright(ICONS.sparkle + ' RASS installed globally'));
 
       printDivider();
       printHeader('Configuration');
@@ -699,6 +902,13 @@ async function interactiveInstall() {
           const runtimeDir = path.join(globalDir, 'runtime');
           if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
           fs.writeFileSync(path.join(runtimeDir, 'current-modeprofile.json'), JSON.stringify({ modeprofile: modeProfile }, null, 2));
+
+          // Synchronize agent models with the selected ModeProfile
+          const globalConfigPath = getGlobalConfigPath();
+          const syncResult = syncAgentsWithModeProfile(modeProfile, globalConfigPath);
+          if (syncResult) {
+            printSuccess(`Agent models synchronized with ${modeProfile} ModeProfile`);
+          }
 
           printSuccess(`ModeProfile set to: ${modeProfile}`);
           printInfo('Use /sdd in OpenCode to switch ModeProfiles at any time');
