@@ -195,10 +195,15 @@ function installGlobally() {
   }
 
   // 7. Install npm dependencies in global dir
+  let npmInstalled = false;
   try {
     execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
-  } catch {
-    // npm install may fail if no network or npm not available; that's OK
+    npmInstalled = true;
+  } catch (e) {
+    const stderr = e.stderr || '';
+    console.log(pc.yellow('  Warning: npm install failed in global dir.'));
+    if (stderr.trim()) console.log(pc.gray(`  ${stderr.trim().split('\n').pop()}`));
+    console.log(pc.gray('  Plugin registration may fail without dependencies.'));
   }
 
   // 8. Register plugins using opencode CLI (this is the correct way)
@@ -211,10 +216,17 @@ function installGlobally() {
   if (opencodeCmd) {
     let pluginRegistered = false;
     try {
-      execSync(`${opencodeCmd} plugin "${pluginUrl}" --global --force`, { stdio: 'pipe' });
+      const result = execSync(`${opencodeCmd} plugin "${pluginUrl}" --global --force`, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        encoding: 'utf8',
+      });
       pluginRegistered = true;
     } catch (e) {
-      console.log(pc.yellow(`  Warning: opencode plugin command failed (${e.message}).`));
+      const stderr = e.stderr || '';
+      const stdout = e.stdout || '';
+      console.log(pc.yellow(`  Warning: opencode plugin command failed.`));
+      if (stderr.trim()) console.log(pc.gray(`  stderr: ${stderr.trim()}`));
+      if (stdout.trim()) console.log(pc.gray(`  stdout: ${stdout.trim()}`));
       console.log(pc.yellow('  Falling back to manual config registration.'));
       registerPluginManually(globalConfigPath, globalDir);
     }
@@ -223,8 +235,11 @@ function installGlobally() {
       try {
         execSync(`${opencodeCmd} plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
       } catch (e) {
-        // TUI plugin may already be registered with the server plugin
-        console.log(pc.yellow(`  Warning: opencode plugin for TUI failed (${e.message}). It may already be registered.`));
+        const stderr = e.stderr || '';
+        const stdout = e.stdout || '';
+        console.log(pc.yellow(`  Warning: opencode plugin for TUI failed.`));
+        if (stderr.trim()) console.log(pc.gray(`  stderr: ${stderr.trim()}`));
+        if (stdout.trim()) console.log(pc.gray(`  stdout: ${stdout.trim()}`));
       }
     }
   } else {
