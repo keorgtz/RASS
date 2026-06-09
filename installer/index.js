@@ -73,41 +73,100 @@ const THEME = {
 // ─── Elegant Cursive Banner — RASS Logo ───────────────────────────────────
 // Modern italic style with subtle shadows and rounded curves
 
-const BANNER_RAW = [
-  '        ╭────────────────────────────────────────────╮',
-  '       ╭                                              ╮',
-  '      │                                                │',
-  '      │           ╭╮         ╭╮         ╭╮         ╭╮  │',
-  '      │          ╱ ╲       ╱  ╲       ╱  ╲       ╱  ╲ │',
-  '      │         ╱  ╲      ╱    ╲     ╱    ╲     ╱    ╲│',
-  '      │        ╱╭──╮     ╱────╲     ╱╭──╯     ╱╭──╯  │',
-  '      │       ╱_╱  ╲   ╱      ╲   ╱      ╲   ╱      ╲ │',
-  '      │      ·      ·  ·╰──╯·   ·  ·╰──╯·   ·  ·╰──╯·  │',
-  '      │       ░      ░  ░  ░    ░  ░  ░    ░  ░  ░   │',
-  '      │                                                │',
-  '      │         Ryou Adaptive SDD System v3.0           │',
-  '      │                                                │',
-  '       ╰                                              ╰',
-  '        ╰────────────────────────────────────────────╰',
+// ─── Ryou ASCII Art Banner — Elegant Cursive Style ────────────────────────
+
+const RYOU_ASCII_RAW = [
+  '                 :+xX$$$X+:',
+  '           .+X$$$$$$$$$$$$$$$X;',
+  '        .X$$$$$$$$X+;:::::;+$$$$+',
+  '      .$$$$$$$x;:..........::;$$$x',
+  '     ;$$$$$$;...   .x$$$X....:$$$$:',
+  '   .:X$$$$+.      ;$$$X:.   .;$$$$:    ..                     .:;;..         .        ..',
+  '   .:;$$$x.     .X$$$x..   .:$$$$$.  .x$$$.    .$$$X.     .xX$$$$$$X.      ;$$$+     x$$X.',
+  '   ..::;+.    .:$$$$+     .+$$$$$.  :$$$$X.   ;$$$$X.   :$$$$X;::+$$x    .X$$$$;   .X$$$X.',
+  '    ....     .+$$$$+    .x$$$$$x   +$$$$x.   x$$$$$.  .X$$$$$+...:$$X   .$$$$X.  .;$$$$x.',
+  '            .x$$$$x:;x$$$$$$X+.  .x$$$$+   .X$$$$$.  :$$$$X;$X...x$$; .:$$$$X.  .+$$$$+',
+  '           .X$$$$X$$$$$$$x;:.   .x$$$$;   +$$$$$$.  ;$$$$X.:X$X.;$$X..+$$$$X.  .X$$$$;   .+$+',
+  '          ;$$$$$x::x$$$x..     .;$$$$+ ..$$+$$$$. .+$$$$$ .::X$$$$$X$$$$$$$. .;$$$$$+  .:$$;',
+  '        .X$$$$$+..:x$$$$.     .:$$$$X .X$x:X$$$;.x$$$$$$X ..:;X$$$$XxX$$$$. :X$$$$$$. ;X$x.',
+  '  .X+.+$$$$$$$;  .:+$$$$x    ..;$$$$$$$X..X$$$X$$X;x$$$$X..;X$$X::..;$$$$$X$$++$$$$$X$$X.',
+  ' .:X$$$$$$$$X.   ..;$$$$$:   .:;$$$$$X: .X$$$$X;...:X$$$$$$$$X:.   .;$$$$$$x.:+$$$$$$X:.',
+  ' .::X$$$$$X:     ..:x$$$$$:  ..::++:...+$$$$+..   .::;X$$XX;..     .:+$$X;. .::x$$X;.',
+  ' ..:::;;;..       .:;$$$$$$+......:+X$$$$$$:      ....:::...       ..::..   ...::...',
+  '   .....          ..:+$$$$$$$$$$$$$X::X$$$.',
+  '                   ..:;$$$$$$$$$$;..:$$$x.',
+  '                   ...::;x$$Xx$$$Xx$$$X.',
+  '                     .....:.::+$$$$$x:',
+  '                           ...:::::..',
+  '                             .....',
 ];
 
-const BANNER_COLORED = [
-  THEME.dim('        ╭────────────────────────────────────────────╮'),
-  THEME.dim('       ╭                                              ╮'),
-  THEME.dim('      │                                                │'),
-  THEME.secondary('      │           ╭╮         ╭╮         ╭╮         ╭╮  │'),
-  THEME.secondaryBright('      │          ╱ ╲       ╱  ╲       ╱  ╲       ╱  ╲ │'),
-  THEME.primary('      │         ╱  ╲      ╱    ╲     ╱    ╲     ╱    ╲│'),
-  THEME.primaryBright('      │        ╱╭──╮     ╱────╲     ╱╭──╯     ╱╭──╯  │'),
-  THEME.accent('      │       ╱_╱  ╲   ╱      ╲   ╱      ╲   ╱      ╲ │'),
-  THEME.accentBright('      │      ·      ·  ·╰──╯·   ·  ·╰──╯·   ·  ·╰──╯·  │'),
-  THEME.dim('      │       ░      ░  ░  ░    ░  ░  ░    ░  ░  ░   │'),
-  THEME.dim('      │                                                │'),
-  THEME.infoBright('      │         Ryou Adaptive SDD System v3.0           │'),
-  THEME.dim('      │                                                │'),
-  THEME.dim('       ╰                                              ╰'),
-  THEME.dim('        ╰────────────────────────────────────────────╰'),
-];
+const BANNER_FRAME_WIDTH = 108;
+
+function colorizeAsciiLine(line) {
+  let result = '';
+  for (const ch of line) {
+    if (ch === ' ') {
+      result += ch;
+    } else if ('$X'.includes(ch)) {
+      // Main logo characters — bright cyan
+      result += THEME.primaryBright(ch);
+    } else if ('x+;'.includes(ch)) {
+      // Secondary details — medium cyan
+      result += THEME.primary(ch);
+    } else if (':,.'.includes(ch)) {
+      // Shadows/dots — dim cyan/gray
+      result += THEME.dim(pc.cyan(ch));
+    } else {
+      // Fallback
+      result += THEME.primary(ch);
+    }
+  }
+  return result;
+}
+
+function centerInFrame(text, width) {
+  const pad = Math.max(0, Math.floor((width - text.length) / 2));
+  return ' '.repeat(pad) + text;
+}
+
+function buildBannerColored() {
+  const lines = [];
+  const w = BANNER_FRAME_WIDTH;
+  
+  // Top frame
+  lines.push(THEME.dim('        ╭' + '─'.repeat(w - 2) + '╮'));
+  lines.push(THEME.dim('       ╭' + ' '.repeat(w - 2) + '╮'));
+  
+  // Empty line
+  lines.push(THEME.dim('      │' + ' '.repeat(w - 2) + '│'));
+  
+  // ASCII art lines
+  for (const artLine of RYOU_ASCII_RAW) {
+    const centered = centerInFrame(artLine, w - 2);
+    const colored = colorizeAsciiLine(centered);
+    lines.push(THEME.dim('      │') + colored + THEME.dim('│'));
+  }
+  
+  // Empty line
+  lines.push(THEME.dim('      │' + ' '.repeat(w - 2) + '│'));
+  
+  // Subtitle
+  const subtitle = 'Ryou Adaptive SDD System v3.0';
+  const centeredSubtitle = centerInFrame(subtitle, w - 2);
+  lines.push(THEME.dim('      │') + THEME.infoBright(centeredSubtitle) + THEME.dim('│'));
+  
+  // Empty line
+  lines.push(THEME.dim('      │' + ' '.repeat(w - 2) + '│'));
+  
+  // Bottom frame
+  lines.push(THEME.dim('       ╰' + ' '.repeat(w - 2) + '╰'));
+  lines.push(THEME.dim('        ╰' + '─'.repeat(w - 2) + '╯'));
+  
+  return lines;
+}
+
+const BANNER_COLORED = buildBannerColored();
 
 // ─── Animation: Line-by-line reveal ───────────────────────────────────────
 
