@@ -759,7 +759,9 @@ Result: ✅ Root cause identified, fixed, verified
 
 ## 📜 License
 
-**KeorSoft** — Private Framework
+**KeorSoft Open Development License (KODL) v1.0**
+
+Free and open source for use in developing any commercial or non-commercial tool or software. RASS itself may not be sold, resold, or commercialized as a standalone product. See [LICENSE.md](./LICENSE.md) for full terms.
 
 Built with ❤️ by Kevin Keor for the OpenCode ecosystem.
 
