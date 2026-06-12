@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guía de Uso · REASP</title>
+  <style>
+    :root {
+      --primary: #00d4ff;
+      --primary-dark: #00a3c4;
+      --secondary: #ff00ff;
+      --accent: #8a2be2;
+      --bg-dark: #0f111a;
+      --bg-card: #1a1d2b;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --border: #2d334a;
+      --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .logo-banner {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+    }
+
+    .step-number {
+      background: var(--primary);
+      color: var(--bg-dark);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    code {
+      background: #000;
+      color: #50fa7b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.9em;
+    }
+
+    pre {
+      background: #000;
+      color: #f8f8f2;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.85rem;
+    }
+
+    .workflow-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      margin-top: 40px;
+    }
+
+    .workflow-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .workflow-header h2 {
+      color: var(--secondary);
+      font-size: 2rem;
+    }
+
+    .agent-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .badge-efi { background: var(--accent); color: white; }
+    .badge-orch { background: var(--primary); color: var(--bg-dark); }
+
+    .phase-box {
+      border-left: 4px solid var(--border);
+      padding-left: 24px;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .phase-box::before {
+      content: '';
+      position: absolute;
+      left: -10px;
+      top: 0;
+      width: 16px;
+      height: 16px;
+      background: var(--primary);
+      border-radius: 50%;
+      border: 4px solid var(--bg-dark);
+    }
+
+    .phase-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .prompt-box {
+      background: #2a2e42;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+      border-left: 4px solid var(--secondary);
+    }
+
+    .prompt-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .prompt-text {
+      font-style: italic;
+      color: #fff;
+    }
+
+    .highlight {
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <span class="logo-banner">REASP</span>
+    <div class="subtitle">
+      <strong>Ryou Enterprise Adaptive SDD Protocol</strong><br>
+      La fusión definitiva de RASS (Orquestación Adaptativa) y REFI (Planeación Empresarial) para OpenCode.
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Installation Card -->
+    <div class="card">
+      <h2><span class="step-number">1</span> Instalación</h2>
+      <p>Para instalar REASP en tu sistema, clona el repositorio de RASS y ejecuta el instalador visual.</p>
+      <pre>
+git clone https://github.com/kevinkeor/RASS.git
+cd RASS/installer
+npm install
+node index.js</pre>
+      <p>En el menú interactivo, selecciona <span class="highlight">"Install globally"</span> para habilitar REASP en todos tus proyectos de OpenCode.</p>
+    </div>
+
+    <!-- Configuration Card -->
+    <div class="card">
+      <h2><span class="step-number">2</span> Configuración</h2>
+      <p>Una vez instalado, puedes gestionar el workflow activo directamente desde OpenCode usando comandos slash:</p>
+      <ul>
+        <li><code>/reasp-setup</code>: Centro de mando para cambiar el agente activo.</li>
+        <li><code>/reasp</code>: Alias rápido para el setup.</li>
+        <li><code>/sdd</code>: Cambia el <strong>ModeProfile</strong> (Fast, Architecture, UI, etc.).</li>
+      </ul>
+      <p>Para empezar una nueva feature, asegúrate de tener activo el <span class="highlight">Ryou EFI Planner</span>.</p>
+    </div>
+
+    <!-- Tooling Card -->
+    <div class="card">
+      <h2><span class="step-number">3</span> Herramientas</h2>
+      <p>REASP despliega un ecosistema completo:</p>
+      <ul>
+        <li><strong>Ryou EFI Planner</strong>: Especialista en arquitectura y packets REFI.</li>
+        <li><strong>Ryou Orchestrator</strong>: Especialista en ejecución y despliegue.</li>
+        <li><strong>RASS Core</strong>: Motor de routing de modelos y fases.</li>
+        <li><strong>REFI Toolkit</strong>: Reglas globales y plantillas de blueprint.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="workflow-container">
+    <div class="workflow-header">
+      <h2>Ejemplo Práctico: API Web con C#</h2>
+      <p>Implementemos un <strong>"Módulo de Gestión de Inventarios"</strong> desde cero.</p>
+    </div>
+
+    <!-- PHASE 1 -->
+    <div class="phase-box">
+      <div class="agent-badge badge-efi">Fase 1: Planeación (Ryou EFI Planner)</div>
+      <div class="phase-title">Generación del Packet REFI</div>
+      <p>Activa el agente EFI vía <code>/reasp-setup</code> &rarr; <strong>Ryou EFI Planner</strong>.</p>
+      
+      <div class="prompt-box">
+        <span class="prompt-label">Usuario</span>
+        <span class="prompt-text">"Necesito implementar un módulo de Gestión de Inventarios para una API Web en C# (.NET 9). Incluye control de stock, alertas de stock bajo y reportes de movimiento."</span>
+      </div>
+      
+      <p>El agente no escribirá código aún. Creará la estructura <code>.refi/modules/inventario/</code> con:</p>
+      <ul>
+        <li><strong>master-blueprint.md</strong>: Definición de endpoints, modelos de datos y riesgos.</li>
+        <li><strong>domain-shards/</strong>: Fragmentos de trabajo (01-Persistencia, 02-Servicios, 03-API).</li>
+        <li><strong>orchestration-map.md</strong>: Orden exacto de ejecución y puertas de verificación.</li>
+      </ul>
+    </div>
+
+    <!-- PHASE 2 -->
+    <div class="phase-box">
+      <div class="agent-badge badge-orch">Fase 2: Implementación (Ryou Orchestrator)</div>
+      <div class="phase-title">Ejecución Incremental</div>
+      <p>Ahora, cambia el workflow vía <code>/reasp-setup</code> &rarr; <strong>Ryou Orchestrator</strong>.</p>
+      
+      <div class="prompt-box">
+        <span class="prompt-label">Usuario</span>
+        <span class="prompt-text">"Basándote en el packet de Inventario, implementa el shard 01 (Persistencia y Base de Datos)."</span>
+      </div>
+      
+      <p>El Orquestador ejecutará el flujo adaptativo (ej. <strong>Architecture Mode</strong>):</p>
+      <ul>
+        <li><strong>Explore</strong>: Analiza la base de datos actual.</li>
+        <li><strong>Apply</strong>: Crea las entidades de EF Core y la migración.</li>
+        <li><strong>Verify</strong>: Valida que la migración se aplique correctamente.</li>
+      </ul>
+    </div>
+
+    <!-- PHASE 3 -->
+    <div class="phase-box">
+      <div class="agent-badge badge-orch">Fase 3: Cierre y Verificación</div>
+      <div class="phase-title">Aseguramiento de Calidad</div>
+      <p>Repite el proceso para los shards 02 y 03. Al finalizar:</p>
+      
+      <div class="prompt-box">
+        <span class="prompt-label">Usuario</span>
+        <span class="prompt-text">"Genera el reporte de verificación final para el módulo de Inventario y actualiza el resumen diario."</span>
+      </div>
+      
+      <p>El sistema cerrará el ciclo actualizando <code>verification.md</code> y creando el resumen visual en <code>AI/Summarys/summary-YYYY-MM-DD.html</code>.</p>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 Ryou Enterprise Adaptive SDD Protocol &bull; Powered by OpenCode
+  </footer>
+</div>
+
+</body>
+</html>

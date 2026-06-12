@@ -12,6 +12,11 @@ import {
   getCurrentModeProfile,
   generateRuntime,
   getStatus,
+  getReaspStatus,
+  setPrimaryWorkflow,
+  setFeatureEnabled,
+  getReaspConfig,
+  REASP_PRIMARY_AGENTS,
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   AVAILABLE_MODELS,
@@ -168,10 +173,14 @@ export default {
               switch (args.action) {
                 case 'status': {
                   const status = getStatus();
+                  const reasp = getReaspStatus();
                   const agents = Object.keys(RYOU_AGENTS);
                   return {
-                    title: 'RASS Full Status',
+                    title: 'REASP Full Status',
                     output:
+                      `**System:** ${reasp.full_name}\n` +
+                      `**Default workflow:** ${reasp.default_workflow}\n` +
+                      `**REFI enabled:** ${reasp.features?.refi?.enabled ? 'yes' : 'no'}\n` +
                       `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
                       `**Phases:** ${status.modeprofile?.phases?.join(' → ') || 'none'}\n` +
                       `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
@@ -183,14 +192,15 @@ export default {
 
                 case 'check': {
                   return {
-                    title: 'Ryou Agent Check',
+                    title: 'REASP Agent Check',
                     output:
-                      `Ryou agents are defined in RASS and ready to deploy.\n\n` +
+                      `Ryou agents and the REFI toolkit are defined in REASP and ready to deploy.\n\n` +
                       `Available agents:\n` +
                       Object.entries(RYOU_AGENTS).map(([name, cfg]) =>
                         `  - **${name}** (${cfg.mode}): ${cfg.model} — ${cfg.description}`
                       ).join('\n') +
-                      `\n\nDefault agent: **ryou-orchestrator**\n` +
+                      `\n\nPrimary workflows: **${REASP_PRIMARY_AGENTS.join('**, **')}**\n` +
+                      `Default agent: **ryou-orchestrator**\n` +
                       `Default model: **${RYOU_CONFIG_TEMPLATE.model}**\n` +
                       `Small model: **${RYOU_CONFIG_TEMPLATE.small_model}**\n\n` +
                       `Use action "deploy" to install these agents into your OpenCode configuration.`,
@@ -203,16 +213,16 @@ export default {
                   ).join('\n');
 
                   return {
-                    title: 'Ryou Agents Ready for Deployment',
+                    title: 'REASP Ready for Deployment',
                     output:
-                      `The following Ryou agents are configured in RASS:\n\n${agentList}\n\n` +
+                      `The following REASP agents are configured:\n\n${agentList}\n\n` +
                       `To deploy these agents to your OpenCode configuration, run:\n` +
                       `\`\`\`\ncd installer && node index.js install\n\`\`\`\n\n` +
                       `This will:\n` +
-                      `1. Copy RASS plugin files globally\n` +
+                      `1. Copy RASS + REFI assets globally\n` +
                       `2. Deploy Ryou agents to your OpenCode config\n` +
-                      `3. Deploy rules and agent prompts\n` +
-                      `4. Set ryou-orchestrator as default agent\n` +
+                      `3. Deploy REFI rules, templates, and skill\n` +
+                      `4. Let you choose between ryou-efi-planner and ryou-orchestrator\n` +
                       `5. Configure SDD ModeProfile "ryouset" as default`,
                   };
                 }
@@ -222,6 +232,77 @@ export default {
               }
             } catch (err) {
               return { title: 'RASS Error', output: `Error: ${err.message}` };
+            }
+          },
+        }),
+
+        reasp_setup: tool({
+          description:
+            'Manage REASP setup. View combined RASS/REFI status, switch between Ryou EFI Planner and Ryou Orchestrator, or enable and disable REFI.',
+          args: {
+            action: tool.schema
+              .enum(['status', 'deploy', 'switch-workflow', 'toggle-feature'])
+              .describe('Action: status, deploy, switch-workflow, or toggle-feature'),
+            workflow: tool.schema
+              .string()
+              .optional()
+              .describe('Workflow agent to activate: ryou-efi-planner or ryou-orchestrator'),
+            feature: tool.schema
+              .string()
+              .optional()
+              .describe('Feature to toggle: refi or rass'),
+            enabled: tool.schema
+              .boolean()
+              .optional()
+              .describe('Desired feature state for toggle-feature'),
+          },
+          async execute(args, _context) {
+            try {
+              switch (args.action) {
+                case 'status': {
+                  const status = getReaspStatus();
+                  return {
+                    title: 'REASP Status',
+                    output:
+                      `**System:** ${status.full_name}\n` +
+                      `**Workflow agent:** ${status.default_workflow}\n` +
+                      `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
+                      `**REFI enabled:** ${status.features?.refi?.enabled ? 'yes' : 'no'}\n` +
+                      `**RASS enabled:** ${status.features?.rass?.enabled ? 'yes' : 'no'}\n` +
+                      `**Primary agents:** ${status.primary_agents.join(', ')}`,
+                  };
+                }
+                case 'deploy': {
+                  return {
+                    title: 'REASP Deployment',
+                    output: 'Run `cd installer && node index.js install` to deploy REASP globally with RASS and REFI together.',
+                  };
+                }
+                case 'switch-workflow': {
+                  if (!args.workflow) {
+                    return { title: 'Error', output: `workflow is required. Available: ${REASP_PRIMARY_AGENTS.join(', ')}` };
+                  }
+                  const status = setPrimaryWorkflow(args.workflow);
+                  return {
+                    title: 'Workflow Switched',
+                    output: `REASP is now using **${status.default_workflow}** as the default agent.`,
+                  };
+                }
+                case 'toggle-feature': {
+                  if (!args.feature || typeof args.enabled !== 'boolean') {
+                    return { title: 'Error', output: 'feature and enabled are required for toggle-feature.' };
+                  }
+                  const status = setFeatureEnabled(args.feature, args.enabled);
+                  return {
+                    title: 'Feature Updated',
+                    output: `Feature **${args.feature}** is now **${status.features?.[args.feature]?.enabled ? 'enabled' : 'disabled'}**. Active workflow: **${status.default_workflow}**.`,
+                  };
+                }
+                default:
+                  return { title: 'Error', output: `Unknown action: ${args.action}` };
+              }
+            } catch (err) {
+              return { title: 'REASP Error', output: `Error: ${err.message}` };
             }
           },
         }),

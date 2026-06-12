@@ -4,11 +4,11 @@
 <!-- RASS — Visual Header Banner -->
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 
-# ✦ RASS ✦
+# ✦ REASP ✦
 
-### ◈ Ryou Adaptive SDD System ◈
+### ◈ Ryou Enterprise Adaptive SDD Protocol ◈
 
-*The definitive Sub-Agent Driven Development framework for OpenCode*
+*RASS orchestration + REFI enterprise planning for OpenCode*
 
 ---
 
@@ -48,7 +48,7 @@
 
 ## 📋 Table of Contents
 
-- [🎯 What is RASS?](#-what-is-rass)
+- [🎯 What is REASP?](#-what-is-reasp)
 - [✨ Features](#-features)
 - [🚀 Quick Start](#-quick-start)
 - [📦 Installation](#-installation)
@@ -64,14 +64,25 @@
 ---
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
-<!-- What is RASS? -->
+<!-- What is REASP? -->
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 
-## 🎯 What is RASS?
+## 🎯 What is REASP?
 
-**RASS** (Ryou Adaptive SDD System) is a next-generation **Sub-Agent Driven Development (SDD)** framework that transforms how AI agents collaborate on software projects.
+**REASP** (Ryou Enterprise Adaptive SDD Protocol) is the unified distribution of **RASS** and **REFI**.
 
-Instead of using a one-size-fits-all massive autonomous pipeline, **RASS adapts dynamically** to each task's complexity:
+It combines:
+
+- **RASS** for adaptive orchestration and implementation workflows.
+- **REFI** for enterprise packet planning, domain sharding, and implementation handoff.
+
+Instead of forcing one agent to do everything, REASP lets you:
+
+1. plan deeply with **Ryou EFI Planner**,
+2. switch to **Ryou Orchestrator**,
+3. implement with the existing RASS subagent ecosystem.
+
+Instead of using a one-size-fits-all massive autonomous pipeline, **REASP adapts dynamically** to each task's complexity:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -85,9 +96,9 @@ Instead of using a one-size-fits-all massive autonomous pipeline, **RASS adapts 
 
 > **The problem today is not "having an AI" — it's "using the right model, with the right workflow, for the right task."**
 
-RASS solves this by combining **adaptive pipeline complexity** with **intelligent model routing**:
+REASP solves this by combining **adaptive pipeline complexity**, **planning packets**, and **intelligent model routing**:
 
-| Aspect | Traditional AI | RASS |
+| Aspect | Traditional AI | REASP |
 |--------|---------------|------|
 | **Pipeline** | Fixed, always full | Adaptive to task complexity |
 | **Model Usage** | Single model for everything | Per-phase model routing |
@@ -115,7 +126,8 @@ RASS solves this by combining **adaptive pipeline complexity** with **intelligen
 - **Fallback Chains**: Automatic fallback when primary model is unavailable
 - **OpenCode Go Native**: All models stay within OpenCode Go ecosystem
 
-### 🤖 7 Specialized Ryou Agents
+### 🤖 8 Specialized Ryou Agents
+- **Ryou EFI Planner**: REFI packet planning, shard generation, implementation handoff (GLM-5.1)
 - **Orchestrator**: Routes, delegates, coordinates (GLM-5.1)
 - **Planner**: Breaks work into phases, identifies risks (GLM-5.1)
 - **Builder**: C#, .NET, EF Core, XAML, Blazor, MAUI implementation (Kimi K2.6)
@@ -134,11 +146,13 @@ RASS solves this by combining **adaptive pipeline complexity** with **intelligen
 - `/sdd` — Switch, create, edit, or delete ModeProfiles
 - `/sdd-mode` / `/sm` — Quick mode switch
 - `/sdd-profile` / `/sp` — Quick profile switch
-- `/rass-setup` / `/rs` — View status, switch to RyouSet, view agents
+- `/rass-setup` / `/rs` — Legacy alias for REASP setup
+- `/reasp-setup` / `/reasp` — Switch between Ryou EFI Planner and Ryou Orchestrator
 
 ### 🔧 AI Tools (Server-Side)
 - `sdd_mode_profile` — Programmatic ModeProfile management
-- `rass_setup` — RASS status, agent deployment, configuration check
+- `rass_setup` — Backward-compatible RASS/REASP status tool
+- `reasp_setup` — REASP status, workflow switching, and REFI toggling
 
 ---
 
@@ -148,7 +162,7 @@ RASS solves this by combining **adaptive pipeline complexity** with **intelligen
 
 ## 🚀 Quick Start
 
-### 1. Install RASS
+### 1. Install REASP
 
 ```bash
 # Clone the repository
@@ -177,7 +191,15 @@ node index.js
 
 ### 3. Start Developing
 
-RASS automatically routes your tasks to the right agent with the right model:
+REASP automatically routes your tasks to the right agent with the right model:
+
+```
+You: "Necesito diseñar una nueva feature empresarial"
+
+REASP:
+  ├─ Ryou EFI Planner       → Crea request, blueprint, shards y orchestration map
+  └─ /reasp-setup         → Cambias al Ryou Orchestrator para ejecutar
+```
 
 ```
 You: "Create a user registration API endpoint"
@@ -207,9 +229,9 @@ node index.js
 ```
 
 The interactive installer will guide you through:
-1. **Install Globally** — Register RASS as an OpenCode plugin for all projects
-2. **Install Locally** — Copy RASS to the current workspace `.opencode/`
-3. **Uninstall** — Remove RASS from OpenCode
+1. **Install Globally** — Register REASP as an OpenCode plugin for all projects
+2. **Install Locally** — Copy REASP to the current workspace `.opencode/`
+3. **Uninstall** — Remove REASP from OpenCode
 
 ### CLI Commands
 
@@ -232,9 +254,11 @@ node installer/index.js uninstall
 ├── tui.js                 # TUI plugin — slash commands
 ├── rass-core.js           # Core logic — ModeProfiles, runtime
 ├── package.json           # Plugin manifest
-├── sdd.config.json        # Global RASS configuration
-├── agents/                # 7 Ryou agent prompts
+├── sdd.config.json        # Global RASS modeprofile configuration
+├── reasp.config.json      # Combined REASP workflow state
+├── agents/                # 8 Ryou agent prompts
 │   ├── ryou-orchestrator.md
+│   ├── ryou-efi-planner.md
 │   ├── planner.md
 │   ├── builder.md
 │   ├── architect.md
@@ -282,7 +306,8 @@ node installer/index.js uninstall
 | `/sdd` | `/s` | Switch, create, edit, or delete ModeProfiles |
 | `/sdd-mode` | `/sm` | Quick alias for `/sdd` |
 | `/sdd-profile` | `/sp` | Quick alias for `/sdd` |
-| `/rass-setup` | `/rs` | View status, switch to RyouSet, view agents |
+| `/rass-setup` | `/rs` | Legacy alias for REASP setup |
+| `/reasp-setup` | `/reasp` | Switch workflow between Ryou EFI Planner and Ryou Orchestrator |
 
 #### `/sdd` — ModeProfile Manager
 
@@ -310,7 +335,7 @@ node installer/index.js uninstall
 5. Configure models, effort, fallbacks
 6. Save
 
-#### `/rass-setup` — RASS Control Center
+#### `/reasp-setup` — REASP Control Center
 
 ```
 ┌─────────────────────────────────────────┐
@@ -404,7 +429,7 @@ ModeProfiles combine **which phases run** with **which models handle each phase*
 
 ## 🤖 Ryou Agents
 
-When you install RASS globally, it deploys **7 specialized agents** to your OpenCode configuration:
+When you install REASP globally, it deploys **8 specialized agents** to your OpenCode configuration, including **Ryou EFI Planner** for planning and **Ryou Orchestrator** for implementation.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -782,3 +807,10 @@ Built with ❤️ by Kevin Keor for the OpenCode ecosystem.
 </p>
 
 </div>
+├── skills/
+│   └── refi-enterprise-feature-implementation/
+├── refi/                  # REFI toolkit installed with REASP
+│   ├── README.md
+│   ├── config.yaml
+│   ├── rules/
+│   └── templates/

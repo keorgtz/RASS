@@ -31,6 +31,7 @@ function writeJson(filePath, data) {
 
 function getModeProfilesDir() { return join(__dirname, 'sdd-profiles'); }
 function getRuntimeDir() { return join(__dirname, 'runtime'); }
+function getReaspConfigPath() { return join(__dirname, 'reasp.config.json'); }
 
 function getModeProfilePath(name) { return join(getModeProfilesDir(), `${name}.json`); }
 function getCurrentModeProfilePath() { return join(getRuntimeDir(), 'current-modeprofile.json'); }
@@ -43,6 +44,14 @@ function getHomeDir() {
 
 function getGlobalConfigPath() {
   return join(getHomeDir(), '.config', 'opencode', 'opencode.json');
+}
+
+function readOpenCodeConfig(configPath = getGlobalConfigPath()) {
+  return readJson(configPath) || {};
+}
+
+function writeOpenCodeConfig(configPath = getGlobalConfigPath(), data = {}) {
+  writeJson(configPath, data);
 }
 
 // ─── ModeProfiles ───────────────────────────────────────────────────────────
@@ -105,21 +114,25 @@ export function syncAgentsWithModeProfile(modeProfileName) {
 
   // Map ModeProfile phases to Ryou agent roles
   const phaseToAgent = {
-    orchestrator: 'ryou-orchestrator',
-    propose: 'planner',
-    apply: 'builder',
-    design: 'architect',
-    verify: 'reviewer',
-    archive: 'documentation',
+    orchestrator: ['ryou-orchestrator', 'ryou-efi-planner'],
+    propose: ['planner'],
+    apply: ['builder'],
+    design: ['architect'],
+    verify: ['reviewer'],
+    archive: ['documentation'],
   };
 
   const defaultConfig = mp.default || {};
 
   // Update agent models based on ModeProfile phase configuration
-  for (const [phase, agentName] of Object.entries(phaseToAgent)) {
+  for (const [phase, agentNames] of Object.entries(phaseToAgent)) {
     const phaseConfig = mp[phase] || defaultConfig;
-    if (phaseConfig?.primary && config.agent[agentName]) {
-      config.agent[agentName].model = phaseConfig.primary;
+    if (phaseConfig?.primary) {
+      for (const agentName of agentNames) {
+        if (config.agent[agentName]) {
+          config.agent[agentName].model = phaseConfig.primary;
+        }
+      }
     }
   }
 
@@ -285,6 +298,103 @@ export function getStatus() {
   };
 }
 
+export const REASP_PRIMARY_AGENTS = ['ryou-orchestrator', 'ryou-efi-planner'];
+
+export function getReaspConfig() {
+  return readJson(getReaspConfigPath()) || {
+    system_name: 'REASP',
+    full_name: 'Ryou Enterprise Adaptive SDD Protocol',
+    version: '1.0.0',
+    default_modeprofile: 'ryouset',
+    default_workflow: 'ryou-orchestrator',
+    features: {
+      rass: { enabled: true, label: 'Ryou Orchestrator' },
+      refi: { enabled: true, label: 'Ryou EFI Planner' },
+    },
+  };
+}
+
+export function setPrimaryWorkflow(agentName, configPath = getGlobalConfigPath()) {
+  if (!REASP_PRIMARY_AGENTS.includes(agentName)) {
+    throw new Error(`Unknown REASP workflow agent '${agentName}'. Available: ${REASP_PRIMARY_AGENTS.join(', ')}`);
+  }
+
+  const config = readOpenCodeConfig(configPath);
+  if (!config.agent) config.agent = {};
+
+  // ── Clean up legacy agent name to prevent duplicates ──
+  if (config.agent['ryou-efi-agent']) {
+    delete config.agent['ryou-efi-agent'];
+  }
+  if (config.default_agent === 'ryou-efi-agent') {
+    config.default_agent = 'ryou-efi-planner';
+  }
+
+  if (!config.agent[agentName] && RYOU_AGENTS[agentName]) {
+    config.agent[agentName] = { ...RYOU_AGENTS[agentName] };
+  }
+
+  config.default_agent = agentName;
+  writeOpenCodeConfig(configPath, config);
+
+  const reasp = getReaspConfig();
+  reasp.default_workflow = agentName;
+  if (agentName === 'ryou-orchestrator') {
+    reasp.features.rass.enabled = true;
+  }
+  if (agentName === 'ryou-efi-planner') {
+    reasp.features.refi.enabled = true;
+  }
+  writeJson(getReaspConfigPath(), reasp);
+
+  return getReaspStatus(configPath);
+}
+
+export function setFeatureEnabled(featureName, enabled, configPath = getGlobalConfigPath()) {
+  const reasp = getReaspConfig();
+  if (!reasp.features?.[featureName]) {
+    throw new Error(`Unknown REASP feature '${featureName}'. Available: ${Object.keys(reasp.features || {}).join(', ')}`);
+  }
+
+  reasp.features[featureName].enabled = enabled;
+  writeJson(getReaspConfigPath(), reasp);
+
+  const currentConfig = readOpenCodeConfig(configPath);
+  let currentAgent = currentConfig.default_agent || reasp.default_workflow;
+
+  // ── Normalize legacy agent name ──
+  if (currentAgent === 'ryou-efi-agent') {
+    currentAgent = 'ryou-efi-planner';
+  }
+
+  if (!enabled && featureName === 'refi' && currentAgent === 'ryou-efi-planner' && reasp.features?.rass?.enabled !== false) {
+    return setPrimaryWorkflow('ryou-orchestrator', configPath);
+  }
+
+  if (!enabled && featureName === 'rass' && currentAgent === 'ryou-orchestrator' && reasp.features?.refi?.enabled !== false) {
+    return setPrimaryWorkflow('ryou-efi-planner', configPath);
+  }
+
+  return getReaspStatus(configPath);
+}
+
+export function getReaspStatus(configPath = getGlobalConfigPath()) {
+  const reasp = getReaspConfig();
+  const config = readOpenCodeConfig(configPath);
+  const status = getStatus();
+
+  return {
+    system_name: reasp.system_name,
+    full_name: reasp.full_name,
+    version: reasp.version,
+    current_modeprofile: status.current_modeprofile,
+    modeprofile: status.modeprofile,
+    default_workflow: config.default_agent || reasp.default_workflow || 'ryou-orchestrator',
+    features: reasp.features,
+    primary_agents: REASP_PRIMARY_AGENTS,
+  };
+}
+
 /**
  * Get the RASS configuration.
  * @returns {object}
@@ -349,6 +459,27 @@ export const RYOU_AGENTS = {
       edit: { '*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\*': 'deny', 'C:\\Users\\kevin\\.MeridianUI\\**': 'deny' },
       bash: 'allow',
       task: 'allow',
+      webfetch: 'allow',
+      websearch: 'allow',
+      external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' },
+    },
+  },
+  'ryou-efi-planner': {
+    description: 'Primary planning agent for REFI packet generation and enterprise implementation handoff.',
+    mode: 'primary',
+    model: 'opencode-go/glm-5.1',
+    temperature: 0.1,
+    steps: 32,
+    prompt: '{file:./agents/ryou-efi-planner.md}',
+    permission: {
+      read: 'allow',
+      glob: 'allow',
+      grep: 'allow',
+      list: 'allow',
+      edit: { '*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\*': 'deny', 'C:\\Users\\kevin\\.MeridianUI\\**': 'deny' },
+      bash: 'allow',
+      task: 'allow',
+      todowrite: 'allow',
       webfetch: 'allow',
       websearch: 'allow',
       external_directory: { '*': 'ask', 'C:\\Users\\kevin\\.MeridianUI\\*': 'allow', 'C:\\Users\\kevin\\.MeridianUI\\**': 'allow' },
@@ -478,6 +609,7 @@ export const RYOU_CONFIG_TEMPLATE = {
       'dotnet-clean-architecture': 'allow',
       'aspnet-api': 'allow',
       efcore: 'allow',
+      'refi-enterprise-feature-implementation': 'allow',
       meridianui: 'allow',
       'blazor-ui': 'allow',
       'wpf-xaml': 'allow',
@@ -488,7 +620,15 @@ export const RYOU_CONFIG_TEMPLATE = {
       'review-workflow': 'allow',
     },
   },
-  instructions: ['rules/global-rules.md', 'rules/meridianui.md'],
+  instructions: [
+    'rules/global-rules.md',
+    'rules/meridianui.md',
+    'refi/README.md',
+    'refi/config.yaml',
+    'refi/rules/global-rules.md',
+    'refi/rules/anti-hallucination.md',
+    'refi/rules/quality-gates.md',
+  ],
   watcher: {
     ignore: [
       '**/.git/**',
@@ -509,6 +649,7 @@ export const RYOU_CONFIG_TEMPLATE = {
 export const RYOU_DEPLOY_FILES = {
   agents: [
     'agents/ryou-orchestrator.md',
+    'agents/ryou-efi-planner.md',
     'agents/planner.md',
     'agents/builder.md',
     'agents/architect.md',
@@ -519,6 +660,13 @@ export const RYOU_DEPLOY_FILES = {
   rules: [
     'rules/global-rules.md',
     'rules/meridianui.md',
+  ],
+  skills: [
+    'skills/refi-enterprise-feature-implementation/SKILL.md',
+  ],
+  refi: [
+    'refi/README.md',
+    'refi/config.yaml',
   ],
 };
 
@@ -542,6 +690,14 @@ export function mergeRyouAgents(config) {
 
   // Ensure agent section exists
   if (!merged.agent) merged.agent = {};
+
+  // ── Clean up legacy agent name to prevent duplicates ──
+  if (merged.agent['ryou-efi-agent']) {
+    delete merged.agent['ryou-efi-agent'];
+  }
+  if (merged.default_agent === 'ryou-efi-agent') {
+    merged.default_agent = 'ryou-efi-planner';
+  }
 
   // Add missing agents (don't overwrite existing ones)
   for (const [name, agentConfig] of Object.entries(RYOU_AGENTS)) {

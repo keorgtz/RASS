@@ -1,0 +1,40 @@
+ system:
+   name: REFI
+   expanded_name: Ryou Enterprise Feature Implementation
+   language: es-MX
+   documentation_mode: documentation-first-execution
+
+ defaults:
+   auto_create_packet: true
+   auto_begin_implementation: false
+   ask_only_if_blocked: true
+   require_verification_between_shards: true
+   require_daily_summary: true
+
+ project_profile:
+   primary_stack:
+     - .NET 9
+     - C#
+     - WPF
+     - Entity Framework Core
+     - SQL Server
+   ui_system: MeridianUI
+   architecture_bias: pragmatic-clean-modular
+   copy_tone: enterprise-soft
+
+ packet:
+   required_files:
+     - request.md
+     - master-blueprint.md
+     - orchestration-map.md
+     - progress.md
+     - verification.md
+   shard_folder: domain-shards
+   shard_naming: "NN-domain-name.md"
+
+ quality_gates:
+   - scope-grounded
+   - architecture-consistent
+   - no-fake-abstractions
+   - no-unverified-advance
+   - project-convention-aligned

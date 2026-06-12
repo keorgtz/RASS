@@ -1,9 +1,9 @@
 /**
- * RASS Installer — Modern TUI with ASCII Art Banner
+ * REASP Installer — Modern TUI with ASCII Art Banner
  *
  * Usage:
- *   node installer/index.js install    — Install RASS globally into OpenCode
- *   node installer/index.js uninstall  — Uninstall RASS globally from OpenCode
+ *   node installer/index.js install    — Install REASP globally into OpenCode
+ *   node installer/index.js uninstall  — Uninstall REASP globally from OpenCode
  *   node installer/index.js            — Interactive mode (choose install or uninstall)
  */
 
@@ -145,7 +145,7 @@ function buildBannerColored() {
   lines.push(frameEmpty);
   
   // Subtitle
-  const subtitle = 'Ryou Adaptive SDD System v3.0';
+  const subtitle = 'REASP · RASS + REFI Unified Installer';
   let subtitleContent = subtitle;
   if (subtitleContent.length < W) {
     const padLeft = Math.floor((W - subtitleContent.length) / 2);
@@ -385,6 +385,46 @@ function getGlobalConfigPath() {
   return path.join(getGlobalOpenCodeDir(), 'opencode.json');
 }
 
+function getInstalledReaspConfigPath(globalDir) {
+  return path.join(globalDir, 'reasp.config.json');
+}
+
+function setInstalledWorkflow(globalDir, globalConfigPath, workflowAgent) {
+  let config = {};
+  if (fs.existsSync(globalConfigPath)) {
+    try {
+      config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
+    } catch {
+      config = {};
+    }
+  }
+
+  config.default_agent = workflowAgent;
+  fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
+
+  const reaspConfigPath = getInstalledReaspConfigPath(globalDir);
+  let reaspConfig = {};
+  if (fs.existsSync(reaspConfigPath)) {
+    try {
+      reaspConfig = JSON.parse(fs.readFileSync(reaspConfigPath, 'utf8'));
+    } catch {
+      reaspConfig = {};
+    }
+  }
+
+  reaspConfig.default_workflow = workflowAgent;
+  if (!reaspConfig.features) reaspConfig.features = {};
+  if (!reaspConfig.features.rass) reaspConfig.features.rass = { enabled: true, label: 'Ryou Orchestrator' };
+  if (!reaspConfig.features.refi) reaspConfig.features.refi = { enabled: true, label: 'Ryou EFI Planner' };
+  if (workflowAgent === 'ryou-orchestrator') {
+    reaspConfig.features.rass.enabled = true;
+  }
+  if (workflowAgent === 'ryou-efi-planner') {
+    reaspConfig.features.refi.enabled = true;
+  }
+  fs.writeFileSync(reaspConfigPath, JSON.stringify(reaspConfig, null, 2), 'utf8');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CORE OPERATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -432,6 +472,7 @@ function resolveAgentModels(modeProfileName) {
   // Fallback defaults (legacy hardcoded values)
   const defaults = {
     'ryou-orchestrator': 'opencode-go/glm-5.1',
+    'ryou-efi-planner': 'opencode-go/glm-5.1',
     planner: 'opencode-go/glm-5.1',
     builder: 'opencode-go/kimi-k2.6',
     architect: 'opencode-go/glm-5.1',
@@ -444,21 +485,23 @@ function resolveAgentModels(modeProfileName) {
 
   // Map ModeProfile phases to Ryou agent roles
   const phaseToAgent = {
-    orchestrator: 'ryou-orchestrator',
-    propose: 'planner',
-    apply: 'builder',
-    design: 'architect',
-    verify: 'reviewer',
-    archive: 'documentation',
+    orchestrator: ['ryou-orchestrator', 'ryou-efi-planner'],
+    propose: ['planner'],
+    apply: ['builder'],
+    design: ['architect'],
+    verify: ['reviewer'],
+    archive: ['documentation'],
   };
 
   const defaultConfig = mp.default || {};
   const models = { ...defaults };
 
-  for (const [phase, agentName] of Object.entries(phaseToAgent)) {
+  for (const [phase, agentNames] of Object.entries(phaseToAgent)) {
     const phaseConfig = mp[phase] || defaultConfig;
     if (phaseConfig?.primary) {
-      models[agentName] = phaseConfig.primary;
+      for (const agentName of agentNames) {
+        models[agentName] = phaseConfig.primary;
+      }
     }
   }
 
@@ -554,8 +597,8 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
   });
 
   // Count total files for accurate copy progress
-  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules'];
-  const filesToCopy = ['sdd.config.json', 'plugin.js', 'tui.js', 'rass-core.js', 'package.json'];
+  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules', 'skills', 'refi'];
+  const filesToCopy = ['sdd.config.json', 'reasp.config.json', 'plugin.js', 'tui.js', 'rass-core.js', 'package.json'];
   const totalFiles = countTotalFilesToCopy(dirsToCopy, filesToCopy);
   let filesCopied = 0;
 
@@ -682,6 +725,14 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
 
   if (!config.agent) config.agent = {};
 
+  // ── Clean up legacy agent name to prevent duplicates ──
+  if (config.agent['ryou-efi-agent']) {
+    delete config.agent['ryou-efi-agent'];
+  }
+  if (config.default_agent === 'ryou-efi-agent') {
+    config.default_agent = 'ryou-efi-planner';
+  }
+
   const ryouAgents = {
     'ryou-orchestrator': {
       description: 'Primary orchestrator for pragmatic .NET work using Ryou workflow and MeridianUI.',
@@ -694,6 +745,17 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
         read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
         edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
         bash: 'allow', task: 'allow', webfetch: 'allow', websearch: 'allow',
+        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' },
+      },
+    },
+    'ryou-efi-planner': {
+      description: 'Primary planning agent for REFI packet generation and implementation handoff.',
+      mode: 'primary', model: agentModels['ryou-efi-planner'], temperature: 0.1, steps: 32,
+      prompt: '{file:./agents/ryou-efi-planner.md}',
+      permission: {
+        read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
+        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
+        bash: 'allow', task: 'allow', todowrite: 'allow', webfetch: 'allow', websearch: 'allow',
         external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' },
       },
     },
@@ -781,6 +843,7 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
   if (!config.permission.skill) config.permission.skill = {};
   const defaultSkills = {
     'dotnet-clean-architecture': 'allow', 'aspnet-api': 'allow', efcore: 'allow',
+    'refi-enterprise-feature-implementation': 'allow',
     meridianui: 'allow', 'blazor-ui': 'allow', 'wpf-xaml': 'allow',
     'avalonia-ui': 'allow', 'maui-ui': 'allow', 'documentation-summary': 'allow',
     'debugging-workflow': 'allow', 'review-workflow': 'allow',
@@ -792,7 +855,15 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
   }
 
   if (!config.instructions) config.instructions = [];
-  const defaultInstructions = ['rules/global-rules.md', 'rules/meridianui.md'];
+  const defaultInstructions = [
+    'rules/global-rules.md',
+    'rules/meridianui.md',
+    'refi/README.md',
+    'refi/config.yaml',
+    'refi/rules/global-rules.md',
+    'refi/rules/anti-hallucination.md',
+    'refi/rules/quality-gates.md',
+  ];
   for (const instruction of defaultInstructions) {
     if (!config.instructions.includes(instruction)) {
       config.instructions.push(instruction);
@@ -869,13 +940,13 @@ function uninstallGlobally() {
   const globalDir = getGlobalOpenCodeDir();
   const globalConfigPath = getGlobalConfigPath();
 
-  const dirsToRemove = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules'];
+  const dirsToRemove = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules', 'refi'];
   for (const dir of dirsToRemove) {
     removeDirRecursiveSync(path.join(globalDir, dir));
   }
 
   const filesToRemove = [
-    'sdd.config.json', 'plugin.js', 'tui.js', 'rass-core.js',
+    'sdd.config.json', 'reasp.config.json', 'plugin.js', 'tui.js', 'rass-core.js',
     'package.json', 'package-lock.json',
   ];
   for (const file of filesToRemove) {
@@ -904,7 +975,7 @@ function uninstallGlobally() {
     }
 
     if (config.agent) {
-      const ryouAgentNames = ['ryou-orchestrator', 'planner', 'builder', 'architect', 'reviewer', 'debugger', 'documentation'];
+      const ryouAgentNames = ['ryou-orchestrator', 'ryou-efi-planner', 'ryou-efi-agent', 'planner', 'builder', 'architect', 'reviewer', 'debugger', 'documentation'];
       for (const name of ryouAgentNames) {
         delete config.agent[name];
       }
@@ -916,9 +987,20 @@ function uninstallGlobally() {
     }
 
     if (config.instructions) {
-      config.instructions = config.instructions.filter((i) => i !== 'rules/global-rules.md' && i !== 'rules/meridianui.md');
-      if (config.instructions.length === 0) delete config.instructions;
-    }
+        config.instructions = config.instructions.filter((i) => ![
+          'rules/global-rules.md',
+          'rules/meridianui.md',
+          'refi/README.md',
+          'refi/config.yaml',
+          'refi/rules/global-rules.md',
+          'refi/rules/anti-hallucination.md',
+          'refi/rules/quality-gates.md',
+        ].includes(i));
+        if (config.instructions.length === 0) delete config.instructions;
+      }
+
+      const skillDir = path.join(globalDir, 'skills', 'refi-enterprise-feature-implementation');
+      removeDirRecursiveSync(skillDir);
 
     fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
   }
@@ -933,7 +1015,7 @@ function uninstallGlobally() {
 function installLocally() {
   const targetOpencode = path.join(process.cwd(), '.opencode');
 
-  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime'];
+  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules', 'skills', 'refi'];
   for (const dir of dirsToCopy) {
     const src = path.join(OPENCODE_DIR, dir);
     const dest = path.join(targetOpencode, dir);
@@ -942,7 +1024,7 @@ function installLocally() {
     }
   }
 
-  const filesToCopy = ['sdd.config.json', 'plugin.js', 'tui.js', 'rass-core.js', 'package.json'];
+  const filesToCopy = ['sdd.config.json', 'reasp.config.json', 'plugin.js', 'tui.js', 'rass-core.js', 'package.json'];
   for (const file of filesToCopy) {
     const src = path.join(OPENCODE_DIR, file);
     if (fs.existsSync(src)) {
@@ -962,13 +1044,13 @@ async function interactiveInstall() {
   await animateBanner();
 
   const action = await select({
-    message: THEME.primaryBright(ICONS.arrow + ' What would you like to do?'),
-    options: [
-      { value: 'global', label: THEME.successBright(ICONS.sparkle + ' Install globally'), hint: THEME.dim('Register RASS plugin in OpenCode for all projects') },
-      { value: 'local', label: THEME.accentBright(ICONS.diamond + ' Install in workspace'), hint: THEME.dim('Copy RASS to .opencode/ in current directory') },
-      { value: 'uninstall', label: THEME.errorBright(ICONS.cross + ' Uninstall globally'), hint: THEME.dim('Remove RASS plugin from OpenCode') },
-    ],
-  });
+      message: THEME.primaryBright(ICONS.arrow + ' What would you like to do?'),
+      options: [
+        { value: 'global', label: THEME.successBright(ICONS.sparkle + ' Install globally'), hint: THEME.dim('Install REASP (RASS + REFI) for all OpenCode projects') },
+        { value: 'local', label: THEME.accentBright(ICONS.diamond + ' Install in workspace'), hint: THEME.dim('Copy REASP to .opencode/ in current directory') },
+        { value: 'uninstall', label: THEME.errorBright(ICONS.cross + ' Uninstall globally'), hint: THEME.dim('Remove REASP from OpenCode') },
+      ],
+    });
 
   if (isCancel(action)) {
     outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
@@ -977,7 +1059,7 @@ async function interactiveInstall() {
 
   if (action === 'global') {
     const confirmed = await confirm({
-      message: THEME.warningBright(ICONS.triangle + ' This will install RASS as a global OpenCode plugin. Continue?'),
+      message: THEME.warningBright(ICONS.triangle + ' This will install REASP as a global OpenCode plugin. Continue?'),
     });
 
     if (isCancel(confirmed) || !confirmed) {
@@ -985,7 +1067,7 @@ async function interactiveInstall() {
       return;
     }
 
-    console.log('\n  ' + THEME.primaryBright(ICONS.ring + ' Installing RASS globally...'));
+    console.log('\n  ' + THEME.primaryBright(ICONS.ring + ' Installing REASP globally...'));
     console.log('');
 
     const progress = new ProgressTracker();
@@ -993,7 +1075,7 @@ async function interactiveInstall() {
 
     try {
       const { globalDir } = installGlobally('ryouset', progress);
-      console.log('\n  ' + THEME.successBright(ICONS.sparkle + ' RASS installed globally'));
+      console.log('\n  ' + THEME.successBright(ICONS.sparkle + ' REASP installed globally'));
 
       printDivider();
       printHeader('Configuration');
@@ -1038,7 +1120,23 @@ async function interactiveInstall() {
       }
 
       printDivider();
-      printHeader('RASS Installed');
+      printHeader('Default Workflow Agent');
+
+      const workflowAgent = await select({
+        message: THEME.primaryBright(ICONS.arrow + ' Select default REASP workflow:'),
+        options: [
+          { value: 'ryou-efi-planner', label: THEME.secondaryBright(ICONS.diamond + ' Ryou EFI Planner'), hint: THEME.dim('Planning-first REFI workflow for enterprise feature packets') },
+          { value: 'ryou-orchestrator', label: THEME.successBright(ICONS.star + ' Ryou Orchestrator'), hint: THEME.dim('Implementation-first workflow once the REFI packet is ready') },
+        ],
+      });
+
+      if (!isCancel(workflowAgent)) {
+        setInstalledWorkflow(globalDir, getGlobalConfigPath(), workflowAgent);
+        printSuccess(`Default workflow agent set to: ${workflowAgent}`);
+      }
+
+      printDivider();
+      printHeader('REASP Installed');
 
       note(
         THEME.infoBright('Installed to:') + ' ' + THEME.primary(globalDir) + '\n\n' +
@@ -1046,44 +1144,49 @@ async function interactiveInstall() {
         '  ' + THEME.success('/sdd') + THEME.dim(' — Switch or create SDD ModeProfiles') + '\n' +
         '  ' + THEME.success('/sdd-mode') + THEME.dim(' — Alias for /sdd (backward compatible)') + '\n' +
         '  ' + THEME.success('/sdd-profile') + THEME.dim(' — Alias for /sdd (backward compatible)') + '\n' +
-        '  ' + THEME.success('/rass-setup') + THEME.dim(' — View status, switch to RyouSet, view agents') + '\n' +
+        '  ' + THEME.success('/rass-setup') + THEME.dim(' — Legacy alias for REASP setup') + '\n' +
+        '  ' + THEME.success('/reasp-setup') + THEME.dim(' — Switch between Ryou EFI Planner and Ryou Orchestrator') + '\n' +
         '  ' + THEME.success('/s') + THEME.dim(' — Alias for /sdd') + '\n' +
-        '  ' + THEME.success('/rs') + THEME.dim(' — Alias for /rass-setup') + '\n\n' +
+        '  ' + THEME.success('/rs') + THEME.dim(' — Alias for /rass-setup') + '\n' +
+        '  ' + THEME.success('/reasp') + THEME.dim(' — Alias for /reasp-setup') + '\n\n' +
         THEME.secondaryBright('AI tools available:') + '\n' +
         '  ' + THEME.accent('sdd_mode_profile') + THEME.dim(' — Manage ModeProfiles programmatically') + '\n' +
-        '  ' + THEME.accent('rass_setup') + THEME.dim(' — View RASS status and agent info') + '\n\n' +
-        THEME.secondaryBright('Ryou agents deployed:') + '\n' +
-        '  ' + THEME.primary('ryou-orchestrator') + THEME.dim(' (primary)') + ', ' +
+        '  ' + THEME.accent('rass_setup') + THEME.dim(' — Backward-compatible RASS/REASP status tool') + '\n' +
+        '  ' + THEME.accent('reasp_setup') + THEME.dim(' — Switch workflow and toggle REFI directly') + '\n\n' +
+        THEME.secondaryBright('REASP primary agents:') + '\n' +
+        '  ' + THEME.primary('ryou-efi-planner') + THEME.dim(' (planning)') + '\n' +
+        '  ' + THEME.primary('ryou-orchestrator') + THEME.dim(' (implementation)') + '\n\n' +
+        THEME.secondaryBright('Other Ryou agents deployed:') + '\n' +
         THEME.info('planner') + ', ' + THEME.info('builder') + ', ' + THEME.info('architect') + ', ' +
         THEME.info('reviewer') + ', ' + THEME.info('debugger') + ', ' + THEME.info('documentation'),
         THEME.successBright(ICONS.sparkle + ' Installation Complete')
       );
 
-      outro(THEME.successBright('  ' + ICONS.sparkle + ' RASS is ready. Open OpenCode and start using /sdd and /rass-setup'));
+      outro(THEME.successBright('  ' + ICONS.sparkle + ' REASP is ready. Plan with Ryou EFI Planner and implement with Ryou Orchestrator.'));
     } catch (err) {
-      s.stop(THEME.errorBright('  ' + ICONS.cross + ' Installation failed'));
+      printError('Installation failed');
       outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
     }
 
   } else if (action === 'local') {
     const s = spinner();
-    s.start(THEME.primary('  ' + ICONS.ring + ' Installing RASS in workspace...'));
+      s.start(THEME.primary('  ' + ICONS.ring + ' Installing REASP in workspace...'));
 
     try {
       const target = installLocally();
-      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' RASS installed in workspace'));
+        s.stop(THEME.successBright('  ' + ICONS.sparkle + ' REASP installed in workspace'));
 
       printDivider();
       printHeader('Local Install');
 
       note(
         THEME.infoBright('Installed to:') + ' ' + THEME.primary(target) + '\n\n' +
-        'This only affects the current project.\n' +
-        'For global installation, run again and choose ' + THEME.successBright('"Install globally"'),
-        THEME.successBright(ICONS.sparkle + ' Workspace Ready')
-      );
+          'This only affects the current project and includes both RASS and REFI assets.\n' +
+          'For global installation, run again and choose ' + THEME.successBright('"Install globally"'),
+          THEME.successBright(ICONS.sparkle + ' Workspace Ready')
+        );
 
-      outro(THEME.successBright('  ' + ICONS.sparkle + ' RASS is ready in this workspace'));
+        outro(THEME.successBright('  ' + ICONS.sparkle + ' REASP is ready in this workspace'));
     } catch (err) {
       s.stop(THEME.errorBright('  ' + ICONS.cross + ' Installation failed'));
       outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
@@ -1091,7 +1194,7 @@ async function interactiveInstall() {
 
   } else if (action === 'uninstall') {
     const confirmed = await confirm({
-      message: THEME.errorBright(ICONS.circle + ' This will remove RASS from OpenCode globally. Continue?'),
+      message: THEME.errorBright(ICONS.circle + ' This will remove REASP from OpenCode globally. Continue?'),
     });
 
     if (isCancel(confirmed) || !confirmed) {
@@ -1100,23 +1203,23 @@ async function interactiveInstall() {
     }
 
     const s = spinner();
-    s.start(THEME.error('  ' + ICONS.ring + ' Uninstalling RASS...'));
+    s.start(THEME.error('  ' + ICONS.ring + ' Uninstalling REASP...'));
 
     try {
       const { globalDir } = uninstallGlobally();
-      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' RASS uninstalled'));
+      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' REASP uninstalled'));
 
       printDivider();
       printHeader('Uninstalled');
 
-      note(
-        THEME.infoBright('Removed from:') + ' ' + THEME.primary(globalDir) + '\n\n' +
-        'RASS plugin, sdd-profiles, and runtime have been removed.\n' +
-        'OpenCode config has been cleaned up.',
-        THEME.warningBright(ICONS.triangle + ' RASS Removed')
-      );
+        note(
+          THEME.infoBright('Removed from:') + ' ' + THEME.primary(globalDir) + '\n\n' +
+          'REASP plugin assets, RASS modeprofiles, and REFI toolkit files have been removed.\n' +
+          'OpenCode config has been cleaned up.',
+          THEME.warningBright(ICONS.triangle + ' REASP Removed')
+        );
 
-      outro(THEME.warningBright('  ' + ICONS.triangle + ' RASS has been removed. Restart OpenCode to apply changes'));
+        outro(THEME.warningBright('  ' + ICONS.triangle + ' REASP has been removed. Restart OpenCode to apply changes'));
     } catch (err) {
       s.stop(THEME.errorBright('  ' + ICONS.cross + ' Uninstall failed'));
       outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
@@ -1137,12 +1240,12 @@ if (args.length > 0) {
     printBannerInstant();
     printDivider();
     printHeader('Global Installation');
-    printInfo('Installing RASS globally...');
+      printInfo('Installing REASP globally...');
 
     try {
       const { globalDir } = installGlobally();
-      printSuccess(`RASS installed globally to: ${globalDir}`);
-      printInfo('Use /sdd in OpenCode');
+        printSuccess(`REASP installed globally to: ${globalDir}`);
+        printInfo('Use /reasp-setup in OpenCode');
     } catch (err) {
       printError(`Installation failed: ${err.message}`);
       process.exit(1);
@@ -1151,11 +1254,11 @@ if (args.length > 0) {
     printBannerInstant();
     printDivider();
     printHeader('Global Uninstallation');
-    printInfo('Uninstalling RASS globally...');
+      printInfo('Uninstalling REASP globally...');
 
     try {
       const { globalDir } = uninstallGlobally();
-      printSuccess(`RASS uninstalled from: ${globalDir}`);
+        printSuccess(`REASP uninstalled from: ${globalDir}`);
     } catch (err) {
       printError(`Uninstall failed: ${err.message}`);
       process.exit(1);
@@ -1164,11 +1267,11 @@ if (args.length > 0) {
     printBannerInstant();
     printDivider();
     printHeader('Workspace Installation');
-    printInfo('Installing RASS in workspace...');
+      printInfo('Installing REASP in workspace...');
 
     try {
       const target = installLocally();
-      printSuccess(`RASS installed locally to: ${target}`);
+        printSuccess(`REASP installed locally to: ${target}`);
     } catch (err) {
       printError(`Local install failed: ${err.message}`);
       process.exit(1);
@@ -1178,9 +1281,9 @@ if (args.length > 0) {
     printDivider();
     printHeader('Usage');
     console.log('  ' + THEME.warningBright('Usage:') + ' node installer/index.js [install|uninstall|local]');
-    console.log('  ' + THEME.success(ICONS.sparkle + ' install') + THEME.dim('    — Install RASS globally into OpenCode'));
-    console.log('  ' + THEME.error(ICONS.cross + ' uninstall') + THEME.dim('  — Uninstall RASS globally from OpenCode'));
-    console.log('  ' + THEME.accent(ICONS.diamond + ' local') + THEME.dim('      — Install RASS in current workspace .opencode/'));
+    console.log('  ' + THEME.success(ICONS.sparkle + ' install') + THEME.dim('    — Install REASP globally into OpenCode'));
+    console.log('  ' + THEME.error(ICONS.cross + ' uninstall') + THEME.dim('  — Uninstall REASP globally from OpenCode'));
+    console.log('  ' + THEME.accent(ICONS.diamond + ' local') + THEME.dim('      — Install REASP in current workspace .opencode/'));
     console.log('  ' + THEME.info(ICONS.dot + ' (no args)') + THEME.dim('  — Interactive TUI mode'));
     process.exit(1);
   }

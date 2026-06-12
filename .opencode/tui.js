@@ -1,6 +1,6 @@
 /**
  * RASS TUI Plugin — Ryou Adaptive SDD System
- * Provides /sdd, /sdd-mode, /sdd-profile, and /rass-setup slash commands
+ * Provides /sdd, /sdd-mode, /sdd-profile, /rass-setup, and /reasp-setup slash commands
  * with interactive dialogs for unified ModeProfile management.
  *
  * Edit flow: Phases → Strategy → Configure Models → Description
@@ -19,6 +19,9 @@ import {
   deleteModeProfile,
   getCurrentModeProfile,
   getStatus,
+  getReaspStatus,
+  setPrimaryWorkflow,
+  setFeatureEnabled,
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   RYOU_AGENTS,
@@ -954,17 +957,34 @@ export default {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // /rass-setup — Status, RyouSet, Agents
+    // /rass-setup + /reasp-setup — Status, Workflow Switching, Agents
     // ═══════════════════════════════════════════════════════════════════════
 
     const showSetupDialog = (dialog) => {
       const status = getStatus();
+      const reasp = getReaspStatus();
+      const refiEnabled = reasp.features?.refi?.enabled !== false;
 
       const options = [
         {
           title: 'View Status',
           value: 'status',
-          description: `ModeProfile: ${status.current_modeprofile || 'none'} | Phases: ${buildPhaseSummary(status.modeprofile?.phases)}`,
+          description: `Workflow: ${reasp.default_workflow} | ModeProfile: ${status.current_modeprofile || 'none'}`,
+        },
+        {
+          title: 'Use Ryou EFI Planner',
+          value: 'efi',
+          description: 'Activate planning-first REFI workflow for packet generation and handoff',
+        },
+        {
+          title: 'Use Ryou Orchestrator',
+          value: 'orchestrator',
+          description: 'Activate pragmatic implementation workflow after EFI planning is ready',
+        },
+        {
+          title: refiEnabled ? 'Disable REFI Planning' : 'Enable REFI Planning',
+          value: 'toggle-refi',
+          description: refiEnabled ? 'Keep REASP installed but turn off the EFI planning workflow' : 'Turn REFI planning back on inside REASP',
         },
         {
           title: 'Switch to RyouSet',
@@ -972,31 +992,78 @@ export default {
           description: 'Switch to RyouSet ModeProfile (full pipeline with all subagents)',
         },
         {
-          title: 'View Ryou Agents',
+          title: 'View REASP Agents',
           value: 'agents',
-          description: `${Object.keys(RYOU_AGENTS).length} agents: ryou-orchestrator, planner, builder, architect, reviewer, debugger, documentation`,
+          description: `${Object.keys(RYOU_AGENTS).length} agents including ryou-efi-planner and ryou-orchestrator`,
         },
       ];
 
       dialog.replace(
         () => api.ui.DialogSelect({
-          title: 'RASS Setup',
-          placeholder: 'Choose an action...',
-          options,
-          onSelect: (option) => {
-            switch (option.value) {
-              case 'status': {
+            title: 'REASP Setup',
+            placeholder: 'Choose an action...',
+            options,
+            onSelect: (option) => {
+              switch (option.value) {
+                case 'status': {
                 dialog.clear();
-                api.ui.toast({
-                  variant: 'info',
-                  title: 'RASS Status',
-                  message: `ModeProfile: ${status.current_modeprofile || 'none'} | Phases: ${buildPhaseSummary(status.modeprofile?.phases)} | Strategy: ${status.modeprofile?.model_strategy || 'unknown'}`,
-                });
-                break;
-              }
-              case 'ryouset': {
-                try {
-                  switchModeProfile('ryouset');
+                  api.ui.toast({
+                    variant: 'info',
+                    title: 'REASP Status',
+                    message: `Workflow: ${reasp.default_workflow} | ModeProfile: ${status.current_modeprofile || 'none'} | REFI: ${refiEnabled ? 'enabled' : 'disabled'}`,
+                  });
+                  break;
+                }
+                case 'efi': {
+                  try {
+                    setFeatureEnabled('refi', true);
+                    setPrimaryWorkflow('ryou-efi-planner');
+                    dialog.clear();
+                    api.ui.toast({
+                      variant: 'success',
+                      title: 'Ryou EFI Planner Active',
+                      message: 'REASP will now default to Ryou EFI Planner for REFI packet planning.',
+                    });
+                  } catch (err) {
+                    dialog.clear();
+                    api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+                  }
+                  break;
+                }
+                case 'orchestrator': {
+                  try {
+                    setPrimaryWorkflow('ryou-orchestrator');
+                    dialog.clear();
+                    api.ui.toast({
+                      variant: 'success',
+                      title: 'Ryou Orchestrator Active',
+                      message: 'REASP will now default to Ryou Orchestrator for implementation work.',
+                    });
+                  } catch (err) {
+                    dialog.clear();
+                    api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+                  }
+                  break;
+                }
+                case 'toggle-refi': {
+                  try {
+                    const nextState = !refiEnabled;
+                    const result = setFeatureEnabled('refi', nextState);
+                    dialog.clear();
+                    api.ui.toast({
+                      variant: 'success',
+                      title: nextState ? 'REFI Enabled' : 'REFI Disabled',
+                      message: `REFI planning is now ${nextState ? 'enabled' : 'disabled'}. Active workflow: ${result.default_workflow}.`,
+                    });
+                  } catch (err) {
+                    dialog.clear();
+                    api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+                  }
+                  break;
+                }
+                case 'ryouset': {
+                  try {
+                    switchModeProfile('ryouset');
                   dialog.clear();
                   api.ui.toast({
                     variant: 'success',
@@ -1009,15 +1076,15 @@ export default {
                 }
                 break;
               }
-              case 'agents': {
-                dialog.clear();
-                api.ui.toast({
-                  variant: 'info',
-                  title: 'Ryou Agents',
-                  message: `7 agents configured. Run "cd installer && node index.js install" to deploy to OpenCode.`,
-                });
-                break;
-              }
+                case 'agents': {
+                  dialog.clear();
+                  api.ui.toast({
+                    variant: 'info',
+                    title: 'REASP Agents',
+                    message: `${Object.keys(RYOU_AGENTS).length} agents configured, including Ryou EFI Planner for planning and Ryou Orchestrator for implementation.`,
+                  });
+                  break;
+                }
             }
           },
         }),
@@ -1056,9 +1123,17 @@ export default {
       {
         title: 'RASS Setup',
         value: 'rass-setup',
-        description: 'View RASS status, switch to RyouSet, or view Ryou agent configuration',
-        category: 'RASS',
+        description: 'Legacy alias for REASP setup: status, workflow switching, and agent configuration',
+        category: 'REASP',
         slash: { name: 'rass-setup', aliases: ['rs'] },
+        onSelect: (dialog) => showSetupDialog(dialog),
+      },
+      {
+        title: 'REASP Setup',
+        value: 'reasp-setup',
+        description: 'Switch between Ryou EFI Planner and Ryou Orchestrator, view REASP status, and toggle REFI planning',
+        category: 'REASP',
+        slash: { name: 'reasp-setup', aliases: ['reasp'] },
         onSelect: (dialog) => showSetupDialog(dialog),
       },
     ]);
