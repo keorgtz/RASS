@@ -1,0 +1,26 @@
+{
+  "name": "reasp-cli",
+  "version": "1.0.0",
+  "description": "REASP · Global installer, SDD orchestrator, and agent backup manager",
+  "type": "module",
+  "bin": {
+    "reasp": "./installer/index.js"
+  },
+  "scripts": {
+    "test": "node --check installer/index.js && node --check installer/lib/*.js && node --check installer/lib/targets/*.js && node --check installer/commands/*.js"
+  },
+  "preferGlobal": true,
+  "files": [
+    "installer/",
+    "scripts/",
+    ".opencode/",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["reasp", "rass", "refi", "ai-agent", "cli", "backup"],
+  "author": "Kevin Keor",
+  "license": "SEE LICENSE IN LICENSE.md"
+}

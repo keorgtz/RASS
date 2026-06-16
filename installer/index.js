@@ -1,1315 +1,621 @@
+#!/usr/bin/env node
+
 /**
- * REASP Installer — Modern TUI with ASCII Art Banner
+ * REASP Installer — Multi-agent orchestrator.
+ *
+ * Refactored from the monolithic OpenCode-only installer into a thin
+ * orchestrator that delegates to per-agent target adapters.
  *
  * Usage:
- *   node installer/index.js install    — Install REASP globally into OpenCode
- *   node installer/index.js uninstall  — Uninstall REASP globally from OpenCode
- *   node installer/index.js            — Interactive mode (choose install or uninstall)
+ *   reasp install                 Install REASP into OpenCode (legacy default)
+ *   reasp install --agents a,b    Install into selected agents
+ *   reasp install --only-detected Install into all detected agents
+ *   reasp install --dry-run       Preview changes without writing files
+ *   reasp uninstall               Uninstall REASP from OpenCode
+ *   reasp uninstall --agents a,b  Uninstall from selected agents
+ *   reasp detect                  Show detected AI agents
+ *   reasp status                  Show REASP installation status
+ *   reasp local                   Copy REASP into workspace .opencode/
+ *   reasp                         Interactive TUI mode
  */
 
-import { intro, outro, spinner, select, confirm, text, note, isCancel } from '@clack/prompts';
-import pc from 'picocolors';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import os from 'node:os';
+import { SOURCE_DIR, DEFAULT_MODEPROFILE, DEFAULT_WORKFLOW, AGENT_TARGETS, getHomeDir, REASP_CLI_VERSION } from './lib/constants.js';
+import { detectAllAgents } from './lib/detect.js';
+import { compileReaspBundle } from './lib/compile.js';
+import { TARGETS } from './lib/targets/index.js';
+import { loadReaspConfig, saveReaspConfig } from './lib/config-manager.js';
+import { createSnapshot, listSnapshots, formatBytes } from './lib/snapshot-manager.js';
+import cmdSnapshot from './commands/snapshot.js';
+import cmdConfig from './commands/config.js';
+import {
+  animateBanner,
+  printBannerInstant,
+  printDivider,
+  printHeader,
+  printSuccess,
+  printWarning,
+  printError,
+  printInfo,
+  promptAgentSelection,
+  promptModeProfile,
+  promptWorkflowAgent,
+  promptMainMenu,
+  promptSnapshotSubmenu,
+  promptSelectAgent,
+  promptSnapshotSelection,
+  promptSnapshotName,
+  promptSnapshotNote,
+  confirmSnapshotBeforeAction,
+  confirmInstall,
+  confirmUninstall,
+  ProgressTracker,
+  outro,
+  isCancel,
+  spinner,
+  ICONS,
+  THEME,
+} from './lib/tui.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RASS_DIR = path.resolve(__dirname, '..');
-const OPENCODE_DIR = path.join(RASS_DIR, '.opencode');
+const REASP_STATE_DIR = path.join(getHomeDir(), '.reasp');
+const LAST_SELECTION_PATH = path.join(REASP_STATE_DIR, 'last-selection.json');
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VISUAL SYSTEM — Colors, Icons, Banner, Animations
+// CLI PARSING
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const ICONS = {
-  sparkle: '✦',
-  diamond: '◈',
-  triangle: '▲',
-  circle: '◉',
-  ring: '◐',
-  arrow: '➤',
-  star: '✶',
-  bullet: '●',
-  check: '✓',
-  cross: '✗',
-  wave: '∿',
-  dot: '·',
-  dash: '─',
-  cornerTL: '╭',
-  cornerTR: '╮',
-  cornerBL: '╰',
-  cornerBR: '╯',
-  line: '│',
-  shadow: '░',
-  shadowMed: '▒',
-  shadowDark: '▓',
-  block: '█',
-};
-
-const THEME = {
-  primary: pc.cyan,
-  primaryBright: (s) => pc.bold(pc.cyan(s)),
-  secondary: pc.magenta,
-  secondaryBright: (s) => pc.bold(pc.magenta(s)),
-  accent: pc.blue,
-  accentBright: (s) => pc.bold(pc.blue(s)),
-  success: pc.green,
-  successBright: (s) => pc.bold(pc.green(s)),
-  warning: pc.yellow,
-  warningBright: (s) => pc.bold(pc.yellow(s)),
-  error: pc.red,
-  errorBright: (s) => pc.bold(pc.red(s)),
-  info: pc.gray,
-  infoBright: (s) => pc.white(s),
-  dim: pc.dim,
-  bgPrimary: pc.bgCyan,
-  bgSecondary: pc.bgMagenta,
-};
-
-// ─── Banner ASCII Art — Modern Italic Style with Shadows ────────────────────
-
-// ─── Elegant Cursive Banner — RASS Logo ───────────────────────────────────
-// Modern italic style with subtle shadows and rounded curves
-
-// ─── Ryou ASCII Art Banner — Elegant Cursive Style ────────────────────────
-
-const RYOU_ASCII_RAW = [
-  '           :+XXXXXXx:',
-  '        xXXXXx;....;XX;',
-  '      ;XXX+    +Xx  .XX+',
-  '     .xXX    :XX+   ;XX+  :;    ;:     .+xx:     x.    +',
-  '      .;.   +XX.   +XXx  xXX.  XXX.  xXX:.xX.  ;XX+  +XX:',
-  '           xXX:.;XXXX: .XXX  :XXX  ;XX+X  xX. +XX:  xXX.',
-  '         .XXXxxXXx:   .XXx  xXXX: ;XX+.xX+X;:XXX: .XXX.  x;',
-  '        +XXX: ;XX.    xXX.:X:XX::XXXX  .XXXxxXX+ xXXX; +X.',
-  '    :XXXXXX.  :XXX   .XXXX:.XXXX:.XXXXXXX.  xXXXX.xXXXX:',
-  '    .;XXX:    .xXXx  .::  XXX;    .:+;:     :+;   :+;',
-  '               :XXXXxxxX+;XX:',
-  '               .:xXXXXX ;XX',
-  '                  . .+XX+.',
-];
-
-// All lines must have exactly the same visual width
-const BANNER_CONTENT_WIDTH = 60;
-
-function colorizeAsciiLine(line) {
-  let result = '';
-  for (const ch of line) {
-    if (ch === ' ') {
-      result += ch;
-    } else if ('X'.includes(ch)) {
-      result += THEME.primaryBright(ch);
-    } else if ('x+;'.includes(ch)) {
-      result += THEME.primary(ch);
-    } else if (':,.'.includes(ch)) {
-      result += THEME.dim(pc.cyan(ch));
+function parseArgs(argv) {
+  const result = { _: [], flags: {} };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      const next = argv[i + 1];
+      if (next && !next.startsWith('-')) {
+        result.flags[key] = next;
+        i++;
+      } else {
+        result.flags[key] = true;
+      }
+    } else if (arg.startsWith('-') && arg.length > 1) {
+      // Support clustered short flags like -yf or single -y
+      const chars = arg.slice(1).split('');
+      for (const ch of chars) {
+        result.flags[ch] = true;
+      }
     } else {
-      result += THEME.primary(ch);
+      result._.push(arg);
     }
   }
   return result;
 }
 
-function buildBannerColored() {
-  const lines = [];
-  const W = BANNER_CONTENT_WIDTH;
-  
-  // Helper to build frame lines with exact width
-  const frameTop = THEME.dim('        ╭' + '─'.repeat(W + 2) + '╮');
-  const frameInnerTop = THEME.dim('       ╭' + ' '.repeat(W + 2) + '╮');
-  const frameEmpty = THEME.dim('      │ ' + ' '.repeat(W) + ' │');
-  const frameBottomInner = THEME.dim('       ╰' + ' '.repeat(W + 2) + '╰');
-  const frameBottom = THEME.dim('        ╰' + '─'.repeat(W + 2) + '╯');
-  
-  // Top frame
-  lines.push(frameTop);
-  lines.push(frameInnerTop);
-  lines.push(frameEmpty);
-  
-  // ASCII art lines
-  for (const artLine of RYOU_ASCII_RAW) {
-    // Ensure exact width by padding/truncating
-    let content = artLine;
-    if (content.length < W) {
-      content = content + ' '.repeat(W - content.length);
-    } else if (content.length > W) {
-      content = content.substring(0, W);
-    }
-    const colored = colorizeAsciiLine(content);
-    lines.push(THEME.dim('      │ ') + colored + THEME.dim(' │'));
-  }
-  
-  // Empty line
-  lines.push(frameEmpty);
-  
-  // Subtitle
-  const subtitle = 'REASP · RASS + REFI Unified Installer';
-  let subtitleContent = subtitle;
-  if (subtitleContent.length < W) {
-    const padLeft = Math.floor((W - subtitleContent.length) / 2);
-    const padRight = W - subtitleContent.length - padLeft;
-    subtitleContent = ' '.repeat(padLeft) + subtitleContent + ' '.repeat(padRight);
-  } else if (subtitleContent.length > W) {
-    subtitleContent = subtitleContent.substring(0, W);
-  }
-  lines.push(THEME.dim('      │ ') + THEME.infoBright(subtitleContent) + THEME.dim(' │'));
-  
-  // Empty line
-  lines.push(frameEmpty);
-  
-  // Bottom frame
-  lines.push(frameBottomInner);
-  lines.push(frameBottom);
-  
-  return lines;
+function parseAgentList(flagValue) {
+  if (!flagValue || typeof flagValue !== 'string') return [];
+  return flagValue.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
-const BANNER_COLORED = buildBannerColored();
-
-// ─── Animation: Line-by-line reveal ───────────────────────────────────────
-
-async function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function showUsage() {
+  printBannerInstant();
+  printDivider();
+  printHeader('Usage');
+  console.log('  ' + THEME.warningBright('Commands:'));
+  console.log('  ' + THEME.success(ICONS.sparkle + ' install') + THEME.dim('          Install REASP into selected agent(s)'));
+  console.log('  ' + THEME.error(ICONS.cross + ' uninstall') + THEME.dim('        Uninstall REASP from selected agent(s)'));
+  console.log('  ' + THEME.accent(ICONS.diamond + ' local') + THEME.dim('            Copy REASP to current workspace .opencode/'));
+  console.log('  ' + THEME.accent(ICONS.bullet + ' snapshot') + THEME.dim('         Manage agent configuration snapshots'));
+  console.log('  ' + THEME.info(ICONS.dot + ' config') + THEME.dim('           Show or update REASP configuration'));
+  console.log('  ' + THEME.info(ICONS.dot + ' detect') + THEME.dim('           Show detected AI agents'));
+  console.log('  ' + THEME.info(ICONS.dot + ' status') + THEME.dim('           Show REASP installation status'));
+  console.log('  ' + THEME.info(ICONS.dot + ' (no args)') + THEME.dim('        Interactive TUI mode'));
+  console.log('');
+  console.log('  ' + THEME.warningBright('Install flags:'));
+  console.log('  ' + THEME.dim('  --agents a,b,c     Comma-separated agent ids (opencode, claude-code, codex, gemini, antigravity)'));
+  console.log('  ' + THEME.dim('  --only-detected    Select all currently detected agents'));
+  console.log('  ' + THEME.dim('  --dry-run          Preview changes without writing files'));
+  console.log('  ' + THEME.dim('  --skip-snapshot    Skip automatic pre-install snapshot'));
+  console.log('  ' + THEME.dim('  -y, --yes          Skip confirmations'));
+  console.log('  ' + THEME.dim('  --force            Allow installing into agents not detected'));
+  console.log('');
+  console.log('  ' + THEME.warningBright('Snapshot commands:'));
+  console.log('  ' + THEME.dim('  reasp snapshot create  --agent <id> --name <name> [--note <text>] [--yes]'));
+  console.log('  ' + THEME.dim('  reasp snapshot list    [--agent <id>] [--json]'));
+  console.log('  ' + THEME.dim('  reasp snapshot restore --agent <id> --name|--id <value> [--yes]'));
+  console.log('  ' + THEME.dim('  reasp snapshot delete  --agent <id> --name|--id <value> [--yes]'));
+  console.log('  ' + THEME.dim('  reasp snapshot purge   --agent <id>|--all-agents [--keep <n>] [--yes]'));
 }
 
-async function animateBanner() {
-  console.clear();
-  for (let i = 0; i < BANNER_COLORED.length; i++) {
-    process.stdout.write(BANNER_COLORED[i] + '\n');
-    await sleep(60);
-  }
-  await sleep(200);
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-function printBannerInstant() {
-  console.clear();
-  for (const line of BANNER_COLORED) {
-    console.log(line);
-  }
-}
-
-// ─── Decorative helpers ─────────────────────────────────────────────────────
-
-function printDivider(width = 50) {
-  console.log(THEME.dim('  ' + ICONS.dash.repeat(width)));
-}
-
-function printHeader(title) {
-  console.log('\n  ' + THEME.primaryBright(ICONS.diamond + ' ' + title));
-  printDivider(48);
-}
-
-function printSuccess(message) {
-  console.log('  ' + THEME.successBright(ICONS.sparkle + ' ' + message));
-}
-
-function printWarning(message) {
-  console.log('  ' + THEME.warningBright(ICONS.triangle + ' ' + message));
-}
-
-// ─── Progress Bar System — Granular 0-100% ────────────────────────────────
-
-function renderProgressBar(percent, message, icon = ICONS.ring) {
-  const width = 40;
-  const filled = Math.round((percent / 100) * width);
-  const empty = width - filled;
-
-  const barFilled = THEME.primary(ICONS.block.repeat(filled));
-  const barEmpty = THEME.dim(ICONS.shadow.repeat(empty));
-  const bar = barFilled + barEmpty;
-
-  const stepInfo = `  ${THEME.infoBright(`${percent}%`)} ${THEME.dim(ICONS.line)} ${THEME.accentBright(icon + ' ' + message)}`;
-
-  // Clear previous lines if TTY
-  if (process.stdout.isTTY) {
-    process.stdout.write('\x1b[2A\x1b[G\x1b[J');
-  }
-
-  console.log(`${stepInfo}`);
-  console.log(`  ${THEME.dim(ICONS.cornerTL)}${bar}${THEME.dim(ICONS.cornerTR)}`);
-}
-
-class ProgressTracker {
-  constructor() {
-    this.percent = 0;
-    this.message = 'Initializing...';
-    this.icon = ICONS.diamond;
-  }
-
-  update(percent, message, icon) {
-    this.percent = Math.min(Math.max(percent, 0), 100);
-    if (message) this.message = message;
-    if (icon) this.icon = icon;
-    // Render immediately — no throttle to ensure all progress updates are visible
-    renderProgressBar(this.percent, this.message, this.icon);
-  }
-
-  finish(message = 'Installation complete') {
-    this.update(100, message, ICONS.check);
-  }
-}
-
-// ─── File counting for accurate progress ──────────────────────────────────
-
-function countFilesRecursive(dir) {
-  if (!fs.existsSync(dir)) return 0;
-  let count = 0;
+function loadLastSelection() {
   try {
-    const entries = fs.readdirSync(dir);
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry);
-      const stat = fs.lstatSync(fullPath);
-      if (stat.isDirectory()) {
-        count += countFilesRecursive(fullPath);
-      } else {
-        count += 1;
-      }
+    if (fs.existsSync(LAST_SELECTION_PATH)) {
+      return JSON.parse(fs.readFileSync(LAST_SELECTION_PATH, 'utf8'));
     }
   } catch {
-    // Ignore permission errors
+    // ignore
   }
-  return count;
+  return [];
 }
 
-function countTotalFilesToCopy(sourceDirs, sourceFiles) {
-  let total = 0;
-  for (const dir of sourceDirs) {
-    const src = path.join(OPENCODE_DIR, dir);
-    if (fs.existsSync(src)) {
-      total += countFilesRecursive(src);
-    }
-  }
-  total += sourceFiles.filter((f) => fs.existsSync(path.join(OPENCODE_DIR, f))).length;
-  return total;
-}
-
-function printError(message) {
-  console.log('  ' + THEME.errorBright(ICONS.circle + ' ' + message));
-}
-
-function printInfo(message) {
-  console.log('  ' + THEME.info(ICONS.dot + ' ' + message));
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// CROSS-PLATFORM HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function getHomeDir() {
-  return process.env.USERPROFILE || process.env.HOME || os.homedir();
-}
-
-function getMeridianUIPathPatterns() {
-  const home = getHomeDir();
-  const isWindows = process.platform === 'win32';
-  const meridianDir = path.join(home, '.MeridianUI');
-  const meridianGlob = meridianDir.replace(/\\/g, '/');
-  const starPattern = `${meridianGlob}/*`;
-  const starStarPattern = `${meridianGlob}/**`;
-  return { starPattern, starStarPattern };
-}
-
-function getDefaultShell() {
-  return process.platform === 'win32' ? 'pwsh' : 'bash';
-}
-
-function findOpenCodeCommand() {
+function saveLastSelection(selectedIds) {
   try {
-    execSync('opencode --version', { stdio: 'pipe' });
-    return 'opencode';
+    if (!fs.existsSync(REASP_STATE_DIR)) {
+      fs.mkdirSync(REASP_STATE_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LAST_SELECTION_PATH, JSON.stringify(selectedIds, null, 2), 'utf8');
   } catch {
-    // not in PATH
-  }
-
-  try {
-    execSync('npx opencode-ai --version', { stdio: 'pipe' });
-    return 'npx opencode-ai';
-  } catch {
-    // npx fallback failed
-  }
-
-  if (process.platform === 'win32') {
-    const appData = process.env.APPDATA || path.join(getHomeDir(), 'AppData', 'Roaming');
-    const winPaths = [
-      path.join(appData, 'npm', 'opencode.exe'),
-      path.join(appData, 'npm', 'node_modules', 'opencode-ai', 'bin', 'opencode.exe'),
-      path.join(getHomeDir(), 'AppData', 'Roaming', 'npm', 'opencode.exe'),
-      path.join(getHomeDir(), 'AppData', 'Roaming', 'npm', 'node_modules', 'opencode-ai', 'bin', 'opencode.exe'),
-    ];
-    for (const p of winPaths) {
-      if (fs.existsSync(p)) {
-        return `"${p}"`;
-      }
-    }
-  } else {
-    const unixPaths = [
-      '/usr/local/bin/opencode',
-      '/usr/bin/opencode',
-      path.join(getHomeDir(), '.local', 'bin', 'opencode'),
-      path.join(getHomeDir(), '.npm-global', 'bin', 'opencode'),
-      path.join(getHomeDir(), '.nvm', 'versions', 'node', '*', 'bin', 'opencode'),
-    ];
-    for (const p of unixPaths) {
-      if (p.includes('*')) {
-        const dir = path.dirname(p);
-        if (fs.existsSync(dir)) {
-          const entries = fs.readdirSync(dir);
-          for (const entry of entries) {
-            const candidate = path.join(dir, entry, 'bin', 'opencode');
-            if (fs.existsSync(candidate)) {
-              return candidate;
-            }
-          }
-        }
-      } else if (fs.existsSync(p)) {
-        return p;
-      }
-    }
-  }
-
-  return null;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// GLOBAL INSTALL PATHS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function getGlobalOpenCodeDir() {
-  const home = getHomeDir();
-  return path.join(home, '.config', 'opencode');
-}
-
-function getGlobalConfigPath() {
-  return path.join(getGlobalOpenCodeDir(), 'opencode.json');
-}
-
-function getInstalledReaspConfigPath(globalDir) {
-  return path.join(globalDir, 'reasp.config.json');
-}
-
-function setInstalledWorkflow(globalDir, globalConfigPath, workflowAgent) {
-  let config = {};
-  if (fs.existsSync(globalConfigPath)) {
-    try {
-      config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
-    } catch {
-      config = {};
-    }
-  }
-
-  config.default_agent = workflowAgent;
-  fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
-
-  const reaspConfigPath = getInstalledReaspConfigPath(globalDir);
-  let reaspConfig = {};
-  if (fs.existsSync(reaspConfigPath)) {
-    try {
-      reaspConfig = JSON.parse(fs.readFileSync(reaspConfigPath, 'utf8'));
-    } catch {
-      reaspConfig = {};
-    }
-  }
-
-  reaspConfig.default_workflow = workflowAgent;
-  if (!reaspConfig.features) reaspConfig.features = {};
-  if (!reaspConfig.features.rass) reaspConfig.features.rass = { enabled: true, label: 'Ryou Orchestrator' };
-  if (!reaspConfig.features.refi) reaspConfig.features.refi = { enabled: true, label: 'Ryou EFI Planner' };
-  if (workflowAgent === 'ryou-orchestrator') {
-    reaspConfig.features.rass.enabled = true;
-  }
-  if (workflowAgent === 'ryou-efi-planner') {
-    reaspConfig.features.refi.enabled = true;
-  }
-  fs.writeFileSync(reaspConfigPath, JSON.stringify(reaspConfig, null, 2), 'utf8');
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// CORE OPERATIONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function copyDirRecursiveSync(source, target, onFileCopied = null) {
-  if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
-  for (const file of fs.readdirSync(source)) {
-    const curSource = path.join(source, file);
-    const curTarget = path.join(target, file);
-    if (fs.lstatSync(curSource).isDirectory()) {
-      copyDirRecursiveSync(curSource, curTarget, onFileCopied);
-    } else {
-      fs.copyFileSync(curSource, curTarget);
-      if (onFileCopied) onFileCopied(curSource, curTarget);
-    }
-  }
-}
-
-function removeDirRecursiveSync(dir) {
-  if (fs.existsSync(dir)) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    // ignore
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MODEPROFILE AGENT RESOLUTION
+// INSTALL / UNINSTALL ORCHESTRATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Read a ModeProfile and resolve agent models from its phase configuration.
- * Primary agents follow a fallback chain: orchestrator → init → explore → default.
- * @param {string} modeProfileName - e.g., 'ryouset', 'fast'
- * @returns {object} Map of agent names to model IDs
- */
-function resolveAgentModels(modeProfileName) {
-  const mpPath = path.join(OPENCODE_DIR, 'sdd-profiles', `${modeProfileName}.json`);
-  let mp = null;
-  if (fs.existsSync(mpPath)) {
-    try {
-      mp = JSON.parse(fs.readFileSync(mpPath, 'utf8'));
-    } catch {
-      mp = null;
-    }
-  }
-
-  // Fallback defaults aligned with rass-core.js
-  const defaults = {
-    'ryou-orchestrator': 'opencode-go/kimi-k2.7-code',
-    'ryou-efi-planner': 'opencode-go/kimi-k2.7-code',
-    planner: 'opencode-go/glm-5.1',
-    builder: 'opencode-go/kimi-k2.7-code',
-    architect: 'opencode-go/glm-5.1',
-    reviewer: 'opencode-go/deepseek-v4-pro',
-    debugger: 'opencode-go/deepseek-v4-pro',
-    documentation: 'opencode-go/deepseek-v4-flash',
+function buildContext(options = {}) {
+  return {
+    sourceDir: SOURCE_DIR,
+    homeDir: getHomeDir(),
+    dryRun: options.dryRun || false,
+    force: options.force || false,
+    yes: options.yes || false,
+    verbose: options.verbose || false,
   };
-
-  if (!mp) return defaults;
-
-  const defaultConfig = mp.default || {};
-  const models = { ...defaults };
-
-  // Primary agents: orchestrator phase is canonical, but fall back through
-  // init/explore/default so short pipelines (e.g. fast) still work.
-  const primaryModel =
-    mp.orchestrator?.primary ||
-    mp.init?.primary ||
-    mp.explore?.primary ||
-    defaultConfig.primary ||
-    defaults['ryou-orchestrator'];
-
-  models['ryou-orchestrator'] = primaryModel;
-  models['ryou-efi-planner'] = primaryModel;
-
-  // Subagent mapping
-  if (mp.propose?.primary || defaultConfig.primary) {
-    models.planner = mp.propose?.primary || defaultConfig.primary;
-  }
-  if (mp.apply?.primary || defaultConfig.primary) {
-    models.builder = mp.apply?.primary || defaultConfig.primary;
-  }
-  if (mp.design?.primary || defaultConfig.primary) {
-    models.architect = mp.design?.primary || defaultConfig.primary;
-  }
-  if (mp.verify?.primary || defaultConfig.primary) {
-    models.reviewer = mp.verify?.primary || defaultConfig.primary;
-    models.debugger = mp.verify?.primary || defaultConfig.primary;
-  }
-  if (mp.archive?.primary || defaultConfig.primary) {
-    models.documentation = mp.archive?.primary || defaultConfig.primary;
-  }
-
-  return models;
 }
 
-/**
- * Synchronize agent models in opencode.json with a ModeProfile configuration.
- * @param {string} modeProfileName
- * @param {string} globalConfigPath
- * @returns {boolean}
- */
-function syncAgentsWithModeProfile(modeProfileName, globalConfigPath) {
-  const agentModels = resolveAgentModels(modeProfileName);
+function resolveSelectedAgents(options, detectedAgents) {
+  const detectedIds = new Set(detectedAgents.filter((a) => a.installed).map((a) => a.id));
 
-  if (!fs.existsSync(globalConfigPath)) return false;
+  if (options.onlyDetected) {
+    return detectedAgents.filter((a) => a.installed).map((a) => a.id);
+  }
 
-  let config;
-  try {
-    config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
-  } catch {
+  if (options.agents && options.agents.length > 0) {
+    return options.agents;
+  }
+
+  // Legacy default: OpenCode only.
+  return ['opencode'];
+}
+
+function validateSelectedAgents(selectedIds, detectedAgents, force, requireDetected = true, dryRun = false) {
+  const detectedIds = new Set(detectedAgents.filter((a) => a.installed).map((a) => a.id));
+  const unknown = selectedIds.filter((id) => !TARGETS[id]);
+  const notDetected = selectedIds.filter((id) => !detectedIds.has(id));
+
+  if (unknown.length > 0) {
+    printError(`Unknown agent target(s): ${unknown.join(', ')}`);
     return false;
   }
 
-  if (!config.agent) return false;
-
-  for (const [agentName, modelId] of Object.entries(agentModels)) {
-    if (config.agent[agentName]) {
-      config.agent[agentName].model = modelId;
-    }
-  }
-
-  try {
-    fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
-    return true;
-  } catch {
+  if (requireDetected && notDetected.length > 0 && !force && !dryRun) {
+    printWarning(`The following agents were not detected: ${notDetected.join(', ')}`);
+    printInfo('Use --force to install anyway, or choose from detected agents.');
     return false;
   }
+
+  if (selectedIds.length === 0) {
+    printWarning('No agents selected. Aborting.');
+    return false;
+  }
+
+  return true;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// INSTALL GLOBALLY
-// ═══════════════════════════════════════════════════════════════════════════════
+async function runInstall(selectedIds, options = {}) {
+  const ctx = buildContext(options);
+  const config = loadReaspConfig(ctx);
 
-function installGlobally(modeProfileName = 'ryouset', progress = null) {
-  const globalDir = getGlobalOpenCodeDir();
-  const globalConfigPath = getGlobalConfigPath();
-  const { starPattern, starStarPattern } = getMeridianUIPathPatterns();
-  const agentModels = resolveAgentModels(modeProfileName);
-
-  // ── Phase definitions with start/end percentages ──
-  const PHASES = {
-    init: { start: 0, end: 5, msg: 'Preparing directories', icon: ICONS.diamond },
-    copyDirs: { start: 5, end: 35, msg: 'Copying directories', icon: ICONS.bullet },
-    copyFiles: { start: 35, end: 45, msg: 'Copying plugin files', icon: ICONS.bullet },
-    npm: { start: 45, end: 70, msg: 'Installing npm dependencies', icon: ICONS.ring },
-    register: { start: 70, end: 85, msg: 'Registering plugins', icon: ICONS.sparkle },
-    agents: { start: 85, end: 98, msg: 'Configuring Ryou agents', icon: ICONS.star },
-    finalize: { start: 98, end: 100, msg: 'Finalizing installation', icon: ICONS.check },
-  };
-
-  let currentPercent = 0;
-
-  function reportProgress(percent, message, icon) {
-    if (progress) {
-      progress.update(percent, message, icon);
-    }
-  }
-
-  function runPhase(phaseName, workFn) {
-    const phase = PHASES[phaseName];
-    reportProgress(phase.start, phase.msg, phase.icon);
-    
-    // Execute the work
-    workFn();
-    
-    // Ensure we reach the end of this phase
-    currentPercent = phase.end;
-    reportProgress(currentPercent, phase.msg + '...', phase.icon);
-  }
-
-  // Phase 1: Init (0-5%)
-  runPhase('init', () => {
-    if (!fs.existsSync(globalDir)) {
-      fs.mkdirSync(globalDir, { recursive: true });
-    }
-  });
-
-  // Count total files for accurate copy progress
-  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules', 'skills', 'refi'];
-  const filesToCopy = ['sdd.config.json', 'reasp.config.json', 'plugin.js', 'tui.js', 'rass-core.js', 'package.json'];
-  const totalFiles = countTotalFilesToCopy(dirsToCopy, filesToCopy);
-  let filesCopied = 0;
-
-  function onFileCopied() {
-    filesCopied++;
-    if (totalFiles > 0 && progress) {
-      const copyRange = PHASES.copyDirs.end - PHASES.copyDirs.start;
-      const copyProgress = (filesCopied / totalFiles) * copyRange;
-      currentPercent = PHASES.copyDirs.start + copyProgress;
-      reportProgress(currentPercent, `Copying files (${filesCopied}/${totalFiles})`, ICONS.bullet);
-    }
-  }
-
-  // Phase 2: Copy directories (5-35%)
-  runPhase('copyDirs', () => {
-    for (const dir of dirsToCopy) {
-      const src = path.join(OPENCODE_DIR, dir);
-      const dest = path.join(globalDir, dir);
-      if (fs.existsSync(src)) {
-        copyDirRecursiveSync(src, dest, onFileCopied);
-      }
-    }
-  });
-
-  // Phase 3: Copy individual files (35-45%)
-  runPhase('copyFiles', () => {
-    for (const file of filesToCopy) {
-      const src = path.join(OPENCODE_DIR, file);
-      if (fs.existsSync(src)) {
-        fs.copyFileSync(src, path.join(globalDir, file));
-        filesCopied++;
-        if (totalFiles > 0 && progress) {
-          const copyRange = PHASES.copyFiles.end - PHASES.copyFiles.start;
-          const fileProgress = (filesCopied / totalFiles) * copyRange;
-          currentPercent = PHASES.copyFiles.start + fileProgress;
-          reportProgress(currentPercent, `Copying files (${filesCopied}/${totalFiles})`, ICONS.bullet);
+  if (config.autoSnapshotBeforeInstall && !options.skipSnapshot) {
+    const shouldSnapshot = options.yes || await confirmSnapshotBeforeAction('install');
+    if (shouldSnapshot) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      for (const agentId of selectedIds) {
+        const result = createSnapshot(ctx, agentId, `pre-install-${timestamp}`, 'Auto snapshot before install');
+        if (result.success) {
+          printSuccess(`Pre-install snapshot: ${result.metadata.name} · ${formatBytes(result.metadata.sizeBytes)}`);
+        } else {
+          printWarning(`Could not snapshot ${TARGETS[agentId]?.displayName || agentId}: ${result.message}`);
         }
       }
     }
+  }
+
+  const bundle = compileReaspBundle({
+    workflow: options.workflow || DEFAULT_WORKFLOW,
+    modeProfile: options.modeProfile || DEFAULT_MODEPROFILE,
+    language: options.language || 'es-MX',
   });
 
-  // Phase 4: npm install (45-70%)
-  // Note: execSync blocks the event loop, so we show start/end progress only
-  let npmInstalled = false;
-  
-  if (progress) {
-    // Show start of npm phase
-    currentPercent = PHASES.npm.start;
-    reportProgress(currentPercent, 'Installing npm dependencies...', ICONS.ring);
+  printDivider();
+  printHeader('Installing REASP');
+
+  if (ctx.dryRun) {
+    printWarning('[DRY-RUN] No files will be modified.');
   }
+
+  for (const agentId of selectedIds) {
+    const target = TARGETS[agentId];
+    const targetCtx = { ...ctx, globalDir: target.getGlobalDir(ctx) };
+
+    printInfo(`${ctx.dryRun ? '[DRY-RUN] Would install' : 'Installing'} REASP into ${target.displayName}...`);
+
+    if (agentId === 'opencode' && !ctx.dryRun) {
+      const progress = new ProgressTracker();
+      progress.update(0, 'Initializing...', ICONS.diamond);
+      targetCtx.progress = progress;
+    }
+
+    const result = target.install(targetCtx, bundle);
+
+    if (agentId === 'opencode' && options.workflow && !ctx.dryRun) {
+      target.setInstalledWorkflow(targetCtx, options.workflow);
+    }
+
+    if (agentId === 'opencode' && options.modeProfile && !ctx.dryRun) {
+      target.setInstalledModeProfile(targetCtx, options.modeProfile);
+    }
+
+    if (result.success) {
+      printSuccess(result.message || `${target.displayName} ready`);
+    } else {
+      printWarning(result.message || `${target.displayName} installation had issues`);
+    }
+  }
+
+  printDivider();
+  printHeader('Summary');
+  for (const agentId of selectedIds) {
+    const target = TARGETS[agentId];
+    console.log('  ' + THEME.success(ICONS.check + ' ' + target.displayName) + THEME.dim(ctx.dryRun ? ' (would install)' : ' (installed)'));
+  }
+
+  if (!ctx.dryRun) {
+    saveLastSelection(selectedIds);
+  }
+}
+
+async function runUninstall(selectedIds, options = {}) {
+  const ctx = buildContext(options);
+  const config = loadReaspConfig(ctx);
+
+  if (config.autoSnapshotBeforeUninstall && !options.skipSnapshot) {
+    const shouldSnapshot = options.yes || await confirmSnapshotBeforeAction('uninstall');
+    if (shouldSnapshot) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      for (const agentId of selectedIds) {
+        const result = createSnapshot(ctx, agentId, `pre-uninstall-${timestamp}`, 'Auto snapshot before uninstall');
+        if (result.success) {
+          printSuccess(`Pre-uninstall snapshot: ${result.metadata.name} · ${formatBytes(result.metadata.sizeBytes)}`);
+        } else {
+          printWarning(`Could not snapshot ${TARGETS[agentId]?.displayName || agentId}: ${result.message}`);
+        }
+      }
+    }
+  }
+
+  printDivider();
+  printHeader('Uninstalling REASP');
+
+  if (ctx.dryRun) {
+    printWarning('[DRY-RUN] No files will be removed.');
+  }
+
+  for (const agentId of selectedIds) {
+    const target = TARGETS[agentId];
+    const targetCtx = { ...ctx, globalDir: target.getGlobalDir(ctx) };
+
+    printInfo(`${ctx.dryRun ? '[DRY-RUN] Would uninstall' : 'Uninstalling'} REASP from ${target.displayName}...`);
+
+    const result = target.uninstall(targetCtx);
+    if (result.success) {
+      printSuccess(result.message || `${target.displayName} cleaned`);
+    } else {
+      printWarning(result.message || `${target.displayName} uninstall had issues`);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function cmdInstall(args, flags) {
+  const detectedAgents = detectAllAgents();
+  const hasExplicitSelection = !!flags.agents || !!flags['only-detected'];
+  const options = {
+    agents: parseAgentList(flags.agents),
+    onlyDetected: !!flags['only-detected'],
+    dryRun: !!flags['dry-run'],
+    skipSnapshot: !!flags['skip-snapshot'] || !!flags.skipSnapshot,
+    yes: !!flags.y || !!flags.yes,
+    force: !!flags.force,
+    modeProfile: flags.modeprofile || flags['mode-profile'] || DEFAULT_MODEPROFILE,
+    workflow: flags.workflow || DEFAULT_WORKFLOW,
+  };
+
+  const selectedIds = resolveSelectedAgents(options, detectedAgents);
+
+  // Legacy `install` without flags keeps the old OpenCode behavior and does
+  // not block when OpenCode is not detected (manual fallback still works).
+  if (!validateSelectedAgents(selectedIds, detectedAgents, options.force, hasExplicitSelection, options.dryRun)) {
+    process.exit(1);
+  }
+
+  const selectedTargets = selectedIds.map((id) => ({ id, displayName: TARGETS[id].displayName }));
+
+  if (!options.yes) {
+    await confirmInstall(selectedTargets, false);
+  }
+
+  await runInstall(selectedIds, options);
+}
+
+async function cmdUninstall(args, flags) {
+  const detectedAgents = detectAllAgents();
+  const options = {
+    agents: parseAgentList(flags.agents),
+    dryRun: !!flags['dry-run'],
+    skipSnapshot: !!flags['skip-snapshot'] || !!flags.skipSnapshot,
+    yes: !!flags.y || !!flags.yes,
+    force: !!flags.force,
+  };
+
+  // Default uninstall target is OpenCode.
+  if (!options.agents || options.agents.length === 0) {
+    options.agents = ['opencode'];
+  }
+
+  const hasExplicitSelection = !!flags.agents;
+
+  if (!validateSelectedAgents(options.agents, detectedAgents, options.force, hasExplicitSelection, options.dryRun)) {
+    process.exit(1);
+  }
+
+  const selectedTargets = options.agents.map((id) => ({ id, displayName: TARGETS[id].displayName }));
+
+  if (!options.yes) {
+    await confirmUninstall(selectedTargets, false);
+  }
+
+  await runUninstall(options.agents, options);
+}
+
+function cmdDetect() {
+  printBannerInstant();
+  printDivider();
+  printHeader('Detected AI Agents');
+
+  const agents = detectAllAgents();
+  for (const agent of agents) {
+    const icon = agent.installed ? ICONS.check : ICONS.cross;
+    const status = agent.installed
+      ? THEME.success(`${icon} detectado`) + (agent.version ? THEME.dim(` v${agent.version}`) : '')
+      : THEME.dim(`${icon} no detectado`);
+    console.log(`  ${agent.displayName.padEnd(14)} ${status}`);
+  }
+}
+
+function cmdStatus() {
+  printBannerInstant();
+  printDivider();
+  printHeader('REASP Installation Status');
+
+  for (const [id, target] of Object.entries(TARGETS)) {
+    const installed = target.isInstalled({ sourceDir: SOURCE_DIR, homeDir: getHomeDir() });
+    const icon = installed ? ICONS.check : ICONS.cross;
+    const status = installed ? THEME.success('installed') : THEME.dim('not installed');
+    console.log(`  ${target.displayName.padEnd(16)} ${icon} ${status}`);
+  }
+}
+
+async function cmdLocal() {
+  printBannerInstant();
+  printDivider();
+  printHeader('Workspace Installation');
+
+  const s = spinner();
+  s.start(THEME.primary('  ' + ICONS.ring + ' Installing REASP in workspace...'));
 
   try {
-    execSync('npm install', { cwd: globalDir, stdio: 'pipe' });
-    npmInstalled = true;
-  } catch (e) {
-    const stderr = e.stderr || '';
-    printWarning('npm install failed in global dir');
-    if (stderr.trim()) printInfo(stderr.trim().split('\n').pop());
-    printInfo('Plugin registration may fail without dependencies');
+    const target = opencodeTarget.installLocally({ sourceDir: SOURCE_DIR });
+    s.stop(THEME.successBright('  ' + ICONS.sparkle + ' REASP installed in workspace'));
+
+    printDivider();
+    printHeader('Local Install');
+
+    printInfo(`Installed to: ${target}`);
+    printInfo('This only affects the current project and includes both RASS and REFI assets.');
+    printInfo('For global installation, run: node installer/index.js install');
+  } catch (err) {
+    s.stop(THEME.errorBright('  ' + ICONS.cross + ' Installation failed'));
+    printError(err.message);
+    process.exit(1);
   }
-
-  if (progress) {
-    // Show end of npm phase
-    currentPercent = PHASES.npm.end;
-    reportProgress(currentPercent, 'npm dependencies installed', ICONS.ring);
-  }
-
-  // Phase 5: Register plugins (70-85%)
-  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
-  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
-  const opencodeCmd = findOpenCodeCommand();
-
-  runPhase('register', () => {
-    if (opencodeCmd) {
-      let pluginRegistered = false;
-      try {
-        execSync(`${opencodeCmd} plugin "${pluginUrl}" --global --force`, {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          encoding: 'utf8',
-        });
-        pluginRegistered = true;
-        if (progress) {
-          currentPercent = PHASES.register.start + ((PHASES.register.end - PHASES.register.start) * 0.5);
-          reportProgress(currentPercent, 'Registering plugin TUI...', ICONS.sparkle);
-        }
-      } catch (e) {
-        const stderr = e.stderr || '';
-        const stdout = e.stdout || '';
-        printWarning('opencode plugin command failed');
-        if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
-        if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
-        printWarning('Falling back to manual config registration');
-        registerPluginManually(globalConfigPath, globalDir);
-      }
-
-      if (pluginRegistered) {
-        try {
-          execSync(`${opencodeCmd} plugin "${tuiUrl}" --global --force`, { stdio: 'pipe' });
-        } catch (e) {
-          const stderr = e.stderr || '';
-          const stdout = e.stdout || '';
-          printWarning('opencode plugin for TUI failed');
-          if (stderr.trim()) printInfo(`stderr: ${stderr.trim()}`);
-          if (stdout.trim()) printInfo(`stdout: ${stdout.trim()}`);
-        }
-      }
-    } else {
-      printWarning('opencode CLI not found in PATH or common locations');
-      printInfo('Tried: opencode, npx opencode-ai, and common install directories');
-      printWarning('Falling back to manual config registration');
-      registerPluginManually(globalConfigPath, globalDir);
-    }
-  });
-
-  // Phase 6: Configure agents (85-98%)
-  let config = {};
-  if (fs.existsSync(globalConfigPath)) {
-    try {
-      config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
-    } catch {
-      config = {};
-    }
-  }
-
-  if (!config.agent) config.agent = {};
-
-  // ── Clean up legacy agent name to prevent duplicates ──
-  if (config.agent['ryou-efi-agent']) {
-    delete config.agent['ryou-efi-agent'];
-  }
-  if (config.default_agent === 'ryou-efi-agent') {
-    config.default_agent = 'ryou-efi-planner';
-  }
-
-  const ryouAgents = {
-    'ryou-orchestrator': {
-      description: 'Primary orchestrator for pragmatic .NET work using Ryou workflow and MeridianUI.',
-      mode: 'primary',
-      model: agentModels['ryou-orchestrator'],
-      temperature: 0.2,
-      steps: 40,
-      prompt: '{file:./agents/ryou-orchestrator.md}',
-      permission: {
-        read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
-        bash: 'allow', task: 'allow', webfetch: 'allow', websearch: 'allow',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' },
-      },
-    },
-    'ryou-efi-planner': {
-      description: 'Primary planning agent for REFI packet generation and implementation handoff.',
-      mode: 'primary', model: agentModels['ryou-efi-planner'], temperature: 0.1, steps: 32,
-      prompt: '{file:./agents/ryou-efi-planner.md}',
-      permission: {
-        read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
-        bash: 'allow', task: 'allow', todowrite: 'allow', webfetch: 'allow', websearch: 'allow',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' },
-      },
-    },
-    planner: {
-      description: 'Subagent for planning medium or complex work before implementation.',
-      mode: 'subagent', model: agentModels.planner, temperature: 0.1, steps: 14,
-      prompt: '{file:./agents/planner.md}',
-      permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'deny', task: 'deny',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
-    },
-    builder: {
-      description: 'Subagent for C#, .NET, EF Core, XAML, Blazor, MAUI, and MeridianUI implementation.',
-      mode: 'subagent', model: agentModels.builder, temperature: 0.2, steps: 40,
-      prompt: '{file:./agents/builder.md}',
-      permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
-        bash: 'allow', task: 'deny',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
-    },
-    architect: {
-      description: 'Subagent for architecture decisions, boundaries, data flow, and pragmatic design tradeoffs.',
-      mode: 'subagent', model: agentModels.architect, temperature: 0.1, steps: 16,
-      prompt: '{file:./agents/architect.md}',
-      permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'deny', task: 'deny',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
-    },
-    reviewer: {
-      description: 'Subagent for code review, regressions, maintainability, performance, and security risks.',
-      mode: 'subagent', model: agentModels.reviewer, temperature: 0.1, steps: 18,
-      prompt: '{file:./agents/reviewer.md}',
-      permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'allow', task: 'deny',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
-    },
-    debugger: {
-      description: 'Subagent for bug investigation, failing tests, runtime errors, EF issues, and async/concurrency problems.',
-      mode: 'subagent', model: agentModels.debugger, temperature: 0.1, steps: 26,
-      prompt: '{file:./agents/debugger.md}',
-      permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', bash: 'allow', task: 'deny',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
-    },
-    documentation: {
-      description: 'Subagent for concise Markdown and visual HTML implementation summaries.',
-      mode: 'subagent', model: agentModels.documentation, temperature: 0.2, steps: 12,
-      prompt: '{file:./agents/documentation.md}',
-      permission: { read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
-        edit: { '*': 'allow', [starPattern]: 'deny', [starStarPattern]: 'deny' },
-        bash: 'deny', task: 'deny',
-        external_directory: { '*': 'ask', [starPattern]: 'allow', [starStarPattern]: 'allow' } },
-    },
-  };
-
-  const agentNames = Object.keys(ryouAgents);
-  const agentRange = PHASES.agents.end - PHASES.agents.start;
-  
-  for (let i = 0; i < agentNames.length; i++) {
-    const name = agentNames[i];
-    const agentConfig = ryouAgents[name];
-    if (!config.agent[name]) {
-      config.agent[name] = agentConfig;
-    } else {
-      config.agent[name].model = agentConfig.model;
-    }
-    // Update progress per agent smoothly
-    if (progress) {
-      const agentProgress = ((i + 1) / agentNames.length) * agentRange;
-      currentPercent = PHASES.agents.start + agentProgress;
-      reportProgress(currentPercent, `Configuring agent: ${name}`, ICONS.star);
-    }
-  }
-
-  if (!config.default_agent) {
-    config.default_agent = 'ryou-orchestrator';
-  }
-
-  // Root model/small_model follow the active ModeProfile default
-  const mpPath = path.join(OPENCODE_DIR, 'sdd-profiles', `${modeProfileName}.json`);
-  let modeProfile = null;
-  if (fs.existsSync(mpPath)) {
-    try {
-      modeProfile = JSON.parse(fs.readFileSync(mpPath, 'utf8'));
-    } catch {
-      modeProfile = null;
-    }
-  }
-  const defaultPrimary = modeProfile?.default?.primary || agentModels['ryou-orchestrator'] || 'opencode-go/kimi-k2.7-code';
-  const defaultFallback = modeProfile?.default?.fallbacks?.[0] || 'opencode-go/deepseek-v4-flash';
-
-  if (!config.model) {
-    config.model = defaultPrimary;
-  }
-  if (!config.small_model) {
-    config.small_model = defaultFallback;
-  }
-  if (!config.shell) {
-    config.shell = getDefaultShell();
-  }
-
-  if (!config.permission) config.permission = {};
-  if (!config.permission.skill) config.permission.skill = {};
-  const defaultSkills = {
-    'dotnet-clean-architecture': 'allow', 'aspnet-api': 'allow', efcore: 'allow',
-    'refi-enterprise-feature-implementation': 'allow',
-    meridianui: 'allow', 'blazor-ui': 'allow', 'wpf-xaml': 'allow',
-    'avalonia-ui': 'allow', 'maui-ui': 'allow', 'documentation-summary': 'allow',
-    'debugging-workflow': 'allow', 'review-workflow': 'allow',
-  };
-  for (const [skill, value] of Object.entries(defaultSkills)) {
-    if (config.permission.skill[skill] === undefined) {
-      config.permission.skill[skill] = value;
-    }
-  }
-
-  if (!config.instructions) config.instructions = [];
-  const defaultInstructions = [
-    'rules/global-rules.md',
-    'rules/meridianui.md',
-    'refi/README.md',
-    'refi/config.yaml',
-    'refi/rules/global-rules.md',
-    'refi/rules/anti-hallucination.md',
-    'refi/rules/quality-gates.md',
-  ];
-  for (const instruction of defaultInstructions) {
-    if (!config.instructions.includes(instruction)) {
-      config.instructions.push(instruction);
-    }
-  }
-
-  if (!config.watcher) config.watcher = {};
-  if (!config.watcher.ignore) config.watcher.ignore = [];
-  const defaultIgnores = ['**/.git/**', '**/.vs/**', '**/bin/**', '**/obj/**', '**/node_modules/**', '**/dist/**', '**/publish/**'];
-  for (const ignore of defaultIgnores) {
-    if (!config.watcher.ignore.includes(ignore)) {
-      config.watcher.ignore.push(ignore);
-    }
-  }
-
-  fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
-
-  // Phase 7: Finalize (98-100%)
-  currentPercent = 100;
-  if (progress) {
-    progress.finish('Installation complete');
-  }
-
-  return { globalDir, globalConfigPath };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// FALLBACK: MANUAL PLUGIN REGISTRATION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function registerPluginManually(globalConfigPath, globalDir) {
-  let config = {};
-  const configExists = fs.existsSync(globalConfigPath);
-
-  if (configExists) {
-    try {
-      config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
-    } catch {
-      config = {};
-    }
-  }
-
-  if (!config.$schema) {
-    config.$schema = 'https://opencode.ai/schema.json';
-  }
-
-  if (!config.plugin) config.plugin = [];
-
-  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
-  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
-
-  config.plugin = config.plugin.filter((p) => {
-    if (typeof p === 'string') {
-      return !p.includes('rass') && !p.includes('RASS') &&
-             !p.includes('.opencode/plugin') && !p.includes('.opencode/tui') &&
-             !(p.endsWith('plugin.js') && p.includes('opencode')) &&
-             !(p.endsWith('tui.js') && p.includes('opencode'));
-    }
-    if (Array.isArray(p)) return !p[0]?.includes('rass') && !p[0]?.includes('RASS');
-    return true;
-  });
-
-  config.plugin.push(pluginUrl);
-  config.plugin.push(tuiUrl);
-
-  fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// UNINSTALL GLOBALLY
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function uninstallGlobally() {
-  const globalDir = getGlobalOpenCodeDir();
-  const globalConfigPath = getGlobalConfigPath();
-
-  const dirsToRemove = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules', 'refi'];
-  for (const dir of dirsToRemove) {
-    removeDirRecursiveSync(path.join(globalDir, dir));
-  }
-
-  const filesToRemove = [
-    'sdd.config.json', 'reasp.config.json', 'plugin.js', 'tui.js', 'rass-core.js',
-    'package.json', 'package-lock.json',
-  ];
-  for (const file of filesToRemove) {
-    const filePath = path.join(globalDir, file);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  }
-
-  removeDirRecursiveSync(path.join(globalDir, 'node_modules'));
-
-  if (fs.existsSync(globalConfigPath)) {
-    let config;
-    try {
-      config = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
-    } catch {
-      config = {};
-    }
-
-    if (config.plugin) {
-      config.plugin = config.plugin.filter((p) => {
-        if (typeof p === 'string') return !p.includes('rass') && !p.includes('RASS') && !p.includes('plugin.js') && !p.includes('tui.js');
-        if (Array.isArray(p)) return !p[0]?.includes('rass') && !p[0]?.includes('RASS');
-        return true;
-      });
-
-      if (config.plugin.length === 0) delete config.plugin;
-    }
-
-    if (config.agent) {
-      const ryouAgentNames = ['ryou-orchestrator', 'ryou-efi-planner', 'ryou-efi-agent', 'planner', 'builder', 'architect', 'reviewer', 'debugger', 'documentation'];
-      for (const name of ryouAgentNames) {
-        delete config.agent[name];
-      }
-      if (Object.keys(config.agent).length === 0) delete config.agent;
-    }
-
-    if (config.default_agent === 'ryou-orchestrator') {
-      delete config.default_agent;
-    }
-
-    if (config.instructions) {
-        config.instructions = config.instructions.filter((i) => ![
-          'rules/global-rules.md',
-          'rules/meridianui.md',
-          'refi/README.md',
-          'refi/config.yaml',
-          'refi/rules/global-rules.md',
-          'refi/rules/anti-hallucination.md',
-          'refi/rules/quality-gates.md',
-        ].includes(i));
-        if (config.instructions.length === 0) delete config.instructions;
-      }
-
-      const skillDir = path.join(globalDir, 'skills', 'refi-enterprise-feature-implementation');
-      removeDirRecursiveSync(skillDir);
-
-    fs.writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), 'utf8');
-  }
-
-  return { globalDir, globalConfigPath };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// INSTALL LOCALLY
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function installLocally() {
-  const targetOpencode = path.join(process.cwd(), '.opencode');
-
-  const dirsToCopy = ['sdd-profiles', 'phases', 'runtime', 'agents', 'rules', 'skills', 'refi'];
-  for (const dir of dirsToCopy) {
-    const src = path.join(OPENCODE_DIR, dir);
-    const dest = path.join(targetOpencode, dir);
-    if (fs.existsSync(src)) {
-      copyDirRecursiveSync(src, dest);
-    }
-  }
-
-  const filesToCopy = ['sdd.config.json', 'reasp.config.json', 'plugin.js', 'tui.js', 'rass-core.js', 'package.json'];
-  for (const file of filesToCopy) {
-    const src = path.join(OPENCODE_DIR, file);
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(targetOpencode, file));
-    }
-  }
-
-  return targetOpencode;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// INTERACTIVE TUI — REDESIGNED WITH VISUAL SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════════
-
-async function interactiveInstall() {
-  // Animate banner on entry
+async function interactiveMode() {
   await animateBanner();
 
-  const action = await select({
-      message: THEME.primaryBright(ICONS.arrow + ' What would you like to do?'),
-      options: [
-        { value: 'global', label: THEME.successBright(ICONS.sparkle + ' Install globally'), hint: THEME.dim('Install REASP (RASS + REFI) for all OpenCode projects') },
-        { value: 'local', label: THEME.accentBright(ICONS.diamond + ' Install in workspace'), hint: THEME.dim('Copy REASP to .opencode/ in current directory') },
-        { value: 'uninstall', label: THEME.errorBright(ICONS.cross + ' Uninstall globally'), hint: THEME.dim('Remove REASP from OpenCode') },
-      ],
-    });
+  while (true) {
+    const choice = await promptMainMenu();
+    if (choice === 'exit' || isCancel(choice)) {
+      outro(THEME.success('  ' + ICONS.check + ' Goodbye'));
+      break;
+    }
 
-  if (isCancel(action)) {
-    outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
+    switch (choice) {
+      case 'install':
+        await interactiveInstall();
+        break;
+      case 'uninstall':
+        await interactiveUninstall();
+        break;
+      case 'snapshots':
+        await interactiveSnapshots();
+        break;
+      case 'detect':
+        cmdDetect();
+        break;
+      case 'status':
+        cmdStatus();
+        break;
+    }
+  }
+}
+
+async function interactiveInstall() {
+  const detectedAgents = detectAllAgents();
+  const lastSelection = loadLastSelection();
+
+  const selectedIds = await promptAgentSelection(detectedAgents, lastSelection);
+  if (!validateSelectedAgents(selectedIds, detectedAgents, false)) {
     return;
   }
 
-  if (action === 'global') {
-    const confirmed = await confirm({
-      message: THEME.warningBright(ICONS.triangle + ' This will install REASP as a global OpenCode plugin. Continue?'),
-    });
+  const selectedTargets = selectedIds.map((id) => ({ id, displayName: TARGETS[id].displayName }));
+  await confirmInstall(selectedTargets, false);
 
-    if (isCancel(confirmed) || !confirmed) {
-      outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
-      return;
-    }
+  const modeProfile = await promptModeProfile();
+  const workflowAgent = await promptWorkflowAgent();
 
-    console.log('\n  ' + THEME.primaryBright(ICONS.ring + ' Installing REASP globally...'));
-    console.log('');
-
-    const progress = new ProgressTracker();
-    progress.update(0, 'Initializing...', ICONS.diamond); // Initialize display
-
-    try {
-      const { globalDir } = installGlobally('ryouset', progress);
-      console.log('\n  ' + THEME.successBright(ICONS.sparkle + ' REASP installed globally'));
-
-      printDivider();
-      printHeader('Configuration');
-
-      const configureNow = await confirm({
-        message: THEME.infoBright(ICONS.diamond + ' Configure default ModeProfile now?'),
-      });
-
-      if (configureNow && !isCancel(configureNow)) {
-        printDivider();
-        printHeader('Select ModeProfile');
-
-        const modeProfile = await select({
-          message: THEME.primaryBright(ICONS.arrow + ' Select default SDD ModeProfile:'),
-          options: [
-            { value: 'ryouset', label: THEME.successBright(ICONS.star + ' RyouSet (Recommended)'), hint: THEME.dim('Full pipeline — GLM-5.1 orchestrates, all 8 phases, per-phase models') },
-            { value: 'fast', label: THEME.accentBright(ICONS.bullet + ' Fast'), hint: THEME.dim('Orchestrator → Apply → Verify, low effort') },
-            { value: 'architecture', label: THEME.secondaryBright(ICONS.diamond + ' Architecture'), hint: THEME.dim('Full pipeline for complex systems, high reasoning') },
-            { value: 'ui', label: THEME.primaryBright(ICONS.sparkle + ' UI'), hint: THEME.dim('Orchestrator → Design → Apply → Verify, UI-focused') },
-            { value: 'debug', label: THEME.warningBright(ICONS.triangle + ' Debug'), hint: THEME.dim('Explore → Verify → Apply loop, high reasoning') },
-            { value: 'enterprise', label: THEME.errorBright(ICONS.circle + ' Enterprise'), hint: THEME.dim('Maximum robustness, all phases, extreme reasoning') },
-            { value: 'legacy', label: THEME.infoBright(ICONS.dot + ' Legacy'), hint: THEME.dim('For refactors and modernization') },
-            { value: 'minimal', label: THEME.dim(ICONS.dash + ' Minimal'), hint: THEME.dim('Explore → Apply only, low cost') },
-          ],
-        });
-
-        if (!isCancel(modeProfile)) {
-          const runtimeDir = path.join(globalDir, 'runtime');
-          if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
-          fs.writeFileSync(path.join(runtimeDir, 'current-modeprofile.json'), JSON.stringify({ modeprofile: modeProfile }, null, 2));
-
-          // Synchronize agent models with the selected ModeProfile
-          const globalConfigPath = getGlobalConfigPath();
-          const syncResult = syncAgentsWithModeProfile(modeProfile, globalConfigPath);
-          if (syncResult) {
-            printSuccess(`Agent models synchronized with ${modeProfile} ModeProfile`);
-          }
-
-          printSuccess(`ModeProfile set to: ${modeProfile}`);
-          printInfo('Use /sdd in OpenCode to switch ModeProfiles at any time');
-        }
-      }
-
-      printDivider();
-      printHeader('Default Workflow Agent');
-
-      const workflowAgent = await select({
-        message: THEME.primaryBright(ICONS.arrow + ' Select default REASP workflow:'),
-        options: [
-          { value: 'ryou-efi-planner', label: THEME.secondaryBright(ICONS.diamond + ' Ryou EFI Planner'), hint: THEME.dim('Planning-first REFI workflow for enterprise feature packets') },
-          { value: 'ryou-orchestrator', label: THEME.successBright(ICONS.star + ' Ryou Orchestrator'), hint: THEME.dim('Implementation-first workflow once the REFI packet is ready') },
-        ],
-      });
-
-      if (!isCancel(workflowAgent)) {
-        setInstalledWorkflow(globalDir, getGlobalConfigPath(), workflowAgent);
-        printSuccess(`Default workflow agent set to: ${workflowAgent}`);
-      }
-
-      printDivider();
-      printHeader('REASP Installed');
-
-      note(
-        THEME.infoBright('Installed to:') + ' ' + THEME.primary(globalDir) + '\n\n' +
-        THEME.secondaryBright('Commands available in OpenCode:') + '\n' +
-        '  ' + THEME.success('/sdd') + THEME.dim(' — Switch or create SDD ModeProfiles') + '\n' +
-        '  ' + THEME.success('/sdd-mode') + THEME.dim(' — Alias for /sdd (backward compatible)') + '\n' +
-        '  ' + THEME.success('/sdd-profile') + THEME.dim(' — Alias for /sdd (backward compatible)') + '\n' +
-        '  ' + THEME.success('/rass-setup') + THEME.dim(' — Legacy alias for REASP setup') + '\n' +
-        '  ' + THEME.success('/reasp-setup') + THEME.dim(' — Switch between Ryou EFI Planner and Ryou Orchestrator') + '\n' +
-        '  ' + THEME.success('/s') + THEME.dim(' — Alias for /sdd') + '\n' +
-        '  ' + THEME.success('/rs') + THEME.dim(' — Alias for /rass-setup') + '\n' +
-        '  ' + THEME.success('/reasp') + THEME.dim(' — Alias for /reasp-setup') + '\n\n' +
-        THEME.secondaryBright('AI tools available:') + '\n' +
-        '  ' + THEME.accent('sdd_mode_profile') + THEME.dim(' — Manage ModeProfiles programmatically') + '\n' +
-        '  ' + THEME.accent('rass_setup') + THEME.dim(' — Backward-compatible RASS/REASP status tool') + '\n' +
-        '  ' + THEME.accent('reasp_setup') + THEME.dim(' — Switch workflow and toggle REFI directly') + '\n\n' +
-        THEME.secondaryBright('REASP primary agents:') + '\n' +
-        '  ' + THEME.primary('ryou-efi-planner') + THEME.dim(' (planning)') + '\n' +
-        '  ' + THEME.primary('ryou-orchestrator') + THEME.dim(' (implementation)') + '\n\n' +
-        THEME.secondaryBright('Other Ryou agents deployed:') + '\n' +
-        THEME.info('planner') + ', ' + THEME.info('builder') + ', ' + THEME.info('architect') + ', ' +
-        THEME.info('reviewer') + ', ' + THEME.info('debugger') + ', ' + THEME.info('documentation'),
-        THEME.successBright(ICONS.sparkle + ' Installation Complete')
-      );
-
-      outro(THEME.successBright('  ' + ICONS.sparkle + ' REASP is ready. Plan with Ryou EFI Planner and implement with Ryou Orchestrator.'));
-    } catch (err) {
-      printError('Installation failed');
-      outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
-    }
-
-  } else if (action === 'local') {
-    const s = spinner();
-      s.start(THEME.primary('  ' + ICONS.ring + ' Installing REASP in workspace...'));
-
-    try {
-      const target = installLocally();
-        s.stop(THEME.successBright('  ' + ICONS.sparkle + ' REASP installed in workspace'));
-
-      printDivider();
-      printHeader('Local Install');
-
-      note(
-        THEME.infoBright('Installed to:') + ' ' + THEME.primary(target) + '\n\n' +
-          'This only affects the current project and includes both RASS and REFI assets.\n' +
-          'For global installation, run again and choose ' + THEME.successBright('"Install globally"'),
-          THEME.successBright(ICONS.sparkle + ' Workspace Ready')
-        );
-
-        outro(THEME.successBright('  ' + ICONS.sparkle + ' REASP is ready in this workspace'));
-    } catch (err) {
-      s.stop(THEME.errorBright('  ' + ICONS.cross + ' Installation failed'));
-      outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
-    }
-
-  } else if (action === 'uninstall') {
-    const confirmed = await confirm({
-      message: THEME.errorBright(ICONS.circle + ' This will remove REASP from OpenCode globally. Continue?'),
-    });
-
-    if (isCancel(confirmed) || !confirmed) {
-      outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
-      return;
-    }
-
-    const s = spinner();
-    s.start(THEME.error('  ' + ICONS.ring + ' Uninstalling REASP...'));
-
-    try {
-      const { globalDir } = uninstallGlobally();
-      s.stop(THEME.successBright('  ' + ICONS.sparkle + ' REASP uninstalled'));
-
-      printDivider();
-      printHeader('Uninstalled');
-
-        note(
-          THEME.infoBright('Removed from:') + ' ' + THEME.primary(globalDir) + '\n\n' +
-          'REASP plugin assets, RASS modeprofiles, and REFI toolkit files have been removed.\n' +
-          'OpenCode config has been cleaned up.',
-          THEME.warningBright(ICONS.triangle + ' REASP Removed')
-        );
-
-        outro(THEME.warningBright('  ' + ICONS.triangle + ' REASP has been removed. Restart OpenCode to apply changes'));
-    } catch (err) {
-      s.stop(THEME.errorBright('  ' + ICONS.cross + ' Uninstall failed'));
-      outro(THEME.errorBright('  ' + ICONS.circle + ' ' + err.message));
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// CLI MODE — REDESIGNED WITH VISUAL SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const args = process.argv.slice(2);
-
-if (args.length > 0) {
-  const command = args[0].toLowerCase();
-
-  if (command === 'install') {
-    printBannerInstant();
-    printDivider();
-    printHeader('Global Installation');
-      printInfo('Installing REASP globally...');
-
-    try {
-      const { globalDir } = installGlobally();
-        printSuccess(`REASP installed globally to: ${globalDir}`);
-        printInfo('Use /reasp-setup in OpenCode');
-    } catch (err) {
-      printError(`Installation failed: ${err.message}`);
-      process.exit(1);
-    }
-  } else if (command === 'uninstall') {
-    printBannerInstant();
-    printDivider();
-    printHeader('Global Uninstallation');
-      printInfo('Uninstalling REASP globally...');
-
-    try {
-      const { globalDir } = uninstallGlobally();
-        printSuccess(`REASP uninstalled from: ${globalDir}`);
-    } catch (err) {
-      printError(`Uninstall failed: ${err.message}`);
-      process.exit(1);
-    }
-  } else if (command === 'local') {
-    printBannerInstant();
-    printDivider();
-    printHeader('Workspace Installation');
-      printInfo('Installing REASP in workspace...');
-
-    try {
-      const target = installLocally();
-        printSuccess(`REASP installed locally to: ${target}`);
-    } catch (err) {
-      printError(`Local install failed: ${err.message}`);
-      process.exit(1);
-    }
-  } else {
-    printBannerInstant();
-    printDivider();
-    printHeader('Usage');
-    console.log('  ' + THEME.warningBright('Usage:') + ' node installer/index.js [install|uninstall|local]');
-    console.log('  ' + THEME.success(ICONS.sparkle + ' install') + THEME.dim('    — Install REASP globally into OpenCode'));
-    console.log('  ' + THEME.error(ICONS.cross + ' uninstall') + THEME.dim('  — Uninstall REASP globally from OpenCode'));
-    console.log('  ' + THEME.accent(ICONS.diamond + ' local') + THEME.dim('      — Install REASP in current workspace .opencode/'));
-    console.log('  ' + THEME.info(ICONS.dot + ' (no args)') + THEME.dim('  — Interactive TUI mode'));
-    process.exit(1);
-  }
-} else {
-  interactiveInstall().catch((err) => {
-    printError(err.message);
-    process.exit(1);
+  await runInstall(selectedIds, {
+    modeProfile,
+    workflow: workflowAgent,
+    dryRun: false,
+    yes: false, // Prompt for snapshot; install confirmation already obtained above.
   });
 }
+
+async function interactiveUninstall() {
+  const detectedAgents = detectAllAgents();
+  const selectedIds = await promptAgentSelection(detectedAgents, []);
+  if (!validateSelectedAgents(selectedIds, detectedAgents, false)) {
+    return;
+  }
+
+  const selectedTargets = selectedIds.map((id) => ({ id, displayName: TARGETS[id].displayName }));
+  await confirmUninstall(selectedTargets, false);
+
+  await runUninstall(selectedIds, {
+    dryRun: false,
+    yes: false, // Prompt for snapshot; uninstall confirmation already obtained above.
+  });
+}
+
+async function interactiveSnapshots() {
+  while (true) {
+    const action = await promptSnapshotSubmenu();
+    if (action === 'back' || isCancel(action)) break;
+
+    const flags = {};
+    if (action === 'create') {
+      const detectedAgents = detectAllAgents();
+      const agentId = await promptSelectAgent(detectedAgents, false);
+      if (!agentId) break;
+
+      const name = await promptSnapshotName();
+      if (!name) break;
+
+      const note = await promptSnapshotNote();
+
+      flags.agent = agentId;
+      flags.name = name;
+      flags.note = note;
+      flags.yes = true;
+    } else if (action === 'list') {
+      const detectedAgents = detectAllAgents();
+      const agentId = await promptSelectAgent(detectedAgents, true);
+      if (!agentId) break;
+
+      if (agentId === 'all') {
+        flags.agent = undefined;
+      } else {
+        flags.agent = agentId;
+      }
+    } else if (action === 'restore' || action === 'delete') {
+      const detectedAgents = detectAllAgents();
+      const agentId = await promptSelectAgent(detectedAgents, false);
+      if (!agentId) break;
+
+      const snapshots = listSnapshots({ homeDir: process.env.USERPROFILE || process.env.HOME }, agentId);
+      const snapshotId = await promptSnapshotSelection(snapshots);
+      if (!snapshotId) break;
+
+      flags.agent = agentId;
+      flags.id = snapshotId;
+      flags.yes = true;
+    }
+
+    try {
+      await cmdSnapshot([action], flags);
+    } catch (err) {
+      printError(err.message);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN ENTRYPOINT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function main() {
+  const { _: args, flags } = parseArgs(process.argv.slice(2));
+  const command = (args[0] || '').toLowerCase();
+
+  if (flags.help || flags.h) {
+    showUsage();
+    return;
+  }
+
+  if (flags.version || flags.v) {
+    console.log(REASP_CLI_VERSION);
+    return;
+  }
+
+  try {
+    switch (command) {
+      case 'install':
+        printBannerInstant();
+        await cmdInstall(args, flags);
+        break;
+      case 'uninstall':
+        printBannerInstant();
+        await cmdUninstall(args, flags);
+        break;
+      case 'detect':
+        cmdDetect();
+        break;
+      case 'status':
+        cmdStatus();
+        break;
+      case 'local':
+        await cmdLocal();
+        break;
+      case 'snapshot':
+        await cmdSnapshot(args.slice(1), flags);
+        break;
+      case 'config':
+        await cmdConfig(args.slice(1), flags);
+        break;
+      case '':
+        await interactiveMode();
+        break;
+      default:
+        showUsage();
+        process.exit(1);
+    }
+  } catch (err) {
+    printError(err.message);
+    if (err.stack && flags.verbose) {
+      console.error(err.stack);
+    }
+    process.exit(1);
+  }
+}
+
+main();

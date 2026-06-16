@@ -8,14 +8,14 @@
 
 ### ◈ Ryou Enterprise Adaptive SDD Protocol ◈
 
-*RASS orchestration + REFI enterprise planning for OpenCode*
+*RASS orchestration + REFI enterprise planning — for OpenCode, Claude Code, Gemini CLI, Codex, and Antigravity CLI*
 
 ---
 
 <!-- Badges Row 1 -->
 <p align="center">
   <img src="https://img.shields.io/badge/version-3.0.0-00d4ff?style=for-the-badge&logo=github&logoColor=white" alt="Version 3.0.0">
-  <img src="https://img.shields.io/badge/OpenCode-Plugin-ff00ff?style=for-the-badge&logo=codeium&logoColor=white" alt="OpenCode Plugin">
+  <img src="https://img.shields.io/badge/Multi--CLI-OpenCode%2B4-ff00ff?style=for-the-badge&logo=codeium&logoColor=white" alt="Multi-CLI">
   <img src="https://img.shields.io/badge/.NET-9-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 9">
   <img src="https://img.shields.io/badge/C%23-Modern-239120?style=for-the-badge&logo=csharp&logoColor=white" alt="C# Modern">
   <img src="https://img.shields.io/badge/MeridianUI-Design-00d4ff?style=for-the-badge&logo=figma&logoColor=white" alt="MeridianUI">
@@ -49,6 +49,7 @@
 ## 📋 Table of Contents
 
 - [🎯 What is REASP?](#-what-is-reasp)
+- [🤖 Supported AI Agents](#-supported-ai-agents)
 - [✨ Features](#-features)
 - [🚀 Quick Start](#-quick-start)
 - [📦 Installation](#-installation)
@@ -70,6 +71,8 @@
 ## 🎯 What is REASP?
 
 **REASP** (Ryou Enterprise Adaptive SDD Protocol) is the unified distribution of **RASS** and **REFI**.
+
+REASP now supports **multiple AI agent CLIs** through a target adapter architecture — install once and get the Ryou workflow in OpenCode, Claude Code, Gemini CLI, Codex, and Antigravity CLI. Each agent receives the same REASP content adapted to its native format.
 
 It combines:
 
@@ -109,6 +112,27 @@ REASP solves this by combining **adaptive pipeline complexity**, **planning pack
 ---
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- Supported AI Agents -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+
+## 🤖 Supported AI Agents
+
+REASP can be installed into the following AI agent CLIs. Each target receives the same
+REASP workflow adapted to its native configuration format.
+
+| Agent | Installation target | Native features | Notes |
+|-------|---------------------|-----------------|-------|
+| **OpenCode** | `~/.config/opencode/` | Agents, plugins, slash commands, tools | Full reference implementation |
+| **Claude Code** | `~/.claude/CLAUDE.md` | System instructions | REASP block injected as global prompt |
+| **Codex** | `~/.codex/instructions.md` | System instructions | REASP block injected as global prompt |
+| **Gemini CLI** | `~/.gemini/instructions.md` | System instructions | REASP block injected as global prompt |
+| **Antigravity CLI** | `~/.antigravity/instructions.md` | System instructions | Experimental; least documented format |
+
+> **Degradación elegante:** Los agentes que no soportan plugins, MCP, o subagentes reciben el mismo flujo de trabajo Ryou expresado como instrucciones de sistema + guía de fases. El núcleo de REASP se conserva sin importar el CLI.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 <!-- Features -->
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
 
@@ -119,12 +143,14 @@ REASP solves this by combining **adaptive pipeline complexity**, **planning pack
 - **Dynamic Phase Selection**: Enable/disable phases per task
 - **Effort Levels**: Low → Medium → High → Extreme
 - **Zero Overhead**: Simple tasks use minimal phases, complex tasks get full pipeline
+- **Multi-Agent Install**: Choose target agents at install time via TUI or CLI flags
+- **Agent Backup Manager**: Snapshot, restore, and purge agent configs before destructive changes
 
 ### 🧠 Intelligent Model Routing
 - **Per-Phase Model Assignment**: Different AI model for each development phase
 - **4 Premium Models**: GLM-5.1, Kimi K2.6, DeepSeek V4 Pro, DeepSeek V4 Flash
 - **Fallback Chains**: Automatic fallback when primary model is unavailable
-- **OpenCode Go Native**: All models stay within OpenCode Go ecosystem
+- **Multi-Platform**: Models mapped via instructions — works across OpenCode, Claude Code, Codex, Gemini CLI, and Antigravity CLI
 
 ### 🤖 8 Specialized Ryou Agents
 - **Ryou EFI Planner**: REFI packet planning, shard generation, implementation handoff (GLM-5.1)
@@ -162,6 +188,20 @@ REASP solves this by combining **adaptive pipeline complexity**, **planning pack
 
 ## 🚀 Quick Start
 
+### Install REASP as a system tool
+
+```bash
+# From inside the repository
+npm install -g .
+
+# Or from a local checkout
+npm install -g C:\path\to\REASP
+
+reasp --help
+```
+
+Once installed globally, the `reasp` command is available everywhere. The examples below use `reasp`; if you prefer not to install globally, run `reasp` instead.
+
 ### 1. Install REASP
 
 ```bash
@@ -169,16 +209,24 @@ REASP solves this by combining **adaptive pipeline complexity**, **planning pack
 git clone https://github.com/kevinkeor/RASS.git
 cd RASS
 
-# Run the interactive installer
+# Run the interactive installer (choose agents, ModeProfile, workflow)
 cd installer
 npm install
-node index.js
+reasp
 ```
+
+The installer will:
+- **Detect** installed AI agents (OpenCode, Claude Code, Codex, Gemini CLI, Antigravity CLI)
+- **Prompt** you to select which agents to install into
+- **Ask** for your preferred ModeProfile and workflow agent
+- **Install** the adapted REASP configuration into each selected agent
 
 ### 2. Choose Your ModeProfile
 
+After installation, activate your ModeProfile via your agent's interface:
+
 ```bash
-# Inside OpenCode, type:
+# Inside your AI agent CLI, type (OpenCode example):
 /sdd
 
 # Select your ModeProfile:
@@ -188,6 +236,8 @@ node index.js
 # • debug       — Bug investigation, concurrency
 # • ryouset     — Full Ryou workflow (default)
 ```
+
+> **Note:** Slash commands (`/sdd`, `/reasp-setup`) are native only in OpenCode. In other agents, the equivalent workflow is described in the REASP system instructions block. Refer to your agent's prompt for available verbs.
 
 ### 3. Start Developing
 
@@ -229,22 +279,74 @@ node index.js
 ```
 
 The interactive installer will guide you through:
-1. **Install Globally** — Register REASP as an OpenCode plugin for all projects
-2. **Install Locally** — Copy REASP to the current workspace `.opencode/`
-3. **Uninstall** — Remove REASP from OpenCode
+1. **Select AI Agents** — Choose which installed agents receive REASP (OpenCode, Claude Code, Gemini CLI, Codex, Antigravity CLI).
+2. **Install Globally** — Register REASP as a plugin/prompt for the selected agents.
+3. **Install Locally** — Copy REASP to the current workspace `.opencode/`.
+4. **Uninstall** — Remove REASP from any subset of agents.
 
 ### CLI Commands
 
 ```bash
-# Install globally (recommended)
-node installer/index.js install
+# Interactive TUI (recommended)
+cd installer
+npm install
+node index.js
+
+# Install into specific agents
+reasp install --agents opencode,claude-code
+
+# Install into all currently detected agents
+reasp install --only-detected
+
+# Preview changes without writing files
+reasp install --dry-run --agents opencode,codex
+
+# Detect installed AI agents
+reasp detect
+
+# Show REASP installation status per agent
+reasp status
 
 # Install in current workspace only
-node installer/index.js local
+reasp local
 
-# Uninstall globally
-node installer/index.js uninstall
+# Uninstall from specific agents
+reasp uninstall --agents claude-code
+
+# Uninstall from OpenCode (legacy default)
+reasp uninstall
 ```
+
+## 💾 Snapshots & Backup Manager
+
+REASP can take complete snapshots of an agent's global configuration before install, uninstall, or any manual change. Snapshots are stored under `~/.reasp/snapshots/<agent>/<timestamp>-<name>/` and include the full `data/` directory plus a `snapshot.json` metadata file.
+
+### Why snapshots exist
+
+- **Recover from a bad install** — restore a known-good config in seconds.
+- **Experiment safely** — snapshot first, then tweak your agent setup.
+- **Migrate between machines** — copy the snapshot directory to another system.
+
+### Quick examples
+
+```bash
+# Snapshot Claude Code's current config
+reasp snapshot create --agent claude-code --name clean
+
+# List snapshots for an agent
+reasp snapshot list --agent claude-code
+
+# Restore a snapshot (creates an automatic backup of the live state first)
+reasp snapshot restore --agent claude-code --name clean
+
+# Delete a snapshot
+reasp snapshot delete --agent claude-code --name clean
+
+# Keep only the newest 5 snapshots
+reasp snapshot purge --agent claude-code --keep 5 --yes
+```
+
+You can also manage snapshots from the interactive TUI by choosing **Snapshots** in the main menu.
 
 ### What Gets Installed
 
@@ -791,7 +893,7 @@ Result: ✅ Root cause identified, fixed, verified
 
 Free and open source for use in developing any commercial or non-commercial tool or software. RASS itself may not be sold, resold, or commercialized as a standalone product. See [LICENSE.md](./LICENSE.md) for full terms.
 
-Built with ❤️ by Kevin Keor for the OpenCode ecosystem.
+Built with ❤️ by Kevin Keor for OpenCode, Claude Code, Gemini CLI, Codex, and Antigravity CLI.
 
 ---
 
@@ -810,7 +912,6 @@ Built with ❤️ by Kevin Keor for the OpenCode ecosystem.
 </p>
 
 </div>
-├── skills/
 │   └── refi-enterprise-feature-implementation/
 ├── refi/                  # REFI toolkit installed with REASP
 │   ├── README.md
