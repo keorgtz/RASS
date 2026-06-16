@@ -1,19 +1,76 @@
 {
   "name": "RyouSet",
-  "description": "Efficient full pipeline — Kimi K2.6 for daily implementation, GLM-5.1 reserved for deep reasoning only, DeepSeek V4 Pro for review.",
-  "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
+  "description": "Efficient full pipeline — Kimi K2.7 Code for daily implementation, GLM-5.1 reserved for deep reasoning only, DeepSeek V4 Pro for review.",
+  "phases": [
+    "orchestrator",
+    "init",
+    "explore",
+    "propose",
+    "design",
+    "apply",
+    "verify",
+    "archive"
+  ],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "opencode-go/kimi-k2.6",
+    "primary": "opencode-go/kimi-k2.7-code",
     "effort": "medium",
-    "fallbacks": ["opencode-go/glm-5.1"]
+    "fallbacks": [
+      "opencode-go/glm-5.1"
+    ]
   },
-  "orchestrator": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
-  "init": { "primary": "opencode-go/kimi-k2.6", "effort": "low", "fallbacks": ["opencode-go/deepseek-v4-flash"] },
-  "explore": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
-  "propose": { "primary": "opencode-go/glm-5.1", "effort": "high", "fallbacks": ["opencode-go/kimi-k2.6"] },
-  "design": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
-  "apply": { "primary": "opencode-go/kimi-k2.6", "effort": "medium", "fallbacks": ["opencode-go/glm-5.1"] },
-  "verify": { "primary": "opencode-go/deepseek-v4-pro", "effort": "high", "fallbacks": ["opencode-go/glm-5.1"] },
-  "archive": { "primary": "opencode-go/deepseek-v4-flash", "effort": "low", "fallbacks": [] }
+  "orchestrator": {
+    "primary": "opencode-go/kimi-k2.7-code",
+    "effort": "medium",
+    "fallbacks": [
+      "opencode-go/glm-5.1"
+    ]
+  },
+  "init": {
+    "primary": "opencode-go/kimi-k2.7-code",
+    "effort": "low",
+    "fallbacks": [
+      "opencode-go/deepseek-v4-flash"
+    ]
+  },
+  "explore": {
+    "primary": "opencode-go/kimi-k2.7-code",
+    "effort": "medium",
+    "fallbacks": [
+      "opencode-go/glm-5.1"
+    ]
+  },
+  "propose": {
+    "primary": "opencode-go/glm-5.1",
+    "effort": "high",
+    "fallbacks": [
+      "opencode-go/kimi-k2.7-code"
+    ]
+  },
+  "design": {
+    "primary": "opencode-go/kimi-k2.7-code",
+    "effort": "medium",
+    "fallbacks": [
+      "opencode-go/glm-5.1"
+    ]
+  },
+  "apply": {
+    "primary": "opencode-go/kimi-k2.7-code",
+    "effort": "medium",
+    "fallbacks": [
+      "opencode-go/glm-5.1"
+    ]
+  },
+  "verify": {
+    "primary": "opencode-go/deepseek-v4-pro",
+    "effort": "high",
+    "fallbacks": [
+      "opencode-go/glm-5.1"
+    ]
+  },
+  "archive": {
+    "primary": "opencode-go/deepseek-v4-flash",
+    "effort": "low",
+    "fallbacks": []
+  }
 }

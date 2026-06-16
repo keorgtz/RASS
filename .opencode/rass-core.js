@@ -91,16 +91,94 @@ export function getModeProfile(name) {
 }
 
 /**
+ * Resolve the model that should be assigned to each Ryou agent from a ModeProfile.
+ * Primary agents follow a fallback chain: orchestrator → init → explore → default.
+ * @param {string|object} modeProfile - ModeProfile name or ModeProfile object
+ * @returns {object} Map of agent names to model IDs
+ */
+export function resolveAgentModels(modeProfile) {
+  const mp = typeof modeProfile === 'string' ? getModeProfile(modeProfile) : modeProfile;
+  if (!mp) return { ...DEFAULT_AGENT_MODELS };
+
+  const defaultConfig = mp.default || {};
+  const models = { ...DEFAULT_AGENT_MODELS };
+
+  // Primary agents: orchestrator phase is the canonical source, but fall back
+  // through init/explore/default so short pipelines (e.g. fast) still work.
+  const primaryModel =
+    mp.orchestrator?.primary ||
+    mp.init?.primary ||
+    mp.explore?.primary ||
+    defaultConfig.primary ||
+    DEFAULT_AGENT_MODELS['ryou-orchestrator'];
+
+  models['ryou-orchestrator'] = primaryModel;
+  models['ryou-efi-planner'] = primaryModel;
+
+  // Subagent mapping
+  if (mp.propose?.primary || defaultConfig.primary) {
+    models.planner = mp.propose?.primary || defaultConfig.primary;
+  }
+  if (mp.apply?.primary || defaultConfig.primary) {
+    models.builder = mp.apply?.primary || defaultConfig.primary;
+  }
+  if (mp.design?.primary || defaultConfig.primary) {
+    models.architect = mp.design?.primary || defaultConfig.primary;
+  }
+  if (mp.verify?.primary || defaultConfig.primary) {
+    models.reviewer = mp.verify?.primary || defaultConfig.primary;
+    models.debugger = mp.verify?.primary || defaultConfig.primary;
+  }
+  if (mp.archive?.primary || defaultConfig.primary) {
+    models.documentation = mp.archive?.primary || defaultConfig.primary;
+  }
+
+  return models;
+}
+
+/**
+ * Generate the resolved runtime configuration from a ModeProfile.
+ * @param {string|object} modeProfile
+ * @returns {object|null}
+ */
+export function resolveRuntime(modeProfile) {
+  const mp = typeof modeProfile === 'string' ? getModeProfile(modeProfile) : modeProfile;
+  if (!mp) return null;
+
+  const phases = mp.phases || [];
+  const defaultConfig = mp.default || {};
+  const strategy = mp.model_strategy || 'per-phase';
+
+  const resolvedPhases = {};
+  for (const phase of phases) {
+    const phaseConfig = strategy === 'single' ? defaultConfig : (mp[phase] || defaultConfig);
+    if (phaseConfig) {
+      resolvedPhases[phase] = {
+        model: phaseConfig.primary,
+        effort: phaseConfig.effort || defaultConfig.effort || 'medium',
+        fallbacks: phaseConfig.fallbacks || [],
+      };
+    }
+  }
+
+  return {
+    active_modeprofile: mp.name || 'unknown',
+    enabled_phases: phases,
+    model_strategy: strategy,
+    phases: resolvedPhases,
+  };
+}
+
+/**
  * Synchronize Ryou agent models with the active ModeProfile configuration.
  * Maps ModeProfile phases to agent roles and updates opencode.json.
  * @param {string} modeProfileName
+ * @param {string} [configPath]
  * @returns {boolean} true if sync succeeded
  */
-export function syncAgentsWithModeProfile(modeProfileName) {
-  const mp = getModeProfile(modeProfileName);
-  if (!mp) return false;
+export function syncAgentsWithModeProfile(modeProfileName, configPath = getGlobalConfigPath()) {
+  const agentModels = resolveAgentModels(modeProfileName);
 
-  const configPath = getGlobalConfigPath();
   if (!existsSync(configPath)) return false;
 
   let config;
@@ -112,34 +190,10 @@ export function syncAgentsWithModeProfile(modeProfileName) {
 
   if (!config.agent) return false;
 
-  // Map ModeProfile phases to Ryou agent roles
-  const phaseToAgent = {
-    orchestrator: ['ryou-orchestrator', 'ryou-efi-planner'],
-    propose: ['planner'],
-    apply: ['builder'],
-    design: ['architect'],
-    verify: ['reviewer'],
-    archive: ['documentation'],
-  };
-
-  const defaultConfig = mp.default || {};
-
-  // Update agent models based on ModeProfile phase configuration
-  for (const [phase, agentNames] of Object.entries(phaseToAgent)) {
-    const phaseConfig = mp[phase] || defaultConfig;
-    if (phaseConfig?.primary) {
-      for (const agentName of agentNames) {
-        if (config.agent[agentName]) {
-          config.agent[agentName].model = phaseConfig.primary;
-        }
-      }
+  for (const [agentName, modelId] of Object.entries(agentModels)) {
+    if (config.agent[agentName]) {
+      config.agent[agentName].model = modelId;
     }
-  }
-
-  // Debugger uses the same model as reviewer (verify phase)
-  const verifyConfig = mp.verify || defaultConfig;
-  if (verifyConfig?.primary && config.agent.debugger) {
-    config.agent.debugger.model = verifyConfig.primary;
   }
 
   try {
@@ -148,6 +202,101 @@ export function syncAgentsWithModeProfile(modeProfileName) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Refresh runtime and agent models from the active ModeProfile.
+ * This is the single entry point used to eliminate drift.
+ * @param {string} [modeProfileName]
+ * @returns {{runtime: object|null, agents: object|null, changes: string[]}}
+ */
+export function refreshAllFromModeProfile(modeProfileName = getCurrentModeProfile() || 'ryouset') {
+  const changes = [];
+
+  const mp = getModeProfile(modeProfileName);
+  if (!mp) return { runtime: null, agents: null, changes: [`ModeProfile '${modeProfileName}' not found`] };
+
+  // 1. Regenerate runtime
+  const runtime = resolveRuntime(mp);
+  if (runtime) {
+    runtime.generated_at = new Date().toISOString();
+    writeJson(getRuntimePath(), runtime);
+    changes.push(`Regenerated runtime for '${modeProfileName}'`);
+  }
+
+  // 2. Sync agent models in opencode.json
+  const agents = resolveAgentModels(mp);
+  const configPath = getGlobalConfigPath();
+  if (existsSync(configPath)) {
+    let config;
+    try {
+      config = JSON.parse(readFileSync(configPath, 'utf8'));
+    } catch {
+      config = null;
+    }
+
+    if (config) {
+      if (!config.agent) config.agent = {};
+
+      for (const [agentName, modelId] of Object.entries(agents)) {
+        if (!config.agent[agentName]) {
+          // Agent missing — create from template if available, else minimal
+          const template = RYOU_AGENTS[agentName];
+          config.agent[agentName] = template ? { ...template, model: modelId } : { model: modelId };
+          changes.push(`Created agent '${agentName}' -> ${modelId}`);
+        } else if (config.agent[agentName].model !== modelId) {
+          const old = config.agent[agentName].model;
+          config.agent[agentName].model = modelId;
+          changes.push(`Updated agent '${agentName}' model: ${old} -> ${modelId}`);
+        }
+      }
+
+      // Sync root model / small_model from ModeProfile
+      const defaultPrimary = mp.default?.primary;
+      if (defaultPrimary) {
+        if (config.model !== defaultPrimary) {
+          changes.push(`Updated root model: ${config.model || 'unset'} -> ${defaultPrimary}`);
+          config.model = defaultPrimary;
+        }
+        // small_model follows archive phase (documentation) if available, otherwise first fallback
+        const smallModelCandidate = mp.archive?.primary ||
+          (Array.isArray(mp.default.fallbacks) ? mp.default.fallbacks[0] : null) ||
+          'opencode-go/deepseek-v4-flash';
+        if (config.small_model !== smallModelCandidate) {
+          changes.push(`Updated small_model: ${config.small_model || 'unset'} -> ${smallModelCandidate}`);
+          config.small_model = smallModelCandidate;
+        }
+      }
+
+      try {
+        writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+      } catch (err) {
+        changes.push(`ERROR writing opencode.json: ${err.message}`);
+      }
+    }
+  }
+
+  return { runtime, agents, changes };
+}
+
+/**
+ * Check whether runtime.generated.json is in sync with its ModeProfile.
+ * @param {string} [modeProfileName]
+ * @returns {boolean}
+ */
+export function isRuntimeInSync(modeProfileName = getCurrentModeProfile() || 'ryouset') {
+  const mp = getModeProfile(modeProfileName);
+  if (!mp) return false;
+
+  const runtime = readJson(getRuntimePath());
+  if (!runtime) return false;
+
+  const expected = resolveRuntime(mp);
+  if (!expected) return false;
+
+  return JSON.stringify(runtime.enabled_phases) === JSON.stringify(expected.enabled_phases) &&
+    runtime.model_strategy === expected.model_strategy &&
+    JSON.stringify(runtime.phases) === JSON.stringify(expected.phases);
 }
 
 /**
@@ -160,8 +309,7 @@ export function switchModeProfile(name) {
   const mp = getModeProfile(name);
   if (!mp) throw new Error(`ModeProfile '${name}' not found. Available: ${listModeProfiles().map(m => m.id).join(', ')}`);
   writeJson(getCurrentModeProfilePath(), { modeprofile: name });
-  generateRuntime();
-  syncAgentsWithModeProfile(name);
+  refreshAllFromModeProfile(name);
   return mp;
 }
 
@@ -212,6 +360,13 @@ export function updateModeProfile(name, updates) {
   }
 
   writeJson(getModeProfilePath(name), merged);
+
+  // If this is the active profile, refresh runtime and agents automatically
+  const current = getCurrentModeProfile();
+  if (current === name) {
+    refreshAllFromModeProfile(name);
+  }
+
   return merged;
 }
 
@@ -277,12 +432,19 @@ export function generateRuntime() {
 
 /**
  * Get the full RASS status: current ModeProfile and resolved runtime.
+ * Automatically refreshes runtime/agents if drift is detected.
  * @returns {object}
  */
 export function getStatus() {
   const currentName = getCurrentModeProfile();
   const mp = currentName ? getModeProfile(currentName) : null;
-  const runtime = generateRuntime();
+
+  // Auto-heal drift between ModeProfile and runtime/opencode.json
+  if (currentName && mp && !isRuntimeInSync(currentName)) {
+    refreshAllFromModeProfile(currentName);
+  }
+
+  const runtime = readJson(getRuntimePath()) || generateRuntime();
 
   return {
     current_modeprofile: currentName,
@@ -336,6 +498,9 @@ export function setPrimaryWorkflow(agentName, configPath = getGlobalConfigPath()
 
   config.default_agent = agentName;
   writeOpenCodeConfig(configPath, config);
+
+  // Ensure agent models match the active ModeProfile after workflow switch
+  refreshAllFromModeProfile();
 
   const reasp = getReaspConfig();
   reasp.default_workflow = agentName;
@@ -428,26 +593,43 @@ export const AVAILABLE_PHASES = [
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'extreme'];
 
 /**
- * Available OpenCode Go models for ModeProfile creation.
+ * Preferred OpenCode Go models shown as suggestions in creation UI.
+ * RASS accepts ANY valid model string in primary/fallbacks; this list is only for UX guidance.
  */
 export const AVAILABLE_MODELS = [
   { id: 'opencode-go/glm-5.1', label: 'GLM-5.1', description: 'Orchestration, planning, architecture, complex reasoning' },
+  { id: 'opencode-go/kimi-k2.7-code', label: 'Kimi K2.7 Code', description: 'Implementation, refactors, C#/.NET code generation' },
   { id: 'opencode-go/kimi-k2.6', label: 'Kimi K2.6', description: 'Implementation, refactors, C#/.NET code generation' },
   { id: 'opencode-go/deepseek-v4-pro', label: 'DeepSeek V4 Pro', description: 'Debugging, review, performance, risk analysis' },
   { id: 'opencode-go/deepseek-v4-flash', label: 'DeepSeek V4 Flash', description: 'Small tasks, documentation, summaries' },
 ];
 
+/**
+ * Fallback models used when a ModeProfile does not define a phase/default.
+ */
+const DEFAULT_AGENT_MODELS = {
+  'ryou-orchestrator': 'opencode-go/kimi-k2.7-code',
+  'ryou-efi-planner': 'opencode-go/kimi-k2.7-code',
+  planner: 'opencode-go/glm-5.1',
+  builder: 'opencode-go/kimi-k2.7-code',
+  architect: 'opencode-go/glm-5.1',
+  reviewer: 'opencode-go/deepseek-v4-pro',
+  debugger: 'opencode-go/deepseek-v4-pro',
+  documentation: 'opencode-go/deepseek-v4-flash',
+};
+
 // ─── Agent Deployment ────────────────────────────────────────────────────────
 
 /**
  * Ryou agent definitions for OpenCode config deployment.
- * These match the exact agent configuration from the user's opencode.json.
+ * Models are initialized from DEFAULT_AGENT_MODELS and then overridden
+ * by the active ModeProfile via refreshAllFromModeProfile().
  */
 export const RYOU_AGENTS = {
   'ryou-orchestrator': {
     description: 'Primary orchestrator for pragmatic .NET work using Ryou workflow and MeridianUI.',
     mode: 'primary',
-    model: 'opencode-go/glm-5.1',
+    model: DEFAULT_AGENT_MODELS['ryou-orchestrator'],
     temperature: 0.2,
     steps: 40,
     prompt: '{file:./agents/ryou-orchestrator.md}',
@@ -467,7 +649,7 @@ export const RYOU_AGENTS = {
   'ryou-efi-planner': {
     description: 'Primary planning agent for REFI packet generation and enterprise implementation handoff.',
     mode: 'primary',
-    model: 'opencode-go/glm-5.1',
+    model: DEFAULT_AGENT_MODELS['ryou-efi-planner'],
     temperature: 0.1,
     steps: 32,
     prompt: '{file:./agents/ryou-efi-planner.md}',
@@ -488,7 +670,7 @@ export const RYOU_AGENTS = {
   planner: {
     description: 'Subagent for planning medium or complex work before implementation.',
     mode: 'subagent',
-    model: 'opencode-go/glm-5.1',
+    model: DEFAULT_AGENT_MODELS.planner,
     temperature: 0.1,
     steps: 14,
     prompt: '{file:./agents/planner.md}',
@@ -506,7 +688,7 @@ export const RYOU_AGENTS = {
   builder: {
     description: 'Subagent for C#, .NET, EF Core, XAML, Blazor, MAUI, and MeridianUI implementation.',
     mode: 'subagent',
-    model: 'opencode-go/kimi-k2.6',
+    model: DEFAULT_AGENT_MODELS.builder,
     temperature: 0.2,
     steps: 40,
     prompt: '{file:./agents/builder.md}',
@@ -524,7 +706,7 @@ export const RYOU_AGENTS = {
   architect: {
     description: 'Subagent for architecture decisions, boundaries, data flow, and pragmatic design tradeoffs.',
     mode: 'subagent',
-    model: 'opencode-go/glm-5.1',
+    model: DEFAULT_AGENT_MODELS.architect,
     temperature: 0.1,
     steps: 16,
     prompt: '{file:./agents/architect.md}',
@@ -542,7 +724,7 @@ export const RYOU_AGENTS = {
   reviewer: {
     description: 'Subagent for code review, regressions, maintainability, performance, and security risks.',
     mode: 'subagent',
-    model: 'opencode-go/deepseek-v4-pro',
+    model: DEFAULT_AGENT_MODELS.reviewer,
     temperature: 0.1,
     steps: 18,
     prompt: '{file:./agents/reviewer.md}',
@@ -560,7 +742,7 @@ export const RYOU_AGENTS = {
   debugger: {
     description: 'Subagent for bug investigation, failing tests, runtime errors, EF issues, and async/concurrency problems.',
     mode: 'subagent',
-    model: 'opencode-go/deepseek-v4-pro',
+    model: DEFAULT_AGENT_MODELS.debugger,
     temperature: 0.1,
     steps: 26,
     prompt: '{file:./agents/debugger.md}',
@@ -578,7 +760,7 @@ export const RYOU_AGENTS = {
   documentation: {
     description: 'Subagent for concise Markdown and visual HTML implementation summaries.',
     mode: 'subagent',
-    model: 'opencode-go/deepseek-v4-flash',
+    model: DEFAULT_AGENT_MODELS.documentation,
     temperature: 0.2,
     steps: 12,
     prompt: '{file:./agents/documentation.md}',
@@ -600,8 +782,8 @@ export const RYOU_AGENTS = {
  * This is the base config that gets merged with the user's existing config.
  */
 export const RYOU_CONFIG_TEMPLATE = {
-  model: 'opencode-go/kimi-k2.6',
-  small_model: 'opencode-go/deepseek-v4-flash',
+  model: DEFAULT_AGENT_MODELS['ryou-orchestrator'],
+  small_model: DEFAULT_AGENT_MODELS.documentation,
   default_agent: 'ryou-orchestrator',
   shell: 'pwsh',
   permission: {

@@ -455,6 +455,7 @@ function removeDirRecursiveSync(dir) {
 
 /**
  * Read a ModeProfile and resolve agent models from its phase configuration.
+ * Primary agents follow a fallback chain: orchestrator → init → explore → default.
  * @param {string} modeProfileName - e.g., 'ryouset', 'fast'
  * @returns {object} Map of agent names to model IDs
  */
@@ -469,12 +470,12 @@ function resolveAgentModels(modeProfileName) {
     }
   }
 
-  // Fallback defaults (legacy hardcoded values)
+  // Fallback defaults aligned with rass-core.js
   const defaults = {
-    'ryou-orchestrator': 'opencode-go/glm-5.1',
-    'ryou-efi-planner': 'opencode-go/glm-5.1',
+    'ryou-orchestrator': 'opencode-go/kimi-k2.7-code',
+    'ryou-efi-planner': 'opencode-go/kimi-k2.7-code',
     planner: 'opencode-go/glm-5.1',
-    builder: 'opencode-go/kimi-k2.6',
+    builder: 'opencode-go/kimi-k2.7-code',
     architect: 'opencode-go/glm-5.1',
     reviewer: 'opencode-go/deepseek-v4-pro',
     debugger: 'opencode-go/deepseek-v4-pro',
@@ -483,32 +484,37 @@ function resolveAgentModels(modeProfileName) {
 
   if (!mp) return defaults;
 
-  // Map ModeProfile phases to Ryou agent roles
-  const phaseToAgent = {
-    orchestrator: ['ryou-orchestrator', 'ryou-efi-planner'],
-    propose: ['planner'],
-    apply: ['builder'],
-    design: ['architect'],
-    verify: ['reviewer'],
-    archive: ['documentation'],
-  };
-
   const defaultConfig = mp.default || {};
   const models = { ...defaults };
 
-  for (const [phase, agentNames] of Object.entries(phaseToAgent)) {
-    const phaseConfig = mp[phase] || defaultConfig;
-    if (phaseConfig?.primary) {
-      for (const agentName of agentNames) {
-        models[agentName] = phaseConfig.primary;
-      }
-    }
-  }
+  // Primary agents: orchestrator phase is canonical, but fall back through
+  // init/explore/default so short pipelines (e.g. fast) still work.
+  const primaryModel =
+    mp.orchestrator?.primary ||
+    mp.init?.primary ||
+    mp.explore?.primary ||
+    defaultConfig.primary ||
+    defaults['ryou-orchestrator'];
 
-  // Debugger uses the same model as reviewer (verify phase)
-  const verifyConfig = mp.verify || defaultConfig;
-  if (verifyConfig?.primary) {
-    models.debugger = verifyConfig.primary;
+  models['ryou-orchestrator'] = primaryModel;
+  models['ryou-efi-planner'] = primaryModel;
+
+  // Subagent mapping
+  if (mp.propose?.primary || defaultConfig.primary) {
+    models.planner = mp.propose?.primary || defaultConfig.primary;
+  }
+  if (mp.apply?.primary || defaultConfig.primary) {
+    models.builder = mp.apply?.primary || defaultConfig.primary;
+  }
+  if (mp.design?.primary || defaultConfig.primary) {
+    models.architect = mp.design?.primary || defaultConfig.primary;
+  }
+  if (mp.verify?.primary || defaultConfig.primary) {
+    models.reviewer = mp.verify?.primary || defaultConfig.primary;
+    models.debugger = mp.verify?.primary || defaultConfig.primary;
+  }
+  if (mp.archive?.primary || defaultConfig.primary) {
+    models.documentation = mp.archive?.primary || defaultConfig.primary;
   }
 
   return models;
@@ -829,11 +835,25 @@ function installGlobally(modeProfileName = 'ryouset', progress = null) {
   if (!config.default_agent) {
     config.default_agent = 'ryou-orchestrator';
   }
+
+  // Root model/small_model follow the active ModeProfile default
+  const mpPath = path.join(OPENCODE_DIR, 'sdd-profiles', `${modeProfileName}.json`);
+  let modeProfile = null;
+  if (fs.existsSync(mpPath)) {
+    try {
+      modeProfile = JSON.parse(fs.readFileSync(mpPath, 'utf8'));
+    } catch {
+      modeProfile = null;
+    }
+  }
+  const defaultPrimary = modeProfile?.default?.primary || agentModels['ryou-orchestrator'] || 'opencode-go/kimi-k2.7-code';
+  const defaultFallback = modeProfile?.default?.fallbacks?.[0] || 'opencode-go/deepseek-v4-flash';
+
   if (!config.model) {
-    config.model = 'opencode-go/kimi-k2.6';
+    config.model = defaultPrimary;
   }
   if (!config.small_model) {
-    config.small_model = 'opencode-go/deepseek-v4-flash';
+    config.small_model = defaultFallback;
   }
   if (!config.shell) {
     config.shell = getDefaultShell();

@@ -16,8 +16,14 @@
     "@opentui/solid": ">=0.3.2"
   },
   "peerDependenciesMeta": {
-    "@opentui/core": { "optional": true },
-    "@opentui/keymap": { "optional": true },
-    "@opentui/solid": { "optional": true }
+    "@opentui/core": {
+      "optional": true
+    },
+    "@opentui/keymap": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    }
   }
 }

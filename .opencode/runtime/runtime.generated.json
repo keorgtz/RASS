@@ -1,5 +1,5 @@
 {
-  "active_modeprofile": "ryouset",
+  "active_modeprofile": "RyouSet",
   "enabled_phases": [
     "orchestrator",
     "init",
@@ -13,21 +13,21 @@
   "model_strategy": "per-phase",
   "phases": {
     "orchestrator": {
-      "model": "opencode-go/kimi-k2.6",
+      "model": "opencode-go/kimi-k2.7-code",
       "effort": "medium",
       "fallbacks": [
         "opencode-go/glm-5.1"
       ]
     },
     "init": {
-      "model": "opencode-go/kimi-k2.6",
+      "model": "opencode-go/kimi-k2.7-code",
       "effort": "low",
       "fallbacks": [
         "opencode-go/deepseek-v4-flash"
       ]
     },
     "explore": {
-      "model": "opencode-go/kimi-k2.6",
+      "model": "opencode-go/kimi-k2.7-code",
       "effort": "medium",
       "fallbacks": [
         "opencode-go/glm-5.1"
@@ -37,18 +37,18 @@
       "model": "opencode-go/glm-5.1",
       "effort": "high",
       "fallbacks": [
-        "opencode-go/kimi-k2.6"
+        "opencode-go/kimi-k2.7-code"
       ]
     },
     "design": {
-      "model": "opencode-go/kimi-k2.6",
+      "model": "opencode-go/kimi-k2.7-code",
       "effort": "medium",
       "fallbacks": [
         "opencode-go/glm-5.1"
       ]
     },
     "apply": {
-      "model": "opencode-go/kimi-k2.6",
+      "model": "opencode-go/kimi-k2.7-code",
       "effort": "medium",
       "fallbacks": [
         "opencode-go/glm-5.1"
@@ -67,5 +67,5 @@
       "fallbacks": []
     }
   },
-  "generated_at": "2026-06-09T16:32:09.833Z"
+  "generated_at": "2026-06-16T00:22:42.451Z"
 }

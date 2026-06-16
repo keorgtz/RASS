@@ -9,6 +9,8 @@ import {
   getModeProfile,
   switchModeProfile,
   createModeProfile,
+  updateModeProfile,
+  deleteModeProfile,
   getCurrentModeProfile,
   generateRuntime,
   getStatus,
@@ -16,6 +18,9 @@ import {
   setPrimaryWorkflow,
   setFeatureEnabled,
   getReaspConfig,
+  resolveAgentModels,
+  refreshAllFromModeProfile,
+  isRuntimeInSync,
   REASP_PRIMARY_AGENTS,
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
@@ -30,21 +35,31 @@ import {
 export default {
   id: 'rass',
   server: async (_input) => {
+    // Auto-heal any drift between ModeProfile, runtime, and agent models on plugin load
+    try {
+      const current = getCurrentModeProfile();
+      if (current) {
+        refreshAllFromModeProfile(current);
+      }
+    } catch {
+      // Non-fatal: plugin should still start even if refresh fails
+    }
+
     return {
       tool: {
         // ─── /sdd-mode-profile ───────────────────────────────────────────
         sdd_mode_profile: tool({
           description:
-            'Manage unified SDD ModeProfiles. List, switch, create, edit, or get status. ' +
+            'Manage unified SDD ModeProfiles. List, switch, create, edit, delete, or get status. ' +
             'A ModeProfile combines phases (what steps run) with model routing (which AI model each phase uses).',
           args: {
             action: tool.schema
-              .enum(['list', 'switch', 'create', 'status'])
-              .describe('Action: list modeprofiles, switch to one, create new, or get current status'),
+              .enum(['list', 'switch', 'create', 'edit', 'delete', 'status'])
+              .describe('Action: list modeprofiles, switch to one, create new, edit, delete, or get current status'),
             name: tool.schema
               .string()
               .optional()
-              .describe('ModeProfile name (required for switch and create). Available base modeprofiles: ryouset, fast, architecture, ui, debug, enterprise, legacy, minimal'),
+              .describe('ModeProfile name (required for switch, create, edit, delete). Available base modeprofiles: ryouset, fast, architecture, ui, debug, enterprise, legacy, minimal'),
             phases: tool.schema
               .string()
               .optional()
@@ -56,7 +71,7 @@ export default {
             primary: tool.schema
               .string()
               .optional()
-              .describe('Primary model for create with single strategy (e.g., "opencode-go/glm-5.1")'),
+              .describe('Primary model for create with single strategy (e.g., "opencode-go/glm-5.1"). Any valid model string is accepted.'),
             effort: tool.schema
               .enum(EFFORT_LEVELS)
               .optional()
@@ -65,6 +80,10 @@ export default {
               .string()
               .optional()
               .describe('Human-readable description'),
+            updates: tool.schema
+              .string()
+              .optional()
+              .describe('JSON string with partial updates for edit action (e.g., \'{"orchestrator":{"primary":"opencode-go/glm-5.1"}}\')'),
           },
           async execute(args, _context) {
             try {
@@ -90,9 +109,17 @@ export default {
                     };
                   }
                   const mp = switchModeProfile(args.name);
+                  const agentModels = resolveAgentModels(mp);
                   return {
                     title: `Switched to ${args.name}`,
-                    output: `Active ModeProfile: **${args.name}**\nDescription: ${mp.description || 'N/A'}\nPhases: ${mp.phases?.join(' → ') || 'none'}\nModel strategy: ${mp.model_strategy || 'per-phase'}\nDefault model: ${mp.default?.primary || 'unknown'}`,
+                    output:
+                      `Active ModeProfile: **${args.name}**\n` +
+                      `Description: ${mp.description || 'N/A'}\n` +
+                      `Phases: ${mp.phases?.join(' → ') || 'none'}\n` +
+                      `Model strategy: ${mp.model_strategy || 'per-phase'}\n` +
+                      `Default model: ${mp.default?.primary || 'unknown'}\n\n` +
+                      `Agent models synchronized:\n` +
+                      Object.entries(agentModels).map(([a, m]) => `  - ${a}: ${m}`).join('\n'),
                   };
                 }
 
@@ -136,21 +163,58 @@ export default {
                   };
                 }
 
+                case 'edit': {
+                  if (!args.name) return { title: 'Error', output: 'ModeProfile name is required for edit action.' };
+                  if (!args.updates) return { title: 'Error', output: 'updates JSON string is required for edit action.' };
+
+                  let updates;
+                  try {
+                    updates = JSON.parse(args.updates);
+                  } catch {
+                    return { title: 'Error', output: 'Invalid JSON in updates parameter.' };
+                  }
+
+                  const mp = updateModeProfile(args.name, updates);
+                  const agentModels = resolveAgentModels(mp);
+                  return {
+                    title: `Updated ModeProfile: ${args.name}`,
+                    output:
+                      `ModeProfile **${args.name}** updated.\n` +
+                      `Phases: ${mp.phases?.join(' → ') || 'none'}\n` +
+                      `Default model: ${mp.default?.primary || 'unknown'}\n\n` +
+                      `Agent models synchronized:\n` +
+                      Object.entries(agentModels).map(([a, m]) => `  - ${a}: ${m}`).join('\n'),
+                  };
+                }
+
+                case 'delete': {
+                  if (!args.name) return { title: 'Error', output: 'ModeProfile name is required for delete action.' };
+                  deleteModeProfile(args.name);
+                  return {
+                    title: `Deleted ModeProfile: ${args.name}`,
+                    output: `ModeProfile **${args.name}** has been deleted.`,
+                  };
+                }
+
                 case 'status': {
                   const status = getStatus();
                   const phases = status.modeprofile?.phases || [];
+                  const agentModels = resolveAgentModels(status.current_modeprofile);
                   return {
                     title: 'SDD Status',
                     output:
                       `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
                       `**Phases:** ${phases.join(' → ') || 'none'}\n` +
                       `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
-                      `**Default model:** ${status.modeprofile?.default_model || 'none'}`,
+                      `**Default model:** ${status.modeprofile?.default_model || 'none'}\n` +
+                      `**Runtime in sync:** ${isRuntimeInSync(status.current_modeprofile) ? 'yes' : 'no'}\n\n` +
+                      `**Agent models:**\n` +
+                      Object.entries(agentModels).map(([a, m]) => `  - ${a}: ${m}`).join('\n'),
                   };
                 }
 
                 default:
-                  return { title: 'Error', output: `Unknown action: ${args.action}. Use: list, switch, create, status` };
+                  return { title: 'Error', output: `Unknown action: ${args.action}. Use: list, switch, create, edit, delete, status` };
               }
             } catch (err) {
               return { title: 'RASS Error', output: `Error: ${err.message}` };
@@ -165,8 +229,8 @@ export default {
             'or show the current RASS status including ModeProfile and agent configuration.',
           args: {
             action: tool.schema
-              .enum(['status', 'deploy', 'check'])
-              .describe('Action: status (show full RASS status), deploy (deploy Ryou agents to OpenCode config), check (check if agents are configured)'),
+              .enum(['status', 'deploy', 'check', 'validate'])
+              .describe('Action: status (show full RASS status), deploy (deploy Ryou agents to OpenCode config), check (check if agents are configured), validate (force refresh and report drift)'),
           },
           async execute(args, _context) {
             try {
@@ -227,8 +291,27 @@ export default {
                   };
                 }
 
+                case 'validate': {
+                  const current = getCurrentModeProfile();
+                  if (!current) {
+                    return { title: 'Validate', output: 'No active ModeProfile. Run `sdd_mode_profile(action="switch", name="ryouset")` first.' };
+                  }
+                  const before = isRuntimeInSync(current);
+                  const result = refreshAllFromModeProfile(current);
+                  const after = isRuntimeInSync(current);
+                  return {
+                    title: 'RASS Validate',
+                    output:
+                      `ModeProfile: **${current}**\n` +
+                      `In sync before: ${before ? 'yes' : 'no'}\n` +
+                      `In sync after: ${after ? 'yes' : 'no'}\n\n` +
+                      `Changes applied (${result.changes.length}):\n` +
+                      (result.changes.length ? result.changes.map((c) => `  - ${c}`).join('\n') : '  - None — configuration already consistent'),
+                  };
+                }
+
                 default:
-                  return { title: 'Error', output: `Unknown action: ${args.action}. Use: status, deploy, check` };
+                  return { title: 'Error', output: `Unknown action: ${args.action}. Use: status, deploy, check, validate` };
               }
             } catch (err) {
               return { title: 'RASS Error', output: `Error: ${err.message}` };
