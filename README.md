@@ -289,6 +289,9 @@ node installer/index.js uninstall
 └── runtime/               # Current state
     ├── current-modeprofile.json
     └── runtime.generated.json
+scripts/
+├── sync-reasp.js          # Repo ↔ global config sync (push/pull)
+└── rass-sync-validator.js # Consistency checker
 ```
 
 ---
