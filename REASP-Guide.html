@@ -3,324 +3,756 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Guía de Uso · REASP</title>
+  <title>Guía Maestra · REASP</title>
   <style>
     :root {
       --primary: #00d4ff;
       --primary-dark: #00a3c4;
       --secondary: #ff00ff;
       --accent: #8a2be2;
-      --bg-dark: #0f111a;
-      --bg-card: #1a1d2b;
-      --text-main: #e2e8f0;
-      --text-muted: #94a3b8;
       --success: #10b981;
       --warning: #f59e0b;
+      --error: #ef4444;
+      --bg-dark: #0a0a0f;
+      --bg-card: #13131a;
+      --bg-card-2: #1c1c26;
+      --text-main: #e8e8ef;
+      --text-muted: #94a3b8;
       --border: #2d334a;
-      --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      --radius: 16px;
+      --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-mono: 'Cascadia Code', 'Consolas', 'Fira Code', monospace;
     }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
       background: var(--bg-dark);
       color: var(--text-main);
       font-family: var(--font);
-      line-height: 1.6;
+      line-height: 1.65;
     }
 
+    /* Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      background: rgba(10, 10, 15, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 0;
+      padding: 14px 20px;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 99px;
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--primary);
+      background: rgba(0, 212, 255, 0.08);
+    }
+
+    /* Layout */
     .container {
       max-width: 1100px;
       margin: 0 auto;
-      padding: 40px 20px;
+      padding: 40px 24px;
     }
 
     header {
       text-align: center;
-      margin-bottom: 60px;
+      padding: 60px 20px 50px;
+      background: radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.08) 0%, transparent 60%);
     }
 
-    .logo-banner {
-      font-size: 3rem;
-      font-weight: 800;
+    .logo {
+      font-size: 4rem;
+      font-weight: 900;
+      letter-spacing: -2px;
       background: linear-gradient(90deg, var(--primary), var(--secondary));
       -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 10px;
-      display: block;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 12px;
     }
 
-    .subtitle {
-      font-size: 1.2rem;
+    .tagline {
+      font-size: 1.25rem;
       color: var(--text-muted);
-      max-width: 700px;
-      margin: 0 auto;
+      max-width: 720px;
+      margin: 0 auto 24px;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-      margin-bottom: 40px;
+    .hero-badges {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
+    .hero-badge {
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    /* Typography */
+    h1, h2, h3, h4 {
+      margin-top: 0;
+      line-height: 1.25;
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      color: var(--primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      color: var(--secondary);
+      margin: 32px 0 14px;
+    }
+
+    h4 {
+      font-size: 1.05rem;
+      color: var(--text-main);
+      margin: 24px 0 10px;
+    }
+
+    p { margin: 0 0 16px; }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Cards */
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 24px;
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
     .card:hover {
-      transform: translateY(-5px);
-      border-color: var(--primary);
+      border-color: rgba(0, 212, 255, 0.35);
     }
 
-    .card h2 {
-      margin-top: 0;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.5rem;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
     }
 
-    .step-number {
-      background: var(--primary);
-      color: var(--bg-dark);
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.9rem;
-      font-weight: bold;
-    }
-
+    /* Code blocks */
     code {
-      background: #000;
-      color: #50fa7b;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Cascadia Code', 'Consolas', monospace;
+      background: var(--bg-card-2);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
       font-size: 0.9em;
     }
 
     pre {
-      background: #000;
+      background: #050508;
       color: #f8f8f2;
-      padding: 16px;
+      padding: 20px;
       border-radius: 12px;
       overflow-x: auto;
       border: 1px solid var(--border);
-      font-family: 'Cascadia Code', 'Consolas', monospace;
-      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      margin: 16px 0;
     }
 
-    .workflow-container {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 32px;
-      margin-top: 40px;
+    pre .comment { color: #6a737d; }
+    pre .cmd { color: var(--primary); font-weight: bold; }
+    pre .arg { color: var(--secondary); }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.95rem;
     }
 
-    .workflow-header {
-      text-align: center;
-      margin-bottom: 32px;
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
     }
 
-    .workflow-header h2 {
-      color: var(--secondary);
-      font-size: 2rem;
+    th {
+      color: var(--primary);
+      font-weight: 600;
+      background: var(--bg-card-2);
     }
 
-    .agent-badge {
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Badges */
+    .badge {
       display: inline-block;
-      padding: 4px 12px;
+      padding: 4px 10px;
       border-radius: 99px;
-      font-size: 0.8rem;
-      font-weight: bold;
+      font-size: 0.7rem;
+      font-weight: 700;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+      margin-right: 6px;
     }
 
-    .badge-efi { background: var(--accent); color: white; }
-    .badge-orch { background: var(--primary); color: var(--bg-dark); }
+    .badge-primary { background: rgba(0, 212, 255, 0.12); color: var(--primary); }
+    .badge-secondary { background: rgba(255, 0, 255, 0.12); color: var(--secondary); }
+    .badge-success { background: rgba(16, 185, 129, 0.12); color: var(--success); }
+    .badge-warning { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
 
-    .phase-box {
-      border-left: 4px solid var(--border);
-      padding-left: 24px;
-      margin-bottom: 32px;
-      position: relative;
+    /* Step boxes */
+    .step {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 28px;
     }
 
-    .phase-box::before {
-      content: '';
-      position: absolute;
-      left: -10px;
-      top: 0;
-      width: 16px;
-      height: 16px;
-      background: var(--primary);
+    .step-number {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      border: 4px solid var(--bg-dark);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: var(--bg-dark);
+      font-weight: 800;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .phase-title {
-      font-weight: bold;
+    .step-body {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    /* Agent cards */
+    .agent-card {
+      background: var(--bg-card-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .agent-name {
+      font-weight: 700;
       font-size: 1.1rem;
       color: var(--text-main);
-      margin-bottom: 8px;
     }
 
-    .prompt-box {
-      background: #2a2e42;
-      border-radius: 12px;
-      padding: 16px;
-      margin: 12px 0;
-      border-left: 4px solid var(--secondary);
-    }
-
-    .prompt-label {
-      font-size: 0.75rem;
+    .agent-path {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
       color: var(--text-muted);
-      text-transform: uppercase;
-      margin-bottom: 4px;
-      display: block;
     }
 
-    .prompt-text {
-      font-style: italic;
-      color: #fff;
+    /* Workflow diagram */
+    .workflow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 28px 0;
     }
 
-    .highlight {
+    .workflow-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 20px;
+      background: var(--bg-card-2);
+      border-left: 3px solid var(--primary);
+      margin-bottom: 12px;
+      border-radius: 0 12px 12px 0;
+    }
+
+    .workflow-step .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(0, 212, 255, 0.1);
       color: var(--primary);
-      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
     }
 
+    .workflow-step .text {
+      flex: 1;
+    }
+
+    .workflow-step .title {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .workflow-step .desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* Tip boxes */
+    .tip {
+      background: rgba(0, 212, 255, 0.06);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin: 20px 0;
+    }
+
+    .tip-title {
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .warning-box {
+      background: rgba(245, 158, 11, 0.06);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin: 20px 0;
+    }
+
+    .warning-title {
+      color: var(--warning);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    /* Lists */
+    ul, ol {
+      padding-left: 22px;
+      margin: 12px 0;
+    }
+
+    li { margin-bottom: 8px; }
+
+    /* Footer */
     footer {
       text-align: center;
-      margin-top: 60px;
+      padding: 50px 20px;
       color: var(--text-muted);
       font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .logo { font-size: 2.5rem; }
+      h2 { font-size: 1.4rem; }
+      .step { flex-direction: column; gap: 12px; }
+      nav ul { gap: 4px; padding: 10px; }
+      nav a { padding: 5px 10px; font-size: 0.78rem; }
     }
   </style>
 </head>
 <body>
 
+<nav>
+  <ul>
+    <li><a href="#que-es">Qué es</a></li>
+    <li><a href="#requisitos">Requisitos</a></li>
+    <li><a href="#instalacion">Instalación</a></li>
+    <li><a href="#agentes">Agentes</a></li>
+    <li><a href="#primeros-pasos">Primeros pasos</a></li>
+    <li><a href="#snapshots">Snapshots</a></li>
+    <li><a href="#flujo">Flujo de trabajo</a></li>
+    <li><a href="#comandos">Comandos</a></li>
+    <li><a href="#solucion">Solución de problemas</a></li>
+  </ul>
+</nav>
+
+<header>
+  <div class="logo">REASP</div>
+  <div class="tagline">
+    <strong>Ryou Enterprise Adaptive SDD Protocol</strong><br>
+    Instalador global, orquestador SDD y backup manager para tus agentes de IA.
+  </div>
+  <div class="hero-badges">
+    <span class="hero-badge">Multi-Agente</span>
+    <span class="hero-badge">CLI Global</span>
+    <span class="hero-badge">Snapshots</span>
+    <span class="hero-badge">REFI</span>
+    <span class="hero-badge">RASS</span>
+  </div>
+</header>
+
 <div class="container">
-  <header>
-    <span class="logo-banner">REASP</span>
-    <div class="subtitle">
-      <strong>Ryou Enterprise Adaptive SDD Protocol</strong><br>
-      La fusión definitiva de RASS (Orquestación Adaptativa) y REFI (Planeación Empresarial) para OpenCode.
-    </div>
-  </header>
 
-  <div class="grid">
-    <!-- Installation Card -->
-    <div class="card">
-      <h2><span class="step-number">1</span> Instalación</h2>
-      <p>Para instalar REASP en tu sistema, clona el repositorio de RASS y ejecuta el instalador visual.</p>
-      <pre>
-git clone https://github.com/kevinkeor/RASS.git
-cd RASS/installer
-npm install
-node index.js</pre>
-      <p>En el menú interactivo, selecciona <span class="highlight">"Install globally"</span> para habilitar REASP en todos tus proyectos de OpenCode.</p>
-    </div>
+  <!-- QUE ES -->
+  <section id="que-es" class="card">
+    <h2><span>✦</span> Qué es REASP</h2>
+    <p>
+      REASP une dos sistemas en una sola herramienta:
+    </p>
+    <ul>
+      <li><strong>RASS</strong> (Ryou Adaptive SDD System) — orquesta tu trabajo con agentes especializados y ModeProfiles adaptativos.</li>
+      <li><strong>REFI</strong> (Ryou Enterprise Feature Implementation) — genera packets de planificación empresarial antes de escribir código.</li>
+    </ul>
+    <p>
+      Ahora REASP también es un <strong>Backup Manager</strong>: guarda snapshots completos de la configuración de cada agente para que puedas recuperarte si algo sale mal.
+    </p>
+  </section>
 
-    <!-- Configuration Card -->
-    <div class="card">
-      <h2><span class="step-number">2</span> Configuración</h2>
-      <p>Una vez instalado, puedes gestionar el workflow activo directamente desde OpenCode usando comandos slash:</p>
-      <ul>
-        <li><code>/reasp-setup</code>: Centro de mando para cambiar el agente activo.</li>
-        <li><code>/reasp</code>: Alias rápido para el setup.</li>
-        <li><code>/sdd</code>: Cambia el <strong>ModeProfile</strong> (Fast, Architecture, UI, etc.).</li>
-      </ul>
-      <p>Para empezar una nueva feature, asegúrate de tener activo el <span class="highlight">Ryou EFI Planner</span>.</p>
-    </div>
-
-    <!-- Tooling Card -->
-    <div class="card">
-      <h2><span class="step-number">3</span> Herramientas</h2>
-      <p>REASP despliega un ecosistema completo:</p>
-      <ul>
-        <li><strong>Ryou EFI Planner</strong>: Especialista en arquitectura y packets REFI.</li>
-        <li><strong>Ryou Orchestrator</strong>: Especialista en ejecución y despliegue.</li>
-        <li><strong>RASS Core</strong>: Motor de routing de modelos y fases.</li>
-        <li><strong>REFI Toolkit</strong>: Reglas globales y plantillas de blueprint.</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="workflow-container">
-    <div class="workflow-header">
-      <h2>Ejemplo Práctico: API Web con C#</h2>
-      <p>Implementemos un <strong>"Módulo de Gestión de Inventarios"</strong> desde cero.</p>
-    </div>
-
-    <!-- PHASE 1 -->
-    <div class="phase-box">
-      <div class="agent-badge badge-efi">Fase 1: Planeación (Ryou EFI Planner)</div>
-      <div class="phase-title">Generación del Packet REFI</div>
-      <p>Activa el agente EFI vía <code>/reasp-setup</code> &rarr; <strong>Ryou EFI Planner</strong>.</p>
-      
-      <div class="prompt-box">
-        <span class="prompt-label">Usuario</span>
-        <span class="prompt-text">"Necesito implementar un módulo de Gestión de Inventarios para una API Web en C# (.NET 9). Incluye control de stock, alertas de stock bajo y reportes de movimiento."</span>
+  <!-- REQUISITOS -->
+  <section id="requisitos" class="card">
+    <h2><span>◈</span> Requisitos</h2>
+    <div class="grid">
+      <div class="agent-card">
+        <div class="agent-name">Node.js</div>
+        <div class="agent-path">Versión 18 o superior</div>
+        <p style="margin:0; font-size:0.9rem; color:var(--text-muted)">REASP está construido como un paquete npm en ES modules.</p>
       </div>
-      
-      <p>El agente no escribirá código aún. Creará la estructura <code>.refi/modules/inventario/</code> con:</p>
-      <ul>
-        <li><strong>master-blueprint.md</strong>: Definición de endpoints, modelos de datos y riesgos.</li>
-        <li><strong>domain-shards/</strong>: Fragmentos de trabajo (01-Persistencia, 02-Servicios, 03-API).</li>
-        <li><strong>orchestration-map.md</strong>: Orden exacto de ejecución y puertas de verificación.</li>
-      </ul>
-    </div>
-
-    <!-- PHASE 2 -->
-    <div class="phase-box">
-      <div class="agent-badge badge-orch">Fase 2: Implementación (Ryou Orchestrator)</div>
-      <div class="phase-title">Ejecución Incremental</div>
-      <p>Ahora, cambia el workflow vía <code>/reasp-setup</code> &rarr; <strong>Ryou Orchestrator</strong>.</p>
-      
-      <div class="prompt-box">
-        <span class="prompt-label">Usuario</span>
-        <span class="prompt-text">"Basándote en el packet de Inventario, implementa el shard 01 (Persistencia y Base de Datos)."</span>
+      <div class="agent-card">
+        <div class="agent-name">npm</div>
+        <div class="agent-path">Incluido con Node.js</div>
+        <p style="margin:0; font-size:0.9rem; color:var(--text-muted)">Necesario para instalar el comando <code>reasp</code> globalmente.</p>
       </div>
-      
-      <p>El Orquestador ejecutará el flujo adaptativo (ej. <strong>Architecture Mode</strong>):</p>
-      <ul>
-        <li><strong>Explore</strong>: Analiza la base de datos actual.</li>
-        <li><strong>Apply</strong>: Crea las entidades de EF Core y la migración.</li>
-        <li><strong>Verify</strong>: Valida que la migración se aplique correctamente.</li>
-      </ul>
-    </div>
-
-    <!-- PHASE 3 -->
-    <div class="phase-box">
-      <div class="agent-badge badge-orch">Fase 3: Cierre y Verificación</div>
-      <div class="phase-title">Aseguramiento de Calidad</div>
-      <p>Repite el proceso para los shards 02 y 03. Al finalizar:</p>
-      
-      <div class="prompt-box">
-        <span class="prompt-label">Usuario</span>
-        <span class="prompt-text">"Genera el reporte de verificación final para el módulo de Inventario y actualiza el resumen diario."</span>
+      <div class="agent-card">
+        <div class="agent-name">Agentes de IA</div>
+        <div class="agent-path">OpenCode, Claude Code, Codex, Gemini CLI o Antigravity CLI</div>
+        <p style="margin:0; font-size:0.9rem; color:var(--text-muted)">REASP detecta automáticamente los que tengas instalados.</p>
       </div>
-      
-      <p>El sistema cerrará el ciclo actualizando <code>verification.md</code> y creando el resumen visual en <code>AI/Summarys/summary-YYYY-MM-DD.html</code>.</p>
     </div>
-  </div>
+  </section>
 
-  <footer>
-    &copy; 2026 Ryou Enterprise Adaptive SDD Protocol &bull; Powered by OpenCode
-  </footer>
+  <!-- INSTALACION -->
+  <section id="instalacion" class="card">
+    <h2><span>➤</span> Instalación</h2>
+
+    <h3>Paso 1: Clonar o ubicar el repositorio</h3>
+    <pre>git clone https://github.com/kevinkeor/RASS.git
+<span class="cmd">cd</span> RASS</pre>
+
+    <h3>Paso 2: Instalar REASP como herramienta global</h3>
+    <pre><span class="cmd">npm install -g .</span></pre>
+    <p>Esto registra el comando <code>reasp</code> en tu sistema.</p>
+
+    <h3>Paso 3: Verificar la instalación</h3>
+    <pre><span class="cmd">reasp --version</span>
+<span class="comment"># Debe mostrar: 1.0.0</span>
+
+<span class="cmd">reasp detect</span>
+<span class="comment"># Muestra los agentes de IA detectados en tu máquina</span></pre>
+
+    <div class="tip">
+      <div class="tip-title">💡 Si <code>reasp</code> no se encuentra</div>
+      <p style="margin:0">Reinicia tu terminal. Si el problema persiste, verifica que el directorio de binarios globales de npm esté en tu PATH:</p>
+      <pre style="margin:10px 0 0"><span class="cmd">npm bin -g</span></pre>
+    </div>
+  </section>
+
+  <!-- AGENTES -->
+  <section id="agentes" class="card">
+    <h2><span>●</span> Agentes soportados</h2>
+    <p>REASP puede instalar su configuración en los siguientes agentes:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Agente</th>
+          <th>Archivo / Directorio objetivo</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>OpenCode</strong></td>
+          <td><code>~/.config/opencode/</code></td>
+          <td><span class="badge badge-success">Referencia</span></td>
+        </tr>
+        <tr>
+          <td><strong>Claude Code</strong></td>
+          <td><code>~/.claude/CLAUDE.md</code></td>
+          <td><span class="badge badge-primary">Estable</span></td>
+        </tr>
+        <tr>
+          <td><strong>Codex</strong></td>
+          <td><code>~/.codex/instructions.md</code></td>
+          <td><span class="badge badge-primary">Estable</span></td>
+        </tr>
+        <tr>
+          <td><strong>Gemini CLI</strong></td>
+          <td><code>~/.gemini/instructions.md</code></td>
+          <td><span class="badge badge-primary">Estable</span></td>
+        </tr>
+        <tr>
+          <td><strong>Antigravity CLI</strong></td>
+          <td><code>~/.antigravity/instructions.md</code></td>
+          <td><span class="badge badge-warning">Experimental</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warning-box">
+      <div class="warning-title">⚠️ Importante</div>
+      <p style="margin:0">OpenCode es el único agente con soporte completo de plugins, slash commands y herramientas nativas. Los demás reciben el comportamiento de REASP a través de instrucciones del sistema.</p>
+    </div>
+  </section>
+
+  <!-- PRIMEROS PASOS -->
+  <section id="primeros-pasos" class="card">
+    <h2><span>◇</span> Primeros pasos</h2>
+
+    <div class="step">
+      <div class="step-number">1</div>
+      <div class="step-body">
+        <div class="step-title">Detecta tus agentes</div>
+        <pre><span class="cmd">reasp detect</span></pre>
+        <p>Te muestra cuáles agentes están instalados y disponibles.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-body">
+        <div class="step-title">Crea snapshots de seguridad</div>
+        <pre><span class="cmd">reasp snapshot create --agent claude-code --name antes-de-reasp --yes</span>
+<span class="cmd">reasp snapshot create --agent opencode --name baseline --yes</span></pre>
+        <p>Así podrás volver atrás si algo no funciona como esperas.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-body">
+        <div class="step-title">Instala REASP en los agentes deseados</div>
+        <pre><span class="cmd">reasp install --agents opencode,claude-code --yes</span></pre>
+        <p>O usa el modo interactivo:</p>
+        <pre><span class="cmd">reasp</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-body">
+        <div class="step-title">Verifica el estado</div>
+        <pre><span class="cmd">reasp status</span></pre>
+        <p>Te indica en qué agentes REASP está instalado.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SNAPSHOTS -->
+  <section id="snapshots" class="card">
+    <h2><span>◐</span> Sistema de Snapshots</h2>
+    <p>
+      Los snapshots son copias <strong>completas</strong> del directorio de configuración de un agente. Se almacenan en:
+    </p>
+    <pre><span class="cmd">~/.reasp/snapshots/&lt;agente&gt;/&lt;timestamp&gt;-&lt;nombre&gt;/</span></pre>
+
+    <h3>Comandos esenciales</h3>
+
+    <h4>Crear snapshot</h4>
+    <pre><span class="cmd">reasp snapshot create --agent claude-code --name clean --yes</span></pre>
+
+    <h4>Listar snapshots</h4>
+    <pre><span class="cmd">reasp snapshot list</span>
+<span class="cmd">reasp snapshot list --agent claude-code --json</span></pre>
+
+    <h4>Restaurar snapshot</h4>
+    <pre><span class="cmd">reasp snapshot restore --agent claude-code --name clean --yes</span></pre>
+    <p>Antes de restaurar, REASP crea automáticamente un <code>auto-restore-backup-&lt;timestamp&gt;</code> del estado actual.</p>
+
+    <h4>Eliminar snapshots</h4>
+    <pre><span class="cmd">reasp snapshot delete --agent claude-code --name clean --yes</span>
+<span class="cmd">reasp snapshot purge --agent claude-code --keep 3 --yes</span></pre>
+
+    <div class="tip">
+      <div class="tip-title">🛡️ Consejo de seguridad</div>
+      <p style="margin:0">Crea siempre un snapshot antes de instalar, desinstalar o actualizar REASP en un agente. El instalador te lo ofrecerá automáticamente, pero también puedes hacerlo manualmente.</p>
+    </div>
+  </section>
+
+  <!-- FLUJO DE TRABAJO -->
+  <section id="flujo" class="card">
+    <h2><span>▲</span> Flujo de trabajo típico</h2>
+    <p>Con REASP instalado en OpenCode, este es el ciclo recomendado para una feature empresarial:</p>
+
+    <div class="workflow">
+      <div class="workflow-step">
+        <div class="icon">1</div>
+        <div class="text">
+          <div class="title">Planificación con Ryou EFI Planner</div>
+          <div class="desc">Activa el planner vía <code>/reasp-setup</code> y pide que diseñe el módulo. Se generará un packet REFI en <code>.refi/modules/&lt;feature&gt;/</code>.</div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="icon">2</div>
+        <div class="text">
+          <div class="title">Cambio a Ryou Orchestrator</div>
+          <div class="desc">Cuando el packet esté listo, cambia al orchestrator con <code>/reasp-setup</code> para ejecutar la implementación.</div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="icon">3</div>
+        <div class="text">
+          <div class="title">Implementación adaptativa</div>
+          <div class="desc">El orquestador elige el ModeProfile adecuado (Fast, Architecture, UI, Debug, etc.) y delega a subagentes especializados.</div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="icon">4</div>
+        <div class="text">
+          <div class="title">Verificación y resumen</div>
+          <div class="desc">Al terminar, se actualiza <code>verification.md</code> y se genera el resumen diario en <code>AI/Summarys/summary-YYYY-MM-DD.html</code>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMANDOS -->
+  <section id="comandos" class="card">
+    <h2><span>◉</span> Referencia rápida de comandos</h2>
+
+    <h3>Gestión de REASP</h3>
+    <table>
+      <thead>
+        <tr><th>Comando</th><th>Descripción</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>reasp</code></td><td>Abre el menú interactivo (TUI).</td></tr>
+        <tr><td><code>reasp install</code></td><td>Instala REASP en OpenCode por defecto.</td></tr>
+        <tr><td><code>reasp install --agents a,b</code></td><td>Instala en agentes específicos.</td></tr>
+        <tr><td><code>reasp install --only-detected</code></td><td>Instala en todos los agentes detectados.</td></tr>
+        <tr><td><code>reasp install --dry-run</code></td><td>Previsualiza cambios sin escribir archivos.</td></tr>
+        <tr><td><code>reasp uninstall --agents a,b</code></td><td>Desinstala de agentes específicos.</td></tr>
+        <tr><td><code>reasp detect</code></td><td>Muestra los agentes instalados.</td></tr>
+        <tr><td><code>reasp status</code></td><td>Muestra dónde está instalado REASP.</td></tr>
+        <tr><td><code>reasp local</code></td><td>Copia REASP al workspace actual (<code>.opencode/</code>).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Snapshots</h3>
+    <table>
+      <thead>
+        <tr><th>Comando</th><th>Descripción</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>reasp snapshot create --agent &lt;a&gt; --name &lt;n&gt;</code></td><td>Crea un snapshot.</td></tr>
+        <tr><td><code>reasp snapshot list [--agent &lt;a&gt;]</code></td><td>Lista snapshots.</td></tr>
+        <tr><td><code>reasp snapshot restore --agent &lt;a&gt; --name &lt;n&gt;</code></td><td>Restaura un snapshot.</td></tr>
+        <tr><td><code>reasp snapshot delete --agent &lt;a&gt; --name &lt;n&gt;</code></td><td>Elimina un snapshot.</td></tr>
+        <tr><td><code>reasp snapshot purge --agent &lt;a&gt; --keep &lt;n&gt;</code></td><td>Mantiene solo los <code>n</code> snapshots más recientes.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Configuración</h3>
+    <table>
+      <thead>
+        <tr><th>Comando</th><th>Descripción</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>reasp config</code></td><td>Muestra la configuración actual.</td></tr>
+        <tr><td><code>reasp config --snapshots-dir &lt;path&gt;</code></td><td>Cambia el directorio de snapshots.</td></tr>
+        <tr><td><code>reasp config --max-snapshots-per-agent &lt;n&gt;</code></td><td>Límite de snapshots por agente.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SOLUCION DE PROBLEMAS -->
+  <section id="solucion" class="card">
+    <h2><span>✗</span> Solución de problemas</h2>
+
+    <h3><code>reasp</code> no se reconoce</h3>
+    <ul>
+      <li>Reinicia la terminal.</li>
+      <li>Verifica que el directorio de <code>npm bin -g</code> esté en tu PATH.</li>
+      <li>Como alternativa, usa el wrapper: <code>scripts\reasp.cmd</code> (Windows) o <code>scripts/reasp</code> (Unix).</li>
+    </ul>
+
+    <h3>Un install no funcionó y el agente quedó dañado</h3>
+    <pre><span class="cmd">reasp snapshot list --agent &lt;agente&gt;</span>
+<span class="cmd">reasp snapshot restore --agent &lt;agente&gt; --name &lt;tu-snapshot-previo&gt; --yes</span></pre>
+
+    <h3>No se detecta un agente</h3>
+    <ul>
+      <li>Asegúrate de que el CLI del agente esté en tu PATH.</li>
+      <li>Puedes forzar la instalación con <code>--force</code>:</li>
+    </ul>
+    <pre><span class="cmd">reasp install --agents claude-code --force</span></pre>
+
+    <h3>Snapshot restore falló</h3>
+    <p>Busca el <code>auto-restore-backup-&lt;timestamp&gt;</code> generado antes del restore y restáuralo:</p>
+    <pre><span class="cmd">reasp snapshot restore --agent &lt;agente&gt; --name auto-restore-backup-&lt;timestamp&gt; --yes</span></pre>
+  </section>
+
+  <!-- DESINSTALACION -->
+  <section id="desinstalacion" class="card">
+    <h2><span>◇</span> Desinstalación</h2>
+    <p>Para eliminar REASP de un agente específico:</p>
+    <pre><span class="cmd">reasp uninstall --agents opencode,claude-code --yes</span></pre>
+
+    <p>Para eliminar el comando global:</p>
+    <pre><span class="cmd">npm uninstall -g reasp-cli</span></pre>
+
+    <div class="tip">
+      <div class="tip-title">💡 Nota</div>
+      <p style="margin:0">Desinstalar REASP no borra tus snapshots. Para limpiarlos, usa <code>reasp snapshot purge --all-agents --keep 0 --yes</code>.</p>
+    </div>
+  </section>
+
 </div>
+
+<footer>
+  <strong>Ryou Enterprise Adaptive SDD Protocol</strong><br>
+  Conceptos &gt; Código. Controlamos el flujo, la IA ejecuta.<br>
+  &copy; 2026 Kevin Keor
+</footer>
 
 </body>
 </html>
