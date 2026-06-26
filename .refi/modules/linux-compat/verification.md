@@ -1,6 +1,15 @@
 # Verification · REASP Linux Compatibility & MeridianUI Global Install
 
-## Pre-Verification Conditions
+## Automated Gates (Passed — 2026-06-25)
+
+| Gate | Test | Result |
+|------|------|--------|
+| Syntax | `npm test` (node --check all files) | ✅ PASS |
+| Detect | `reasp detect` on Fedora 44 | ✅ PASS — OpenCode v1.17.11, Claude Code v2.1.193, Gemini CLI detected |
+| Dry-run | `reasp install --dry-run --agents opencode` | ✅ PASS — TUI boots, no crash |
+| File mode | `git ls-files -s scripts/reasp` | ✅ PASS — mode 100755 |
+
+## Pre-Verification Conditions (Manual Gates)
 
 - Todos los shards 01–09 implementados y en rama `linux-compat`.
 - Sistema Linux (Fedora 44) disponible con OpenCode y Claude Code instalados.

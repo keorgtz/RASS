@@ -177,6 +177,154 @@ reasp install --agents antigravity --force
 
 ---
 
+---
+
+## Linux / Unix Issues
+
+### `reasp` command not found on Linux
+
+**Symptom:** After `npm install -g .`, running `reasp` says `command not found`.
+
+**Cause:** The npm global bin directory is not in your PATH.
+
+**Solutions:**
+
+1. Find the global bin path and add it to your shell profile:
+   ```bash
+   npm bin -g
+   # e.g. /home/you/.npm-global/bin — add to ~/.bashrc or ~/.zshrc
+   export PATH="$(npm bin -g):$PATH"
+   source ~/.bashrc
+   ```
+
+2. If using **nvm**, each Node version has its own global bin. Ensure the right version is active:
+   ```bash
+   nvm use 20
+   npm install -g .
+   reasp --help
+   ```
+
+3. If using **Volta**, Volta manages its own bin at `~/.volta/bin`. Ensure it is in PATH:
+   ```bash
+   echo $PATH | grep volta
+   # if missing, add to ~/.bashrc:
+   export PATH="$HOME/.volta/bin:$PATH"
+   ```
+
+4. As a fallback, use the wrapper script from the repo root:
+   ```bash
+   chmod +x scripts/reasp
+   ./scripts/reasp install
+   ```
+
+---
+
+### `scripts/reasp: Permission denied`
+
+**Symptom:** Running `./scripts/reasp` gives a permission error.
+
+**Cause:** The execute bit is not set on the file (can happen after certain git operations or clones on some systems).
+
+**Solution:**
+
+```bash
+chmod +x scripts/reasp
+./scripts/reasp --help
+```
+
+---
+
+### OpenCode plugin fails to load on Linux — `ERR_INVALID_URL` or blank plugin
+
+**Symptom:** After installing REASP into OpenCode on Linux, the plugin or TUI doesn't load. The OpenCode console or stderr shows an error containing `ERR_INVALID_URL` or `file:////home/...` (four slashes).
+
+**Cause:** This was a bug in versions of REASP prior to the Linux compatibility update. The plugin URL was built with a hard-coded `file:///` prefix, producing `file:////home/...` on Linux (four slashes — invalid URL).
+
+**Solution:** Update to the current version and reinstall:
+
+```bash
+git pull
+reasp uninstall --agents opencode
+reasp install --agents opencode
+```
+
+---
+
+### OpenCode not detected on Linux even though it is installed
+
+**Symptom:** `reasp detect` shows `✗ no detectado` for OpenCode, but `opencode --version` works.
+
+**Cause:** OpenCode may be installed in a location REASP does not scan by default.
+
+**Solutions:**
+
+1. Ensure `opencode` is in your PATH:
+   ```bash
+   which opencode
+   echo $PATH
+   ```
+
+2. If installed via **Volta**, verify Volta's bin is in PATH:
+   ```bash
+   volta which opencode
+   export PATH="$HOME/.volta/bin:$PATH"
+   ```
+
+3. Use `--force` to bypass detection and install anyway:
+   ```bash
+   reasp install --agents opencode --force
+   ```
+
+---
+
+### MeridianUI warning: `.MeridianUI/ is empty`
+
+**Symptom:** During `reasp install`, you see:
+
+```
+⚠  .MeridianUI/ is empty or not yet populated in the repo — skipping MeridianUI install.
+   Add your MeridianUI content to .MeridianUI/ and re-run `reasp install`.
+```
+
+**Cause:** The `.MeridianUI/` directory in the REASP repository contains only the `.gitkeep` placeholder — no real content has been added yet.
+
+**Solution:** Add your MeridianUI content to `.MeridianUI/` in the repo root, then re-run `reasp install`:
+
+```bash
+# After adding content to .MeridianUI/:
+reasp install
+# ✓ MeridianUI installed → /home/<you>/.MeridianUI
+```
+
+This is expected behavior before MeridianUI content is populated — it is not an error.
+
+---
+
+### Node.js version too old
+
+**Symptom:** The installer crashes immediately with a syntax error or `require is not defined`.
+
+**Cause:** REASP requires Node.js ≥ 18 (ESM modules, `fs.promises.cp`, `util.parseArgs`).
+
+**Solution:**
+
+```bash
+node --version   # must be v18.0.0 or higher
+
+# Update via nvm
+nvm install 20
+nvm use 20
+
+# Fedora / RHEL
+sudo dnf install nodejs
+
+# Ubuntu / Debian (NodeSource for v20+)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt install -y nodejs
+```
+
+---
+
 ## Still stuck?
 
 Open an issue with:
@@ -185,4 +333,4 @@ Open an issue with:
 - Output of `reasp detect`.
 - Output of `reasp status`.
 - Output of `reasp snapshot list`.
-- Your OS and the agent versions involved.
+- Your OS, Node version (`node --version`), and the agent versions involved.
