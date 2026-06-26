@@ -22,6 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SOURCE_DIR, DEFAULT_MODEPROFILE, DEFAULT_WORKFLOW, AGENT_TARGETS, getHomeDir, REASP_CLI_VERSION } from './lib/constants.js';
+import { installMeridianUI } from './lib/meridianui.js';
 import { detectAllAgents } from './lib/detect.js';
 import { compileReaspBundle } from './lib/compile.js';
 import { TARGETS } from './lib/targets/index.js';
@@ -224,6 +225,13 @@ async function runInstall(selectedIds, options = {}) {
       }
     }
   }
+
+  // ── Pre-install: MeridianUI (runs once, both platforms) ──────────────────────
+  await installMeridianUI({
+    homeDir: ctx.homeDir,
+    dryRun: ctx.dryRun,
+    log: { info: printInfo, warn: printWarning, success: printSuccess, error: printError },
+  });
 
   const bundle = compileReaspBundle({
     workflow: options.workflow || DEFAULT_WORKFLOW,
@@ -542,7 +550,7 @@ async function interactiveSnapshots() {
       const agentId = await promptSelectAgent(detectedAgents, false);
       if (!agentId) break;
 
-      const snapshots = listSnapshots({ homeDir: process.env.USERPROFILE || process.env.HOME }, agentId);
+      const snapshots = listSnapshots({ homeDir: getHomeDir() }, agentId);
       const snapshotId = await promptSnapshotSelection(snapshots);
       if (!snapshotId) break;
 

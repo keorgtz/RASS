@@ -7,6 +7,7 @@
     "reasp": "./installer/index.js"
   },
   "scripts": {
+    "prepare": "node -e \"try{require('fs').chmodSync('./scripts/reasp',0o755)}catch(e){}\"",
     "test": "node --check installer/index.js && node --check installer/lib/*.js && node --check installer/lib/targets/*.js && node --check installer/commands/*.js"
   },
   "preferGlobal": true,
@@ -14,6 +15,7 @@
     "installer/",
     "scripts/",
     ".opencode/",
+    ".MeridianUI/",
     "README.md",
     "LICENSE.md"
   ],

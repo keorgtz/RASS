@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { SOURCE_DIR, getHomeDir, getGlobalOpenCodeDir, REASP_ASSETS } from '../constants.js';
 import {
   ProgressTracker,
@@ -105,6 +106,7 @@ export function findOpenCodeCommand() {
       '/usr/bin/opencode',
       path.join(getHomeDir(), '.local', 'bin', 'opencode'),
       path.join(getHomeDir(), '.npm-global', 'bin', 'opencode'),
+      path.join(getHomeDir(), '.volta', 'bin', 'opencode'),
       path.join(getHomeDir(), '.nvm', 'versions', 'node', '*', 'bin', 'opencode'),
     ];
     for (const p of unixPaths) {
@@ -374,8 +376,8 @@ export function registerPluginManually(globalConfigPath, globalDir) {
 
   if (!config.plugin) config.plugin = [];
 
-  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
-  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
+  const pluginUrl = pathToFileURL(path.join(globalDir, 'plugin.js')).href;
+  const tuiUrl = pathToFileURL(path.join(globalDir, 'tui.js')).href;
 
   config.plugin = config.plugin.filter((p) => {
     if (typeof p === 'string') {
@@ -526,8 +528,8 @@ export function install(ctx, bundle = {}) {
     reportProgress(currentPercent, 'npm dependencies installed', ICONS.ring);
   }
 
-  const pluginUrl = `file:///${globalDir.replace(/\\/g, '/')}/plugin.js`;
-  const tuiUrl = `file:///${globalDir.replace(/\\/g, '/')}/tui.js`;
+  const pluginUrl = pathToFileURL(path.join(globalDir, 'plugin.js')).href;
+  const tuiUrl = pathToFileURL(path.join(globalDir, 'tui.js')).href;
   const opencodeCmd = findOpenCodeCommand();
 
   runPhase('register', () => {

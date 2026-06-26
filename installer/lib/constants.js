@@ -11,6 +11,9 @@ import os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** Absolute path to the REASP repository root. */
+export const REPO_ROOT = path.resolve(__dirname, '../..');
+
 /** Absolute path to the canonical REASP assets inside `.opencode/`. */
 export const SOURCE_DIR = path.resolve(__dirname, '../../.opencode');
 
