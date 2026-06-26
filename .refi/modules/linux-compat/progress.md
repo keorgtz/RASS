@@ -33,15 +33,25 @@
 - [x] **Shard 05**: Adapters menores verificados — todos OK sin cambios requeridos
 - [x] **Shard 06**: `.gitattributes` creado; `scripts/reasp` modo 100755; `package.json prepare`
 
-## Pending
+## Completed (Phase 2 — Docs & Phase 3 — Verification)
 
-- [ ] **Shard 07**: Ejecutar verification gates en Linux real
-- [ ] **Shard 08**: Actualizar README (sección Linux + MeridianUI), AGENTS.md, TROUBLESHOOTING.md
-- [ ] Agregar contenido real a `.MeridianUI/` y verificar Gate 5
+- [x] **Shard 08**: README (Linux + MeridianUI), AGENTS.md, TROUBLESHOOTING.md actualizados
+- [x] **Gate 10**: `scripts/reasp` modo 100755 confirmado en HEAD tree ✓
+- [x] **Gate 2**: `reasp detect` — OpenCode v1.17.11, Claude Code v2.1.193, Gemini CLI detectados ✓
+- [x] **Gate 7**: Empty MeridianUI warning — no crash, reason `empty-source` ✓
+- [x] **Gate 3 (code)**: `pathToFileURL` genera `file:///home/...` (3 barras) en Linux ✓
+- [x] **Gate 9 (dry-run)**: Claude Code dry-run — TUI boots sin error ✓
+- [x] Merge `linux-compat` → `Master` ✓
+
+## Pending (Manual — Requieren usuario)
+
+- [ ] **Gate 3 real**: `reasp install --agents opencode` → verificar URLs en `opencode.json` y que plugin cargue
+- [ ] **Gate 5**: Poblar `.MeridianUI/` con contenido real y re-ejecutar `reasp install`
+- [ ] **Gates 4/6**: Verificar regresión en Windows
 
 ## Current Shard
 
-`Shard 07` — código completo; listo para testing en Linux real.
+`COMPLETO` — branch mergeado a Master. Solo gates manuales pendientes.
 
 ## Audit Findings — Gap Matrix Real
 
