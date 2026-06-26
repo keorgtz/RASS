@@ -19,25 +19,41 @@
 - [x] Escribir `verification.md` con gates MeridianUI
 - [x] Escribir `progress.md` (este archivo)
 
+## Completed (Implementation — Phase 1)
+
+- [x] Arreglar permisos del repo — hecho por maintainer
+- [x] Crear rama `linux-compat` desde `Master`
+- [x] Mover packet REFI del scratchpad al repo
+- [x] Crear `.MeridianUI/.gitkeep` en repo root
+- [x] **Shard 01**: Auditoría completa — gap matrix confirmado y corregido vs código real
+- [x] **Shard 02**: Fix `pathToFileURL` — `opencode.js` líneas 379-380 y 531-532
+- [x] **Shard 03**: `unixPaths[]` ya existía; agregado `.volta` path (additive)
+- [x] **Shard 04**: Auditoría completa de `opencode.js` — G1 y Volta eran los únicos pendientes
+- [x] **Shard 09**: `meridianui.js` creado; integrado en `index.js` pre-install; `REPO_ROOT` en constants
+- [x] **Shard 05**: Adapters menores verificados — todos OK sin cambios requeridos
+- [x] **Shard 06**: `.gitattributes` creado; `scripts/reasp` modo 100755; `package.json prepare`
+
 ## Pending
 
-- [ ] Arreglar permisos del repo: `sudo chown -R $USER:$USER /home/ryou/Keorsoft/KeorAI/REASP/`
-- [ ] Mover packet REFI del scratchpad al repo: `.refi/modules/linux-compat/`
-- [ ] Crear rama `linux-compat` desde `Master`
-- [ ] Crear `.MeridianUI/.gitkeep` en repo root (placeholder para el contenido UI)
-- [ ] **Shard 01**: Auditar y confirmar gap matrix completo
-- [ ] **Shard 02**: Fix `pathToFileURL` en `opencode.js:529-530`
-- [ ] **Shard 03**: Agregar `linuxPaths[]` en `opencode.js` (aditivo); completar `detect.js`
-- [ ] **Shard 04**: Auditoría completa de `opencode.js` y commit consolidado
-- [ ] **Shard 09**: Crear `meridianui.js`, integrar en `index.js`, crear `REPO_ROOT` en constants
-- [ ] **Shard 05**: Verificar adapters menores
-- [ ] **Shard 06**: `.gitattributes`, `package.json prepare`, verificar `scripts/reasp`
 - [ ] **Shard 07**: Ejecutar verification gates en Linux real
-- [ ] **Shard 08**: Actualizar README, AGENTS.md, TROUBLESHOOTING.md
+- [ ] **Shard 08**: Actualizar README (sección Linux + MeridianUI), AGENTS.md, TROUBLESHOOTING.md
+- [ ] Agregar contenido real a `.MeridianUI/` y verificar Gate 5
 
 ## Current Shard
 
-`master-blueprint.md` — planeación completa. Pendiente aprobación del maintainer e inicio de implementación.
+`Shard 07` — código completo; listo para testing en Linux real.
+
+## Audit Findings — Gap Matrix Real
+
+| Gap | Estado Real | Acción |
+|-----|------------|--------|
+| G0 MeridianUI no instalada | Confirmado | `meridianui.js` creado ✓ |
+| G1 file:/// bug × 2 | Confirmado | `pathToFileURL` ✓ |
+| G2 winPaths sin Linux | **YA RESUELTO** en código | Solo Volta agregado ✓ |
+| G3 detect Linux incompleto | **YA RESUELTO** en código | Sin cambios ✓ |
+| G4 scripts/reasp sin +x | Confirmado | 100755 ✓ |
+| G5 MeridianUI glob backslash | OK en Linux | Sin cambios ✓ |
+| G6 _instructions.js backslash | OK en Linux | Sin cambios ✓ |
 
 ## Design Decisions Locked
 
