@@ -53,6 +53,8 @@
 - [✨ Features](#-features)
 - [🚀 Quick Start](#-quick-start)
 - [📦 Installation](#-installation)
+  - [🐧 Linux / Unix](#-linux--unix)
+- [🎨 MeridianUI](#-meridianui)
 - [🎮 Usage](#-usage)
 - [🧠 ModeProfiles](#-modeprofiles)
 - [🤖 Ryou Agents](#-ryou-agents)
@@ -317,6 +319,78 @@ reasp uninstall --agents claude-code
 reasp uninstall
 ```
 
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- Linux / Unix -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+
+## 🐧 Linux / Unix
+
+REASP works on Linux and macOS without modification. The same `reasp install` command handles both platforms; the installer detects the OS and uses the correct paths automatically.
+
+### Requirements
+
+| Requirement | Version |
+|-------------|---------|
+| Node.js | ≥ 18.0.0 |
+| npm | ≥ 7 (bundled with Node 18+) |
+| Git | Any recent version |
+
+### Quick install on Linux
+
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/kevinkeor/REASP.git
+cd REASP
+
+# 2. Install globally (makes `reasp` available system-wide)
+npm install -g .
+
+# 3. Run the interactive installer
+reasp install
+```
+
+If `reasp` is not in your PATH after `npm install -g .`, see [reasp command not found on Linux](#reasp-command-not-found-on-linux) in the troubleshooting guide.
+
+### Shell wrapper (no global install)
+
+If you prefer not to install globally, use the shell wrapper directly:
+
+```bash
+# Make it executable (only needed once)
+chmod +x scripts/reasp
+
+# Run from the repo root
+./scripts/reasp install
+./scripts/reasp detect
+```
+
+### nvm / Volta users
+
+REASP detects OpenCode installed via **nvm**, **Volta**, or system PATH. If OpenCode was installed with Volta:
+
+```bash
+# Volta installs binaries to ~/.volta/bin — ensure it is in PATH
+echo $PATH | grep volta   # should print ~/.volta/bin
+volta which opencode      # should show the path
+
+# Then run normally
+reasp install --agents opencode
+```
+
+### Global directories on Linux
+
+| Agent | Linux global dir |
+|-------|-----------------|
+| OpenCode | `~/.config/opencode/` |
+| Claude Code | `~/.claude/` |
+| Codex | `~/.codex/` |
+| Gemini CLI | `~/.gemini/` |
+| Antigravity CLI | `~/.antigravity/` |
+| MeridianUI | `~/.MeridianUI/` |
+| REASP state | `~/.reasp/` |
+
+---
+
 ## 💾 Snapshots & Backup Manager
 
 REASP can take complete snapshots of an agent's global configuration before install, uninstall, or any manual change. Snapshots are stored under `~/.reasp/snapshots/<agent>/<timestamp>-<name>/` and include the full `data/` directory plus a `snapshot.json` metadata file.
@@ -395,6 +469,50 @@ scripts/
 ├── sync-reasp.js          # Repo ↔ global config sync (push/pull)
 └── rass-sync-validator.js # Consistency checker
 ```
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- MeridianUI -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+
+## 🎨 MeridianUI
+
+**MeridianUI** is the design system and UI library used by REASP for all UI/UX work. REASP ships a placeholder directory at `.MeridianUI/` in the repository root; when you run `reasp install`, its contents are automatically copied to `~/.MeridianUI/` on your machine (both Windows and Linux).
+
+### Adding MeridianUI to your REASP
+
+1. Drop your MeridianUI content into the `.MeridianUI/` directory at the root of this repository:
+
+   ```
+   REASP/
+   └── .MeridianUI/
+       ├── components/
+       ├── tokens/
+       ├── themes/
+       └── ... (your content)
+   ```
+
+2. Re-run `reasp install` to deploy it globally:
+
+   ```bash
+   reasp install
+   # ✓ MeridianUI installed → /home/<you>/.MeridianUI
+   ```
+
+3. REASP agents that perform UI work (especially the `ui` ModeProfile) will reference `~/.MeridianUI/` as their design system source.
+
+> If `.MeridianUI/` contains only the `.gitkeep` placeholder (no real content yet), the installer will warn you and skip the copy — it will not fail. Add your content and re-run `reasp install`.
+
+### MeridianUI and agents
+
+- `rules/meridianui.md` inside `.opencode/` contains the MeridianUI rules injected into every agent.
+- The **UI** ModeProfile (`/sdd` → `ui`) activates the design-focused pipeline that uses MeridianUI components as its output reference.
+- Non-OpenCode agents (Claude Code, Codex, Gemini CLI, Antigravity CLI) receive the MeridianUI rules as part of their system instructions block.
+
+### Uninstall behavior
+
+`reasp uninstall` removes REASP from an agent's config. It does **not** remove `~/.MeridianUI/` — your globally installed design system is preserved.
 
 ---
 

@@ -97,6 +97,22 @@ documentation:     opencode-go/deepseek-v4-flash
 | Codex | `%USERPROFILE%\.codex` | `~/.codex` |
 | Gemini CLI | `%USERPROFILE%\.gemini` | `~/.gemini` |
 | Antigravity CLI | `%USERPROFILE%\.antigravity` | `~/.antigravity` |
+| MeridianUI | `%USERPROFILE%\.MeridianUI` | `~/.MeridianUI` |
+| REASP state | `%USERPROFILE%\.reasp` | `~/.reasp` |
+
+### OpenCode binary detection on Linux / macOS
+
+REASP searches these locations in order when detecting the `opencode` binary:
+
+| Source | Path |
+|--------|------|
+| npm global | `~/.npm-global/bin/opencode` |
+| Yarn global | `~/.yarn/bin/opencode` |
+| Homebrew (macOS) | `/usr/local/bin/opencode`, `/opt/homebrew/bin/opencode` |
+| System bin | `/usr/bin/opencode`, `/usr/local/bin/opencode` |
+| Volta | `~/.volta/bin/opencode` |
+
+If OpenCode is installed in a non-standard location, ensure its parent directory is in `PATH` or use `reasp install --agents opencode --force`.
 
 ## Environment Variables
 
