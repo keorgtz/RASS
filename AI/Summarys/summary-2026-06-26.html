@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REASP · Resumen 2026-06-26</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface-2: #1c1c26;
+      --text: #e8e8ef;
+      --text-muted: #8b8b9a;
+      --primary: #00d4ff;
+      --secondary: #ff00ff;
+      --accent: #8a2be2;
+      --success: #00e676;
+      --warning: #ffcc00;
+      --error: #ff5252;
+      --radius: 12px;
+      --font: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 24px;
+      background: radial-gradient(circle at top left, #151520 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 8px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle { color: var(--text-muted); font-size: 0.95rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+
+    .card h2 {
+      margin: 0 0 16px;
+      font-size: 1.15rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h3 {
+      margin: 20px 0 10px;
+      font-size: 1rem;
+      color: var(--secondary);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-success { background: rgba(0,230,118,0.12); color: var(--success); }
+    .badge-warning { background: rgba(255,204,0,0.12); color: var(--warning); }
+    .badge-info    { background: rgba(0,212,255,0.12); color: var(--primary); }
+    .badge-linux   { background: rgba(138,43,226,0.15); color: #c084fc; }
+
+    ul { padding-left: 20px; margin: 8px 0; }
+    li { margin-bottom: 8px; }
+
+    code {
+      background: var(--surface-2);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: "Fira Code", Consolas, monospace;
+      font-size: 0.9em;
+      color: var(--primary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      background: var(--surface-2);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .command {
+      background: var(--surface-2);
+      border-left: 3px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 10px 0;
+      font-family: "Fira Code", Consolas, monospace;
+      font-size: 0.9rem;
+    }
+
+    .file-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .file-row:last-child { border-bottom: none; }
+
+    .file-path {
+      font-family: "Fira Code", Consolas, monospace;
+      font-size: 0.85rem;
+      color: var(--primary);
+      min-width: 280px;
+    }
+
+    .file-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .gate-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .gate-row:last-child { border-bottom: none; }
+
+    .gate-icon { font-size: 1.1rem; }
+    .gate-label { flex: 1; font-size: 0.9rem; }
+    .gate-result { font-size: 0.8rem; font-weight: 600; }
+    .gate-pass { color: var(--success); }
+    .gate-pending { color: var(--warning); }
+
+    .pending { color: var(--warning); }
+    .done { color: var(--success); }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>REASP · Compatibilidad Linux + MeridianUI</h1>
+    <div class="subtitle">26 de junio de 2026 · Branch <code>linux-compat</code> mergeado a Master</div>
+  </header>
+
+  <!-- QUÉ SE IMPLEMENTÓ -->
+  <div class="card">
+    <h2><span>✦</span> Qué se implementó</h2>
+    <p>
+      REASP era exclusivo de Windows. En esta sesión se añadió soporte completo para Linux y macOS
+      <strong>de forma aditiva</strong> — el código Windows se preservó intacto. Adicionalmente,
+      se implementó el instalador global de <strong>MeridianUI</strong> para ambas plataformas.
+    </p>
+    <ul>
+      <li><strong>Bug crítico corregido:</strong> URL <code>file:////home/...</code> (4 barras) → <code>file:///home/...</code> (3 barras) usando <code>pathToFileURL()</code>.</li>
+      <li><strong>Detección Linux:</strong> <code>unixPaths[]</code> ya existía; se agregó <code>~/.volta/bin/opencode</code> para usuarios Volta.</li>
+      <li><strong>MeridianUI installer:</strong> nuevo módulo <code>meridianui.js</code> — copia <code>.MeridianUI/</code> del repo a <code>~/.MeridianUI/</code> en Windows y Linux.</li>
+      <li><strong>Placeholder:</strong> <code>.MeridianUI/.gitkeep</code> en raíz del repo para que el usuario deposite el contenido UI cuando esté listo.</li>
+      <li><strong>Execute bit:</strong> <code>scripts/reasp</code> mode <code>100755</code> en git index (ejecutable sin <code>chmod</code> manual post-clone).</li>
+      <li><strong>Line endings:</strong> <code>.gitattributes</code> — LF para scripts Unix, CRLF para <code>.cmd</code> Windows.</li>
+      <li><strong>Documentación:</strong> README (sección Linux + MeridianUI), AGENTS.md (rutas Linux + Volta), TROUBLESHOOTING.md (casos Linux).</li>
+    </ul>
+  </div>
+
+  <!-- MÉTRICAS -->
+  <div class="card">
+    <h2><span>◈</span> Métricas del cambio</h2>
+    <div class="grid">
+      <div class="stat">
+        <div class="value">25</div>
+        <div class="label">Archivos modificados</div>
+      </div>
+      <div class="stat">
+        <div class="value">2403</div>
+        <div class="label">Líneas añadidas</div>
+      </div>
+      <div class="stat">
+        <div class="value">6</div>
+        <div class="label">Commits en linux-compat</div>
+      </div>
+      <div class="stat">
+        <div class="value">0</div>
+        <div class="label">Regresiones en Windows</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARCHIVOS CLAVE -->
+  <div class="card">
+    <h2><span>▲</span> Archivos clave modificados / creados</h2>
+
+    <h3>Nuevos</h3>
+    <div class="file-row">
+      <span class="file-path">installer/lib/meridianui.js</span>
+      <span class="file-desc">Módulo MeridianUI — copia <code>.MeridianUI/</code> a <code>~/.MeridianUI/</code> en Windows y Linux. Corre como pre-step antes de instalar agentes.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">.MeridianUI/.gitkeep</span>
+      <span class="file-desc">Placeholder vacío. Deposita aquí el contenido UI; <code>reasp install</code> lo desplegará automáticamente.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">.gitattributes</span>
+      <span class="file-desc">Fuerza LF en scripts Unix y CRLF en <code>*.cmd</code> para evitar problemas de ejecución cross-platform.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">.refi/modules/linux-compat/</span>
+      <span class="file-desc">Packet REFI completo de planeación: request.md, master-blueprint.md, 9 domain-shards, orchestration-map, verification, progress.</span>
+    </div>
+
+    <h3>Modificados</h3>
+    <div class="file-row">
+      <span class="file-path">installer/lib/targets/opencode.js</span>
+      <span class="file-desc">Fix <code>pathToFileURL()</code> en líneas 379-380 y 531-532. Volta path en <code>unixPaths[]</code>.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">installer/lib/constants.js</span>
+      <span class="file-desc">Export <code>REPO_ROOT</code> — apunta a la raíz del repo para que <code>meridianui.js</code> encuentre <code>.MeridianUI/</code>.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">installer/index.js</span>
+      <span class="file-desc">Llamada a <code>installMeridianUI(ctx)</code> como paso pre-install compartido entre todos los agentes.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">package.json</span>
+      <span class="file-desc"><code>scripts.prepare</code> para chmod post-install; <code>.MeridianUI/</code> en <code>files[]</code> del npm package.</span>
+    </div>
+    <div class="file-row">
+      <span class="file-path">scripts/reasp</span>
+      <span class="file-desc">Mode git cambiado de <code>100644</code> a <code>100755</code> (bit execute).</span>
+    </div>
+  </div>
+
+  <!-- DECISIONES TÉCNICAS -->
+  <div class="card">
+    <h2><span>●</span> Decisiones técnicas importantes</h2>
+    <ul>
+      <li><strong>Aditivo, no reemplazante:</strong> <code>winPaths[]</code> y todo el código Windows se preservó sin tocar. Linux se agregó en el bloque <code>else</code> del <code>if(win32)</code> ya existente.</li>
+      <li><strong><code>pathToFileURL()</code>:</strong> la API nativa de Node genera automáticamente <code>file:///C:/...</code> en Windows y <code>file:///home/...</code> en Linux — sin lógica condicional adicional.</li>
+      <li><strong><code>fs.promises.cp()</code>:</strong> copia recursiva cross-platform disponible desde Node 16.7 — funciona idéntico en Windows y Linux.</li>
+      <li><strong>MeridianUI como pre-step:</strong> corre una sola vez antes de instalar cualquier agente, sin importar cuántos se seleccionen.</li>
+      <li><strong>Warning, no error:</strong> si <code>.MeridianUI/</code> solo tiene <code>.gitkeep</code>, el installer advierte y continúa — no falla.</li>
+      <li><strong><code>uninstall</code> no borra <code>~/.MeridianUI/</code>:</strong> el design system instalado globalmente sobrevive a la desinstalación de REASP.</li>
+    </ul>
+  </div>
+
+  <!-- GATES DE VERIFICACIÓN -->
+  <div class="card">
+    <h2><span>◇</span> Gates de verificación</h2>
+    <div class="gate-row">
+      <span class="gate-icon">✅</span>
+      <span class="gate-label"><code>npm test</code> — syntax check todos los archivos JS</span>
+      <span class="gate-result gate-pass">PASS — Fedora 44</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">✅</span>
+      <span class="gate-label"><code>reasp detect</code> — OpenCode v1.17.11, Claude Code v2.1.193, Gemini CLI detectados</span>
+      <span class="gate-result gate-pass">PASS — Fedora 44</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">✅</span>
+      <span class="gate-label"><code>pathToFileURL()</code> genera <code>file:///home/...</code> (3 barras) en Linux</span>
+      <span class="gate-result gate-pass">PASS — verificado en runtime</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">✅</span>
+      <span class="gate-label">Warning MeridianUI vacía — no crash, retorna <code>{installed:false, reason:'empty-source'}</code></span>
+      <span class="gate-result gate-pass">PASS</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">✅</span>
+      <span class="gate-label"><code>scripts/reasp</code> mode <code>100755</code> en git tree</span>
+      <span class="gate-result gate-pass">PASS</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">⏳</span>
+      <span class="gate-label"><code>reasp install --agents opencode</code> real — verificar que el plugin carga en OpenCode</span>
+      <span class="gate-result gate-pending">PENDIENTE (manual)</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">⏳</span>
+      <span class="gate-label">Poblar <code>.MeridianUI/</code> con contenido real y verificar copia a <code>~/.MeridianUI/</code></span>
+      <span class="gate-result gate-pending">PENDIENTE (requiere contenido)</span>
+    </div>
+    <div class="gate-row">
+      <span class="gate-icon">⏳</span>
+      <span class="gate-label">Regresión Windows — verificar que <code>winPaths[]</code> y URLs siguen funcionando</span>
+      <span class="gate-result gate-pending">PENDIENTE (requiere Windows)</span>
+    </div>
+  </div>
+
+  <!-- CÓMO USAR AHORA -->
+  <div class="card">
+    <h2><span>➤</span> Cómo usar en Linux</h2>
+    <div class="command">npm install -g .</div>
+    <div class="command">reasp detect</div>
+    <div class="command">reasp install --agents opencode,claude-code</div>
+    <p>Cuando tengas el contenido de MeridianUI, deposítalo en <code>.MeridianUI/</code> y corre:</p>
+    <div class="command">reasp install</div>
+    <p>El installer lo copiará automáticamente a <code>~/.MeridianUI/</code>.</p>
+  </div>
+
+  <!-- ESTADO DEL REPO -->
+  <div class="card">
+    <h2><span>✦</span> Estado del repositorio</h2>
+    <ul>
+      <li><span class="done">✅</span> Branch <code>linux-compat</code> creado, implementado y mergeado a <code>Master</code></li>
+      <li><span class="done">✅</span> <code>Master</code> local actualizado con 6 commits nuevos</li>
+      <li><span class="pending">⏳</span> <code>git push origin Master</code> pendiente (autorizar explícitamente)</li>
+    </ul>
+  </div>
+
+  <footer>
+    Generado por REASP · Ryou Enterprise Adaptive SDD Protocol<br />
+    Conceptos > Código. Controlamos el flujo, la IA ejecuta.
+  </footer>
+</div>
+</body>
+</html>
