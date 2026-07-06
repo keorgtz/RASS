@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía rápida Git y GitHub</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121a2b;
+      --border: #24324d;
+      --text: #e5eefc;
+      --muted: #9fb0cc;
+      --accent: #7dd3fc;
+      --accent2: #c4b5fd;
+      --ok: #86efac;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+    }
+    h1 { color: var(--accent); margin-top: 0; }
+    h2 { color: var(--accent2); margin-top: 28px; }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .step {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-top: 16px;
+      background: rgba(255,255,255,0.02);
+    }
+    code, pre {
+      font-family: "Cascadia Code", Consolas, monospace;
+    }
+    pre {
+      margin: 10px 0 0;
+      padding: 14px;
+      border-radius: 12px;
+      overflow: auto;
+      background: #09101d;
+      border: 1px solid var(--border);
+      color: #dbeafe;
+    }
+    .ok { color: var(--ok); font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Guía rápida para commitear y pushear a GitHub</h1>
+    <p class="muted">Uso básico desde consola para este repositorio.</p>
+
+    <div class="step">
+      <h2>1. Ver qué cambió</h2>
+      <pre>git status
+    </div>
+
+    <div class="step">
+      <h2>2. Agregar archivos al commit</h2>
+      <pre>git add .</pre>
+      <p class="muted">Si prefieres algo más seguro, agrega archivos específicos:</p>
+      <pre>git add README.md installer/package.json GIT-GITHUB-GUIDE.html</pre>
+    </div>
+
+    <div class="step">
+      <h2>3. Crear el commit</h2>
+      <pre>git commit -m "Describe brevemente tus cambios"</pre>
+      <p>Ejemplo:</p>
+      <pre>git commit -m "Fix Linux CLI install docs and add GitHub guide"</pre>
+    </div>
+
+    <div class="step">
+      <h2>4. Ver tu rama actual</h2>
+      <pre>git branch --show-current</pre>
+    </div>
+
+    <div class="step">
+      <h2>5. Pushear a GitHub</h2>
+      <p>Si tu rama ya existe en remoto:</p>
+      <pre>git push</pre>
+      <p>Si es la primera vez que subes esa rama:</p>
+      <pre>git push -u origin TU-RAMA</pre>
+    </div>
+
+    <div class="step">
+      <h2>Flujo rápido completo</h2>
+      <pre>git status
+    </div>
+
+    <div class="step">
+      <h2>Si estás en <code>Master</code> o <code>main</code></h2>
+      <pre>git push -u origin Master</pre>
+      <p class="muted">O cambia <code>Master</code> por <code>main</code> si esa es tu rama principal.</p>
+    </div>
+
+    <div class="step">
+      <h2>Comandos útiles</h2>
+      <pre>git log --oneline -10      # últimos commits
+    </div>
+
+    <div class="step">
+      <h2>Errores comunes</h2>
+      <ul>
+        <li><strong>"nothing to commit"</strong>: no agregaste o no modificaste archivos.</li>
+        <li><strong>"no upstream branch"</strong>: usa <code>git push -u origin TU-RAMA</code>.</li>
+        <li><strong>auth error</strong>: inicia sesión con GitHub CLI o usa tu token/credenciales.</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <h2>Recomendación simple</h2>
+      <p class="ok">Para el día a día usa:</p>
+      <pre>git status
+    </div>
+  </div>
+</body>
+</html>

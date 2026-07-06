@@ -3,7 +3,11 @@
   "version": "2.0.0",
   "description": "RASS — Ryou Adaptive SDD System Installer TUI",
   "type": "module",
+  "bin": {
+    "reasp": "./index.js"
+  },
   "main": "index.js",
+  "preferGlobal": true,
   "scripts": {
     "install-rass": "node index.js install",
     "uninstall-rass": "node index.js uninstall",

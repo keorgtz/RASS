@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REASP Summary 2026-07-05</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0b1220; color:#e5eefc; margin:0; padding:24px; }
+    .card { max-width:900px; margin:0 auto; background:#121a2b; border:1px solid #24324d; border-radius:16px; padding:24px; }
+    h1 { margin-top:0; color:#7dd3fc; }
+    h2 { color:#c4b5fd; font-size:1rem; margin-top:24px; }
+    ul { padding-left:20px; }
+    .muted { color:#9fb0cc; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Resumen de cambios · 2026-07-05</h1>
+    <p class="muted">Correcciones de instalación Linux y documentación auxiliar.</p>
+    <h2>Qué cambió</h2>
+    <ul>
+      <li>README aclarado entre instalación global y ejecución local.</li>
+      <li>Troubleshooting ampliado para el caso de usar solo <code>npm install</code> dentro de <code>installer/</code>.</li>
+      <li><code>installer/package.json</code> ahora expone el binario <code>reasp</code>.</li>
+      <li>Se agregó una guía HTML en la raíz para commitear y pushear cambios a GitHub desde consola.</li>
+    </ul>
+    <h2>Verificación</h2>
+    <ul>
+      <li><code>npm test</code> OK.</li>
+      <li><code>npm install -g . --prefix /tmp/opencode/reasp-test-prefix</code> crea el binario.</li>
+      <li><code>npm install -g ./installer --prefix /tmp/opencode/reasp-installer-prefix</code> también expone <code>reasp</code>.</li>
+    </ul>
+  </div>
+</body>
+</html>

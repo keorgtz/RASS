@@ -185,7 +185,10 @@ reasp install --agents antigravity --force
 
 **Symptom:** After `npm install -g .`, running `reasp` says `command not found`.
 
-**Cause:** The npm global bin directory is not in your PATH.
+**Cause:** Usually one of these:
+
+- The npm global bin directory is not in your PATH.
+- You only ran `npm install` inside `installer/`, which installs local dependencies but does **not** install the global CLI command.
 
 **Solutions:**
 
@@ -215,6 +218,15 @@ reasp install --agents antigravity --force
    ```bash
    chmod +x scripts/reasp
    ./scripts/reasp install
+   ```
+
+5. If you installed from the `installer/` directory by mistake, install the CLI properly:
+   ```bash
+   # from the repo root
+   npm install -g .
+
+   # or directly from installer/
+   npm install -g ./installer
    ```
 
 ---

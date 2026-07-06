@@ -202,7 +202,7 @@ npm install -g C:\path\to\REASP
 reasp --help
 ```
 
-Once installed globally, the `reasp` command is available everywhere. The examples below use `reasp`; if you prefer not to install globally, run `reasp` instead.
+Once installed globally, the `reasp` command is available everywhere. If you prefer not to install globally, run `node installer/index.js` or `./scripts/reasp` from the repo root instead.
 
 ### 1. Install REASP
 
@@ -212,8 +212,6 @@ git clone https://github.com/kevinkeor/RASS.git
 cd RASS
 
 # Run the interactive installer (choose agents, ModeProfile, workflow)
-cd installer
-npm install
 reasp
 ```
 
@@ -279,6 +277,8 @@ cd installer
 npm install
 node index.js
 ```
+
+> `npm install` inside `installer/` only installs local dependencies for the TUI. It does **not** register the global `reasp` command. To make `reasp` available in your terminal, run `npm install -g .` from the repository root, or `npm install -g ./installer`.
 
 The interactive installer will guide you through:
 1. **Select AI Agents** — Choose which installed agents receive REASP (OpenCode, Claude Code, Gemini CLI, Codex, Antigravity CLI).

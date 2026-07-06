@@ -8,7 +8,7 @@
     "./tui": "./tui.js"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "1.16.2"
+    "@opencode-ai/plugin": "1.17.13"
   },
   "peerDependencies": {
     "@opentui/core": ">=0.3.2",
