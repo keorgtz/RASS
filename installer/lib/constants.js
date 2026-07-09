@@ -18,7 +18,7 @@ export const REPO_ROOT = path.resolve(__dirname, '../..');
 export const SOURCE_DIR = path.resolve(__dirname, '../../.opencode');
 
 /** REASP CLI semantic version. */
-export const REASP_CLI_VERSION = '1.0.0';
+export const REASP_CLI_VERSION = '1.0.1';
 
 /** Default maximum number of snapshots kept per agent (0 = unlimited). */
 export const DEFAULT_MAX_SNAPSHOTS_PER_AGENT = 0;

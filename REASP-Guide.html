@@ -408,6 +408,7 @@
     <li><a href="#requisitos">Requisitos</a></li>
     <li><a href="#instalacion">Instalación</a></li>
     <li><a href="#agentes">Agentes</a></li>
+    <li><a href="#proveedores">Proveedores</a></li>
     <li><a href="#primeros-pasos">Primeros pasos</a></li>
     <li><a href="#snapshots">Snapshots</a></li>
     <li><a href="#flujo">Flujo de trabajo</a></li>
@@ -420,10 +421,11 @@
   <div class="logo">REASP</div>
   <div class="tagline">
     <strong>Ryou Enterprise Adaptive SDD Protocol</strong><br>
-    Instalador global, orquestador SDD y backup manager para tus agentes de IA.
+    Instalador global, orquestador SDD, backup manager y soporte multi-proveedor para tus agentes de IA.
   </div>
   <div class="hero-badges">
     <span class="hero-badge">Multi-Agente</span>
+    <span class="hero-badge">Multi-Proveedor</span>
     <span class="hero-badge">CLI Global</span>
     <span class="hero-badge">Snapshots</span>
     <span class="hero-badge">REFI</span>
@@ -440,11 +442,11 @@
       REASP une dos sistemas en una sola herramienta:
     </p>
     <ul>
-      <li><strong>RASS</strong> (Ryou Adaptive SDD System) — orquesta tu trabajo con agentes especializados y ModeProfiles adaptativos.</li>
+      <li><strong>RASS</strong> (Ryou Adaptive SDD System) — orquesta tu trabajo con agentes especializados y ModeProfiles adaptativos con soporte <strong>multi-proveedor</strong> (OpenCode Go, Anthropic, OpenAI, Google).</li>
       <li><strong>REFI</strong> (Ryou Enterprise Feature Implementation) — genera packets de planificación empresarial antes de escribir código.</li>
     </ul>
     <p>
-      Ahora REASP también es un <strong>Backup Manager</strong>: guarda snapshots completos de la configuración de cada agente para que puedas recuperarte si algo sale mal.
+      REASP también es un <strong>Backup Manager</strong>: guarda snapshots completos de la configuración de cada agente para que puedas recuperarte si algo sale mal.
     </p>
   </section>
 
@@ -541,6 +543,89 @@
     <div class="warning-box">
       <div class="warning-title">⚠️ Importante</div>
       <p style="margin:0">OpenCode es el único agente con soporte completo de plugins, slash commands y herramientas nativas. Los demás reciben el comportamiento de REASP a través de instrucciones del sistema.</p>
+    </div>
+  </section>
+
+  <!-- PROVEEDORES -->
+  <section id="proveedores" class="card">
+    <h2><span>◈</span> Soporte de Proveedores</h2>
+    <p>
+      Desde la versión <strong>1.0.0</strong>, RASS permite configurar explícitamente el <strong>proveedor</strong> de modelo al crear o editar un <em>ModeProfile</em>. Esto resuelve tres problemas reales:
+    </p>
+    <ul>
+      <li><strong>Validación previa:</strong> RASS verifica que el modelo realmente pertenezca al proveedor que elegiste antes de guardar.</li>
+      <li><strong>Mezcla de proveedores:</strong> un mismo <em>ModeProfile</em> puede usar modelos de <code>opencode-go</code>, <code>anthropic</code>, <code>openai</code> o <code>google</code> en distintas fases.</li>
+      <li><strong>Modelos custom:</strong> puedes escribir manualmente un string <code>provider/model</code> aunque tu modelo aún no aparezca en el catálogo.</li>
+    </ul>
+
+    <h3>Proveedores disponibles</h3>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Nombre</th><th>Ejemplos de modelos</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>opencode-go</code></td><td>OpenCode Go</td><td><code>glm-5.1</code>, <code>kimi-k2.7-code</code>, <code>deepseek-v4-pro</code>, <code>minimax-m3</code></td></tr>
+        <tr><td><code>anthropic</code></td><td>Anthropic</td><td><code>claude-sonnet-4-5</code>, <code>claude-opus-4-1</code></td></tr>
+        <tr><td><code>openai</code></td><td>OpenAI</td><td><code>gpt-5</code>, <code>gpt-5-mini</code>, <code>o3</code></td></tr>
+        <tr><td><code>google</code></td><td>Google</td><td><code>gemini-2.5-pro</code>, <code>gemini-2.5-flash</code></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.9rem; color:var(--text-muted)">
+      Esta lista es el <em>fallback</em> que usa RASS cuando el runtime de OpenCode no expone <code>api.state.provider</code>. En una sesión real, RASS descubre los proveedores dinámicamente desde tu configuración de OpenCode.
+    </p>
+
+    <h3>Flujo en el TUI: selección en dos pasos</h3>
+    <p>Al crear o editar un <em>ModeProfile</em>, RASS ahora muestra primero el <strong>proveedor</strong> y luego los modelos disponibles:</p>
+    <pre>Select provider for "my-profile" — Configure models
+  <span class="cmd">✓</span> OpenCode Go         <span class="comment">(12 models)</span>
+    Anthropic            <span class="comment">(8 models)</span>
+    OpenAI               <span class="comment">(6 models)</span>
+    <span class="cmd">+ Custom model (provider/model)</span>
+    <span class="comment">← Back</span></pre>
+    <pre>OpenCode Go — Select model for "my-profile"
+  <span class="cmd">✓</span> GLM-5.1                  <span class="comment">reasoning</span>
+    Kimi K2.7 Code           <span class="comment">coding</span>
+    DeepSeek V4 Pro          <span class="comment">reasoning</span>
+    ...
+    <span class="cmd">+ Custom model (provider/model)</span>
+    <span class="comment">← Back to provider list</span></pre>
+
+    <h3>Argumento <code>provider</code> en el tool <code>sdd_mode_profile</code></h3>
+    <p>El tool que invoca el agente también acepta un argumento <code>provider</code> opcional. Si lo pasas junto con <code>primary</code>, RASS valida que el modelo pertenezca al proveedor:</p>
+    <pre><span class="comment">// Caso correcto: el modelo pertenece al proveedor</span>
+sdd_mode_profile(
+  action=<span class="arg">"create"</span>,
+  name=<span class="arg">"custom-mixed"</span>,
+  phases=<span class="arg">"orchestrator,apply,verify"</span>,
+  primary=<span class="arg">"opencode-go/glm-5.1"</span>,
+  provider=<span class="arg">"opencode-go"</span>,
+  effort=<span class="arg">"medium"</span>
+)
+
+<span class="comment">// Caso incorrecto: el modelo no pertenece al proveedor</span>
+sdd_mode_profile(
+  action=<span class="arg">"create"</span>,
+  name=<span class="arg">"bad"</span>,
+  phases=<span class="arg">"apply"</span>,
+  primary=<span class="arg">"anthropic/claude-sonnet-4-5"</span>,
+  provider=<span class="arg">"opencode-go"</span>
+)
+<span class="comment">// → Provider Mismatch: 'anthropic/claude-sonnet-4-5' does not belong to 'opencode-go'</span></pre>
+    <p>Si solo pasas <code>provider</code> (sin <code>primary</code>), RASS elige automáticamente el primer modelo de ese proveedor. Si omites ambos, RASS usa el default <code>opencode-go/glm-5.1</code>.</p>
+
+    <h3>Modelos custom (no listados en el catálogo)</h3>
+    <p>
+      Si tu modelo aún no aparece en el catálogo del proveedor (por ejemplo <code>opencode-go/experimental-v1</code>), RASS lo acepta como válido y muestra una <span class="badge badge-warning">advertencia</span> en el output del tool. El modo custom es un <em>first-class citizen</em>: los strings <code>provider/model</code> se almacenan tal cual en disco.
+    </p>
+    <pre><span class="cmd">+ Custom model (provider/model)</span>
+  <span class="comment">→ Enter a "opencode-go/&lt;model&gt;" string manually</span>
+  <span class="arg">e.g., opencode-go/experimental-v1</span></pre>
+
+    <div class="tip">
+      <div class="tip-title">💡 Compatibilidad</div>
+      <p style="margin:0">
+        El formato en disco <code>provider/model</code> no cambió. Los <em>ModeProfiles</em> existentes siguen funcionando sin tocar nada. El argumento <code>provider</code> es estrictamente opcional: si no lo pasas, RASS se comporta exactamente como antes.
+      </p>
     </div>
   </section>
 
@@ -702,6 +787,19 @@
         <tr><td><code>reasp config --max-snapshots-per-agent &lt;n&gt;</code></td><td>Límite de snapshots por agente.</td></tr>
       </tbody>
     </table>
+
+    <h3>Desarrollo y sincronización</h3>
+    <table>
+      <thead>
+        <tr><th>Comando</th><th>Descripción</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>node scripts/sync-reasp.js push</code></td><td>Sincroniza <code>REASP/.opencode/</code> hacia <code>~/.config/opencode/</code> (para iterar en desarrollo).</td></tr>
+        <tr><td><code>node scripts/sync-reasp.js pull</code></td><td>Sincroniza en sentido contrario (trae cambios del global al repo).</td></tr>
+        <tr><td><code>node scripts/test-provider-support.mjs</code></td><td>Ejecuta los 65 tests del soporte de proveedores.</td></tr>
+        <tr><td><code>npm pack</code></td><td>Regenera el tarball <code>reasp-cli-1.0.0.tgz</code> con los archivos actualizados.</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- SOLUCION DE PROBLEMAS -->
@@ -729,6 +827,38 @@
     <h3>Snapshot restore falló</h3>
     <p>Busca el <code>auto-restore-backup-&lt;timestamp&gt;</code> generado antes del restore y restáuralo:</p>
     <pre><span class="cmd">reasp snapshot restore --agent &lt;agente&gt; --name auto-restore-backup-&lt;timestamp&gt; --yes</span></pre>
+
+    <h3>Instalé una nueva versión pero <code>reasp</code> sigue siendo la antigua</h3>
+    <p>Síntomas típicos:</p>
+    <ul>
+      <li>Acabas de clonar el repo, ejecutas <code>npm install -g reasp-cli-1.0.0.tgz</code> y los archivos en <code>~/.config/opencode/</code> siguen siendo la versión anterior.</li>
+      <li><code>reasp install</code> parece no hacer nada o devuelve errores de funciones inexistentes.</li>
+    </ul>
+    <p>El problema casi siempre es que el <code>PATH</code> está apuntando a una <strong>instalación duplicada</strong> de REASP. Verifica qué <code>reasp</code> se está ejecutando realmente:</p>
+    <pre><span class="cmd">where.exe reasp</span>          <span class="comment"># Windows</span>
+<span class="cmd">which -a reasp</span>          <span class="comment"># macOS / Linux</span>
+<span class="cmd">Get-Command reasp</span>      <span class="comment"># PowerShell</span></pre>
+    <p>Si el primer resultado no es el de npm, hay otra instalación con prioridad. Las ubicaciones comunes son:</p>
+    <ul>
+      <li><code>C:\Program Files\REASP\reasp.ps1</code> (Windows, instalación manual)</li>
+      <li><code>C:\Users\&lt;user&gt;\AppData\Roaming\npm\reasp.cmd</code> (instalación correcta de npm)</li>
+      <li><code>/usr/local/bin/reasp</code> (Linux/macOS)</li>
+    </ul>
+    <p><strong>Solución:</strong> o bien borra/renombra la instalación antigua, o bien copia los archivos nuevos del repo a la carpeta con prioridad en el PATH. Por ejemplo, en Windows con PowerShell como administrador:</p>
+    <pre><span class="cmd">robocopy</span> ".\REASP" "C:\Program Files\REASP" /MIR /XD .git node_modules installer\node_modules</pre>
+    <p>Después regenera el tarball y reinstala globalmente desde npm para mantener una sola fuente de verdad:</p>
+    <pre><span class="cmd">npm pack</span>
+<span class="cmd">npm install -g reasp-cli-1.0.0.tgz</span></pre>
+
+    <h3>El soporte de proveedores no aparece en el TUI</h3>
+    <p>Asegúrate de que el archivo <code>~/.config/opencode/rass-core.js</code> contiene las funciones nuevas:</p>
+    <pre><span class="cmd">node -e</span> "import('file:///C:/Users/&lt;user&gt;/.config/opencode/rass-core.js').then(m => console.log(typeof m.discoverProviders, typeof m.validateModelInProvider))"
+<span class="comment"># Debe imprimir: function function</span></pre>
+    <p>Si imprime <code>undefined undefined</code>, tu instalación está desactualizada. Repite los pasos de la sección anterior.</p>
+
+    <h3>El tool reporta "ModeProfile 'X' not found" pero el perfil existe</h3>
+    <p>El archivo <code>~/.config/opencode/runtime/current-modeprofile.json</code> apunta a un perfil que ya fue eliminado. Corrige el valor:</p>
+    <pre><span class="cmd">node -e</span> "import('node:fs').then(fs => fs.writeFileSync(process.env.USERPROFILE + '/.config/opencode/runtime/current-modeprofile.json', JSON.stringify({modeprofile:'ryouset'}, null, 2)))"</pre>
   </section>
 
   <!-- DESINSTALACION -->

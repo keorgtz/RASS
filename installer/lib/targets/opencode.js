@@ -477,6 +477,7 @@ export function install(ctx, bundle = {}) {
       const src = path.join(sourceDir, dir);
       const dest = path.join(globalDir, dir);
       if (fs.existsSync(src)) {
+        removeDirRecursiveSync(dest);
         copyDirRecursiveSync(src, dest, onFileCopied);
       }
     }
@@ -490,7 +491,9 @@ export function install(ctx, bundle = {}) {
     for (const file of filesToCopy) {
       const src = path.join(sourceDir, file);
       if (fs.existsSync(src)) {
-        fs.copyFileSync(src, path.join(globalDir, file));
+        const dest = path.join(globalDir, file);
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        fs.copyFileSync(src, dest);
         filesCopied++;
         if (totalFiles > 0 && progress) {
           const copyRange = PHASES.copyFiles.end - PHASES.copyFiles.start;
@@ -676,11 +679,10 @@ export function install(ctx, bundle = {}) {
   for (let i = 0; i < agentNames.length; i++) {
     const name = agentNames[i];
     const agentConfig = ryouAgents[name];
-    if (!config.agent[name]) {
-      config.agent[name] = agentConfig;
-    } else {
-      config.agent[name].model = agentConfig.model;
-    }
+    // REASP-managed agents are authoritative. Replace the complete block on
+    // reinstall so new prompts, permissions, steps, provider-aware models, and
+    // future schema changes are not stuck behind an old opencode.json entry.
+    config.agent[name] = agentConfig;
     if (progress) {
       const agentProgress = ((i + 1) / agentNames.length) * agentRange;
       currentPercent = PHASES.agents.start + agentProgress;
@@ -704,12 +706,11 @@ export function install(ctx, bundle = {}) {
   const defaultPrimary = modeProfile?.default?.primary || agentModels['ryou-orchestrator'] || 'opencode-go/kimi-k2.7-code';
   const defaultFallback = modeProfile?.default?.fallbacks?.[0] || 'opencode-go/deepseek-v4-flash';
 
-  if (!config.model) {
-    config.model = defaultPrimary;
-  }
-  if (!config.small_model) {
-    config.small_model = defaultFallback;
-  }
+  // Keep root model defaults aligned with the selected ModeProfile on every
+  // reinstall. Previously these were only written the first time, so Windows
+  // machines with an older install kept stale model/provider routing.
+  config.model = defaultPrimary;
+  config.small_model = defaultFallback;
   if (!config.shell) {
     config.shell = getDefaultShell();
   }

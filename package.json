@@ -1,6 +1,6 @@
 {
   "name": "reasp-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "REASP · Global installer, SDD orchestrator, and agent backup manager",
   "type": "module",
   "bin": {
@@ -8,7 +8,8 @@
   },
   "scripts": {
     "prepare": "node -e \"try{require('fs').chmodSync('./scripts/reasp',0o755)}catch(e){}\"",
-    "test": "node --check installer/index.js && node --check installer/lib/*.js && node --check installer/lib/targets/*.js && node --check installer/commands/*.js"
+    "postinstall": "node ./installer/scripts/postinstall.js",
+    "test": "node scripts/check-syntax.js"
   },
   "preferGlobal": true,
   "files": [
@@ -17,7 +18,9 @@
     ".opencode/",
     ".MeridianUI/",
     "README.md",
-    "LICENSE.md"
+    "LICENSE.md",
+    "REASP-Guide.html",
+    "GIT-GITHUB-GUIDE.html"
   ],
   "engines": {
     "node": ">=18.0.0"
