@@ -25,6 +25,11 @@ import {
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   AVAILABLE_MODELS,
+  DEFAULT_PROVIDERS,
+  discoverProviders,
+  validateModelInProvider,
+  deriveProviderFromModel,
+  getProviderLabel,
   RYOU_AGENTS,
   RYOU_CONFIG_TEMPLATE,
   RYOU_DEPLOY_FILES,
@@ -51,7 +56,8 @@ export default {
         sdd_mode_profile: tool({
           description:
             'Manage unified SDD ModeProfiles. List, switch, create, edit, delete, or get status. ' +
-            'A ModeProfile combines phases (what steps run) with model routing (which AI model each phase uses).',
+            'A ModeProfile combines phases (what steps run) with model routing (which AI model each phase uses). ' +
+            'You can optionally specify a `provider` to validate that the primary model belongs to it.',
           args: {
             action: tool.schema
               .enum(['list', 'switch', 'create', 'edit', 'delete', 'status'])
@@ -71,7 +77,11 @@ export default {
             primary: tool.schema
               .string()
               .optional()
-              .describe('Primary model for create with single strategy (e.g., "opencode-go/glm-5.1"). Any valid model string is accepted.'),
+              .describe('Primary model in "provider/model" format (e.g., "opencode-go/glm-5.1"). Any valid model string is accepted.'),
+            provider: tool.schema
+              .string()
+              .optional()
+              .describe('Provider ID to validate the primary model against (e.g., "opencode-go"). When provided with `primary`, the primary must start with "<provider>/". When provided alone, the first model of that provider is used. Common providers: opencode-go, anthropic, openai, google.'),
             effort: tool.schema
               .enum(EFFORT_LEVELS)
               .optional()
@@ -91,13 +101,17 @@ export default {
                 case 'list': {
                   const modeProfiles = listModeProfiles();
                   const current = getCurrentModeProfile();
+                  const providers = discoverProviders(_context?.api);
                   const lines = modeProfiles.map((mp) => {
                     const active = mp.id === current ? ' ← active' : '';
-                    return `  **${mp.id}**${active} — ${mp.description || mp.phases.join(' → ')}`;
+                    const defaultModel = mp.default?.primary || 'unknown';
+                    const prov = deriveProviderFromModel(defaultModel);
+                    const provLabel = prov ? ` [${getProviderLabel(prov, providers)}]` : '';
+                    return `  **${mp.id}**${active} — ${mp.description || mp.phases.join(' → ')} — default: ${defaultModel}${provLabel}`;
                   });
                   return {
                     title: 'SDD ModeProfiles',
-                    output: `Available SDD ModeProfiles:\n\n${lines.join('\n')}\n\nCurrent ModeProfile: **${current || 'none'}**`,
+                    output: `Available SDD ModeProfiles:\n\n${lines.join('\n')}\n\nCurrent ModeProfile: **${current || 'none'}**\nProviders available: **${providers.map((p) => p.id).join(', ')}**`,
                   };
                 }
 
@@ -110,6 +124,8 @@ export default {
                   }
                   const mp = switchModeProfile(args.name);
                   const agentModels = resolveAgentModels(mp);
+                  const providers = discoverProviders(_context?.api);
+                  const defaultProv = deriveProviderFromModel(mp.default?.primary);
                   return {
                     title: `Switched to ${args.name}`,
                     output:
@@ -117,7 +133,7 @@ export default {
                       `Description: ${mp.description || 'N/A'}\n` +
                       `Phases: ${mp.phases?.join(' → ') || 'none'}\n` +
                       `Model strategy: ${mp.model_strategy || 'per-phase'}\n` +
-                      `Default model: ${mp.default?.primary || 'unknown'}\n\n` +
+                      `Default model: ${mp.default?.primary || 'unknown'} (provider: ${defaultProv ? getProviderLabel(defaultProv, providers) : 'unknown'})\n\n` +
                       `Agent models synchronized:\n` +
                       Object.entries(agentModels).map(([a, m]) => `  - ${a}: ${m}`).join('\n'),
                   };
@@ -134,7 +150,42 @@ export default {
 
                   const strategy = args.model_strategy || 'per-phase';
                   const effort = args.effort || 'medium';
-                  const primary = args.primary || 'opencode-go/glm-5.1';
+                  const providers = discoverProviders(_context?.api);
+                  const providerId = args.provider || null;
+
+                  // Resolve primary model: provider + primary, primary alone, or provider alone
+                  let primary = args.primary || null;
+                  let providerWarning = null;
+
+                  if (providerId && primary) {
+                    // Both given: validate that primary belongs to provider
+                    const validation = validateModelInProvider(primary, providerId, providers);
+                    if (!validation.valid) {
+                      return {
+                        title: 'Provider Mismatch',
+                        output: `Primary model '${primary}' does not belong to provider '${providerId}'.\n` +
+                                `Expected format: '${providerId}/<model>'. ` +
+                                `Either change the primary or omit the provider argument.`,
+                      };
+                    }
+                    if (validation.warning) {
+                      providerWarning = validation.warning;
+                    }
+                  } else if (providerId && !primary) {
+                    // Only provider given: use first model of that provider
+                    const prov = providers.find((p) => p.id === providerId);
+                    if (!prov || !prov.models || prov.models.length === 0) {
+                      return {
+                        title: 'Error',
+                        output: `Provider '${providerId}' has no models or doesn't exist. Available: ${providers.map((p) => p.id).join(', ')}`,
+                      };
+                    }
+                    primary = prov.models[0].fullId;
+                  } else if (!providerId && !primary) {
+                    // Neither given: use sensible default
+                    primary = 'opencode-go/glm-5.1';
+                  }
+                  // else: only primary given, accept as-is (backward compatible)
 
                   const config = {
                     name: args.name.charAt(0).toUpperCase() + args.name.slice(1).replace(/[-_]/g, ' '),
@@ -157,9 +208,17 @@ export default {
 
                   createModeProfile(args.name, config);
                   switchModeProfile(args.name);
+                  const defaultProv = deriveProviderFromModel(primary);
                   return {
                     title: `Created ModeProfile: ${args.name}`,
-                    output: `ModeProfile **${args.name}** created and activated.\nPhases: ${phases.join(' → ')}\nStrategy: ${strategy}\nDefault model: ${primary}\nEffort: ${effort}\nDescription: ${config.description}`,
+                    output:
+                      `ModeProfile **${args.name}** created and activated.\n` +
+                      `Phases: ${phases.join(' → ')}\n` +
+                      `Strategy: ${strategy}\n` +
+                      `Default model: ${primary} (provider: ${defaultProv ? getProviderLabel(defaultProv, providers) : 'unknown'})\n` +
+                      `Effort: ${effort}\n` +
+                      `Description: ${config.description}` +
+                      (providerWarning ? `\n\n⚠️  ${providerWarning}` : ''),
                   };
                 }
 
@@ -174,14 +233,29 @@ export default {
                     return { title: 'Error', output: 'Invalid JSON in updates parameter.' };
                   }
 
+                  // If `provider` and `primary` are both provided, validate the primary
+                  if (args.provider && args.primary) {
+                    const providers = discoverProviders(_context?.api);
+                    const validation = validateModelInProvider(args.primary, args.provider, providers);
+                    if (!validation.valid) {
+                      return {
+                        title: 'Provider Mismatch',
+                        output: `Primary model '${args.primary}' does not belong to provider '${args.provider}'.\n` +
+                                `Expected format: '${args.provider}/<model>'.`,
+                      };
+                    }
+                  }
+
                   const mp = updateModeProfile(args.name, updates);
                   const agentModels = resolveAgentModels(mp);
+                  const providers = discoverProviders(_context?.api);
+                  const defaultProv = deriveProviderFromModel(mp.default?.primary);
                   return {
                     title: `Updated ModeProfile: ${args.name}`,
                     output:
                       `ModeProfile **${args.name}** updated.\n` +
                       `Phases: ${mp.phases?.join(' → ') || 'none'}\n` +
-                      `Default model: ${mp.default?.primary || 'unknown'}\n\n` +
+                      `Default model: ${mp.default?.primary || 'unknown'} (provider: ${defaultProv ? getProviderLabel(defaultProv, providers) : 'unknown'})\n\n` +
                       `Agent models synchronized:\n` +
                       Object.entries(agentModels).map(([a, m]) => `  - ${a}: ${m}`).join('\n'),
                   };
@@ -200,14 +274,17 @@ export default {
                   const status = getStatus();
                   const phases = status.modeprofile?.phases || [];
                   const agentModels = resolveAgentModels(status.current_modeprofile);
+                  const providers = discoverProviders(_context?.api);
+                  const defaultProv = deriveProviderFromModel(status.modeprofile?.default_model);
                   return {
                     title: 'SDD Status',
                     output:
                       `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
                       `**Phases:** ${phases.join(' → ') || 'none'}\n` +
                       `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
-                      `**Default model:** ${status.modeprofile?.default_model || 'none'}\n` +
-                      `**Runtime in sync:** ${isRuntimeInSync(status.current_modeprofile) ? 'yes' : 'no'}\n\n` +
+                      `**Default model:** ${status.modeprofile?.default_model || 'none'} (provider: ${defaultProv ? getProviderLabel(defaultProv, providers) : 'unknown'})\n` +
+                      `**Runtime in sync:** ${isRuntimeInSync(status.current_modeprofile) ? 'yes' : 'no'}\n` +
+                      `**Providers available:** ${providers.map((p) => p.id).join(', ')}\n\n` +
                       `**Agent models:**\n` +
                       Object.entries(agentModels).map(([a, m]) => `  - ${a}: ${m}`).join('\n'),
                   };

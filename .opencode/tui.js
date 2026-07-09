@@ -25,6 +25,12 @@ import {
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   RYOU_AGENTS,
+  AVAILABLE_MODELS,
+  discoverProviders,
+  validateModelInProvider,
+  deriveProviderFromModel,
+  getProviderLabel,
+  getModelsForProvider,
 } from './rass-core.js';
 
 // ─── Dynamic Model Discovery ─────────────────────────────────────────────
@@ -56,12 +62,7 @@ function discoverModels(api) {
       return models;
     }
   }
-  return [
-    { id: 'opencode-go/glm-5.1', label: 'GLM-5.1', description: 'Orchestration, planning, architecture, complex reasoning' },
-    { id: 'opencode-go/kimi-k2.6', label: 'Kimi K2.6', description: 'Implementation, refactors, C#/.NET code generation' },
-    { id: 'opencode-go/deepseek-v4-pro', label: 'DeepSeek V4 Pro', description: 'Debugging, review, performance, risk analysis' },
-    { id: 'opencode-go/deepseek-v4-flash', label: 'DeepSeek V4 Flash', description: 'Small tasks, documentation, summaries' },
-  ];
+  return AVAILABLE_MODELS;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -100,12 +101,157 @@ function buildPhaseSummary(phases) {
   return phases.join(' → ');
 }
 
+// ─── Provider-Aware Model Selection ───────────────────────────────────────
+
+// These helpers are defined at module scope, while OpenCode provides `api`
+// only inside the `tui: async (api, ...)` entry point. Keep the current API
+// reference here so provider/model dialogs can safely call `api.ui.*` without
+// throwing `ReferenceError: api is not defined`.
+let currentTuiApi = null;
+
+/**
+ * Show a provider selection dialog.
+ * @param {object} dialog - The OpenCode dialog object
+ * @param {string} title - Dialog title
+ * @param {Array} providers - Provider catalog from discoverProviders()
+ * @param {object} callbacks - { onProvider: (provId) => void, onCustom: () => void, onBack: () => void }
+ */
+const showProviderSelectDialog = (dialog, title, providers, callbacks) => {
+  const options = providers.map((p) => ({
+    title: p.name || p.id,
+    value: p.id,
+    description: `${p.models?.length || 0} model${(p.models?.length || 0) === 1 ? '' : 's'} available`,
+  }));
+
+  options.push({
+    title: '+ Custom model (provider/model)',
+    value: '__custom__',
+    description: 'Enter a model string manually (e.g., opencode-go/experimental-model)',
+  });
+
+  options.push({
+    title: '← Back',
+    value: '__back__',
+    description: 'Return to previous menu',
+  });
+
+  dialog.replace(
+    () => currentTuiApi.ui.DialogSelect({
+      title,
+      placeholder: 'Select a provider...',
+      options,
+      onSelect: (option) => {
+        if (option.value === '__back__') {
+          callbacks.onBack?.();
+        } else if (option.value === '__custom__') {
+          showCustomModelPrompt(dialog, callbacks.onCustom, () => showProviderSelectDialog(dialog, title, providers, callbacks));
+        } else {
+          callbacks.onProvider?.(option.value);
+        }
+      },
+    }),
+  );
+};
+
+/**
+ * Show a custom model prompt dialog.
+ * @param {object} dialog - The OpenCode dialog object
+ * @param {function} onConfirm - Called with the validated "provider/model" string
+ * @param {function} onCancel - Called when user cancels
+ */
+const showCustomModelPrompt = (dialog, onConfirm, onCancel) => {
+  dialog.replace(
+    () => currentTuiApi.ui.DialogPrompt({
+      title: 'Custom model — enter "provider/model"',
+      placeholder: 'e.g., opencode-go/experimental-model',
+      onConfirm: (input) => {
+        const trimmed = (input || '').trim();
+        if (!trimmed || !trimmed.includes('/')) {
+          currentTuiApi.ui.toast({ variant: 'error', title: 'Invalid format', message: 'Must be "provider/model" (e.g., opencode-go/glm-5.1)' });
+          // Re-open the same prompt
+          showCustomModelPrompt(dialog, onConfirm, onCancel);
+          return;
+        }
+        onConfirm(trimmed);
+      },
+      onCancel: () => onCancel?.(),
+    }),
+  );
+};
+
+/**
+ * Show a model selection dialog filtered by provider.
+ * @param {object} dialog - The OpenCode dialog object
+ * @param {string} providerId - Selected provider ID
+ * @param {Array} providers - Full provider catalog
+ * @param {string} currentModel - Currently selected model (for marking with checkmark)
+ * @param {object} callbacks - { onModel: (fullModelId) => void, onCustom: () => void, onBackProvider: () => void }
+ */
+const showModelSelectDialog = (dialog, providerId, providers, currentModel, callbacks) => {
+  const provider = providers.find((p) => p.id === providerId);
+  const providerLabel = provider ? (provider.name || provider.id) : providerId;
+  const models = provider?.models || [];
+
+  const options = models.map((m) => ({
+    title: m.id === currentModel || m.fullId === currentModel ? `✓ ${m.label}` : m.label,
+    value: m.fullId,
+    description: m.id === currentModel || m.fullId === currentModel
+      ? `Current model — ${m.description || ''}`
+      : (m.description || `${providerLabel} model`),
+  }));
+
+  options.push({
+    title: '+ Custom model (provider/model)',
+    value: '__custom__',
+    description: `Enter a "${providerId}/<model>" string manually`,
+  });
+
+  options.push({
+    title: '← Back to provider list',
+    value: '__back__',
+    description: 'Choose a different provider',
+  });
+
+  dialog.replace(
+    () => currentTuiApi.ui.DialogSelect({
+      title: `${providerLabel} — Select model`,
+      placeholder: `Choose a model from ${providerLabel}...`,
+      options,
+      onSelect: (option) => {
+        if (option.value === '__back__') {
+          callbacks.onBackProvider?.();
+        } else if (option.value === '__custom__') {
+          showCustomModelPrompt(dialog, callbacks.onCustom, () => showModelSelectDialog(dialog, providerId, providers, currentModel, callbacks));
+        } else {
+          callbacks.onModel?.(option.value);
+        }
+      },
+    }),
+  );
+};
+
+/**
+ * Pre-select provider from current model (if it has the provider/model format).
+ * @param {string} modelId - Current model string
+ * @param {Array} providers - Provider catalog
+ * @returns {string|null} Provider ID derived from the model, or null
+ */
+const preSelectProvider = (modelId, providers) => {
+  if (!modelId) return null;
+  const derived = deriveProviderFromModel(modelId);
+  if (!derived) return null;
+  // Return the provider if it exists in catalog, else return the derived ID anyway
+  return providers.find((p) => p.id === derived) ? derived : derived;
+};
+
 // ─── Plugin Entry ────────────────────────────────────────────────────────────
 
 export default {
   id: 'rass',
   tui: async (api, _options, _meta) => {
+    currentTuiApi = api;
     const models = discoverModels(api);
+    const providers = discoverProviders(api);
 
     // ═══════════════════════════════════════════════════════════════════════
     // /sdd — Main ModeProfile List
@@ -350,21 +496,42 @@ export default {
     // ── Create: Single Model Strategy ──────────────────────────────────────
 
     const showCreateSingleModelDialog = (dialog, mpName, description, phases) => {
-      const modelOptions = models.map((m) => ({
-        title: m.label,
-        value: m.id,
-        description: m.description,
-      }));
-
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `Select model for "${mpName}" (all phases)`,
-          placeholder: 'Choose the AI model...',
-          options: modelOptions,
-          onSelect: (modelOption) => {
-            showCreateSingleEffortDialog(dialog, mpName, description, phases, modelOption.value);
+      showProviderSelectDialog(
+        dialog,
+        `Select provider for "${mpName}" (all phases)`,
+        providers,
+        {
+          onProvider: (provId) => {
+            showModelSelectDialog(
+              dialog,
+              provId,
+              providers,
+              null,
+              {
+                onModel: (modelId) => {
+                  showCreateSingleEffortDialog(dialog, mpName, description, phases, modelId);
+                },
+                onCustom: (modelId) => {
+                  // Validate that custom model has the format provider/model
+                  const customProv = deriveProviderFromModel(modelId);
+                  if (customProv && customProv !== provId) {
+                    api.ui.toast({
+                      variant: 'info',
+                      title: 'Provider switched',
+                      message: `Custom model is from '${customProv}' (different from selected '${provId}')`,
+                    });
+                  }
+                  showCreateSingleEffortDialog(dialog, mpName, description, phases, modelId);
+                },
+                onBackProvider: () => showCreateSingleModelDialog(dialog, mpName, description, phases),
+              },
+            );
           },
-        }),
+          onCustom: (modelId) => {
+            showCreateSingleEffortDialog(dialog, mpName, description, phases, modelId);
+          },
+          onBack: () => showCreateStrategyDialog(dialog, mpName, description, phases),
+        },
       );
     };
 
@@ -447,21 +614,41 @@ export default {
       const currentPhase = phases[phaseIndex];
       const progress = `Phase ${phaseIndex + 1} of ${phases.length}`;
 
-      const modelOptions = models.map((m) => ({
-        title: m.label,
-        value: m.id,
-        description: m.description,
-      }));
-
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `${progress}: ${currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1)} — Select model`,
-          placeholder: `Choose the AI model for the ${currentPhase} phase...`,
-          options: modelOptions,
-          onSelect: (modelOption) => {
-            showCreatePerPhaseEffortDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelOption.value);
+      showProviderSelectDialog(
+        dialog,
+        `${progress}: ${currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1)} — Select provider`,
+        providers,
+        {
+          onProvider: (provId) => {
+            showModelSelectDialog(
+              dialog,
+              provId,
+              providers,
+              null,
+              {
+                onModel: (modelId) => {
+                  showCreatePerPhaseEffortDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId);
+                },
+                onCustom: (modelId) => {
+                  const customProv = deriveProviderFromModel(modelId);
+                  if (customProv && customProv !== provId) {
+                    api.ui.toast({
+                      variant: 'info',
+                      title: 'Provider switched',
+                      message: `Custom model is from '${customProv}' (different from selected '${provId}')`,
+                    });
+                  }
+                  showCreatePerPhaseEffortDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId);
+                },
+                onBackProvider: () => showCreatePerPhasePhaseDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs),
+              },
+            );
           },
-        }),
+          onCustom: (modelId) => {
+            showCreatePerPhaseEffortDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs, currentPhase, modelId);
+          },
+          onBack: () => showCreatePerPhasePhaseDialog(dialog, mpName, description, phases, phaseIndex, phaseConfigs),
+        },
       );
     };
 
@@ -704,33 +891,63 @@ export default {
       }
       const currentPrimary = mp.default?.primary || 'opencode-go/glm-5.1';
       const currentEffort = mp.default?.effort || 'medium';
+      const currentProvider = preSelectProvider(currentPrimary, providers) || providers[0]?.id;
 
-      const modelOptions = models.map((m) => ({
-        title: m.id === currentPrimary ? `✓ ${m.label} — ${currentEffort} effort` : m.label,
-        value: m.id,
-        description: m.id === currentPrimary ? `Current model (${currentEffort} effort)` : m.description,
-      }));
+      // Show the provider list first, pre-selecting the current one
+      const showProviderList = () => {
+        const providerOptions = providers.map((p) => ({
+          title: p.id === currentProvider ? `✓ ${p.name || p.id}` : (p.name || p.id),
+          value: p.id,
+          description: p.id === currentProvider
+            ? `Current provider — ${(p.models?.length || 0)} models available`
+            : `${p.models?.length || 0} models available`,
+        }));
 
-      modelOptions.push({
-        title: '← Back to edit menu',
-        value: '__back__',
-        description: 'Return to edit menu',
-      });
+        providerOptions.push({
+          title: '+ Custom model (provider/model)',
+          value: '__custom__',
+          description: 'Enter a model string manually (e.g., opencode-go/experimental-model)',
+        });
 
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `Configure models for "${mp.name || mpId}" — Single model for all phases`,
-          placeholder: 'Select a model to configure...',
-          options: modelOptions,
-          onSelect: (option) => {
-            if (option.value === '__back__') {
-              showEditDialog(dialog, mpId);
-            } else {
-              showEditSingleEffortDialog(dialog, mpId, option.value);
-            }
-          },
-        }),
-      );
+        providerOptions.push({
+          title: '← Back to edit menu',
+          value: '__back__',
+          description: 'Return to edit menu',
+        });
+
+        dialog.replace(
+          () => api.ui.DialogSelect({
+            title: `Configure models for "${mp.name || mpId}" — Select provider (current: ${getProviderLabel(currentProvider, providers)})`,
+            placeholder: 'Select a provider to see its models...',
+            options: providerOptions,
+            onSelect: (option) => {
+              if (option.value === '__back__') {
+                showEditDialog(dialog, mpId);
+              } else if (option.value === '__custom__') {
+                showCustomModelPrompt(
+                  dialog,
+                  (modelId) => showEditSingleEffortDialog(dialog, mpId, modelId),
+                  showProviderList,
+                );
+              } else {
+                showModelSelectDialog(
+                  dialog,
+                  option.value,
+                  providers,
+                  currentPrimary,
+                  {
+                    onModel: (modelId) => showEditSingleEffortDialog(dialog, mpId, modelId),
+                    onCustom: (modelId) => showEditSingleEffortDialog(dialog, mpId, modelId),
+                    onBackProvider: showProviderList,
+                  },
+                );
+              }
+            },
+          }),
+        );
+      };
+
+      showProviderList();
     };
 
     const showEditSingleEffortDialog = (dialog, mpId, selectedModel) => {
@@ -842,33 +1059,62 @@ export default {
       }
       const phaseConfig = mp[phase];
       const currentModel = phaseConfig?.primary || mp.default?.primary || 'opencode-go/glm-5.1';
+      const currentProvider = preSelectProvider(currentModel, providers) || providers[0]?.id;
 
-      const modelOptions = models.map((m) => ({
-        title: m.id === currentModel ? `✓ ${m.label}` : m.label,
-        value: m.id,
-        description: m.id === currentModel ? `Current model for ${phase}` : m.description,
-      }));
+      const showProviderList = () => {
+        const providerOptions = providers.map((p) => ({
+          title: p.id === currentProvider ? `✓ ${p.name || p.id}` : (p.name || p.id),
+          value: p.id,
+          description: p.id === currentProvider
+            ? `Current provider — ${(p.models?.length || 0)} models available`
+            : `${p.models?.length || 0} models available`,
+        }));
 
-      modelOptions.push({
-        title: '← Back to phase list',
-        value: '__back__',
-        description: 'Return without saving',
-      });
+        providerOptions.push({
+          title: '+ Custom model (provider/model)',
+          value: '__custom__',
+          description: 'Enter a model string manually (e.g., opencode-go/experimental-model)',
+        });
 
-      dialog.replace(
-        () => api.ui.DialogSelect({
-          title: `${phase.charAt(0).toUpperCase() + phase.slice(1)} — Select model`,
-          placeholder: 'Choose the AI model for this phase...',
-          options: modelOptions,
-          onSelect: (option) => {
-            if (option.value === '__back__') {
-              showEditPerPhasePhaseListDialog(dialog, mpId);
-            } else {
-              showEditPerPhaseEffortDialog(dialog, mpId, phase, option.value);
-            }
-          },
-        }),
-      );
+        providerOptions.push({
+          title: '← Back to phase list',
+          value: '__back__',
+          description: 'Return to phase list',
+        });
+
+        dialog.replace(
+          () => api.ui.DialogSelect({
+            title: `${phase.charAt(0).toUpperCase() + phase.slice(1)} — Select provider (current: ${getProviderLabel(currentProvider, providers)})`,
+            placeholder: 'Select a provider to see its models...',
+            options: providerOptions,
+            onSelect: (option) => {
+              if (option.value === '__back__') {
+                showEditPerPhasePhaseListDialog(dialog, mpId);
+              } else if (option.value === '__custom__') {
+                showCustomModelPrompt(
+                  dialog,
+                  (modelId) => showEditPerPhaseEffortDialog(dialog, mpId, phase, modelId),
+                  showProviderList,
+                );
+              } else {
+                showModelSelectDialog(
+                  dialog,
+                  option.value,
+                  providers,
+                  currentModel,
+                  {
+                    onModel: (modelId) => showEditPerPhaseEffortDialog(dialog, mpId, phase, modelId),
+                    onCustom: (modelId) => showEditPerPhaseEffortDialog(dialog, mpId, phase, modelId),
+                    onBackProvider: showProviderList,
+                  },
+                );
+              }
+            },
+          }),
+        );
+      };
+
+      showProviderList();
     };
 
     const showEditPerPhaseEffortDialog = (dialog, mpId, phase, selectedModel) => {

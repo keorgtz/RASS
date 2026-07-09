@@ -30,7 +30,7 @@ REASP/
 │   ├── skills/             # refi-enterprise-feature-implementation (skill principal)
 │   ├── plugin.js           # Server plugin OpenCode — tools: sdd_mode_profile, rass_setup, reasp_setup
 │   ├── tui.js              # TUI plugin OpenCode — slash commands: /sdd, /reasp-setup, /rass-setup
-│   └── rass-core.js        # Núcleo RASS — ModeProfile manager, runtime generator, agent sync
+│   └── rass-core.js        # Núcleo RASS — ModeProfile manager, runtime generator, agent sync, provider catalog
 ├── .MeridianUI/            # Design system (placeholder — depositar contenido aquí)
 │   └── .gitkeep            # Placeholder vacío. reasp install copia todo a ~/.MeridianUI/
 ├── installer/
@@ -55,15 +55,18 @@ REASP/
 │       ├── snapshot.js     # Router comandos: snapshot create/list/restore/delete/purge
 │       └── config.js       # Router comandos: config get/set
 ├── scripts/
-│   ├── reasp               # Wrapper bash Unix (mode 100755)
-│   └── reasp.cmd           # Wrapper Windows CMD
+│   ├── reasp                          # Wrapper bash Unix (mode 100755)
+│   ├── reasp.cmd                      # Wrapper Windows CMD
+│   ├── test-provider-support.mjs      # Tests unitarios provider support
+│   └── test-e2e-tool.mjs              # Tests E2E del tool sdd_mode_profile
 ├── .gitattributes          # LF para scripts Unix, CRLF para .cmd
 ├── package.json            # Manifiesto npm CLI — bin: reasp → installer/index.js
 ├── AI/                     # Este directorio — contexto para IAs
 │   ├── CONTEXT.md          # Este archivo
 │   └── Summarys/           # HTML summaries por sesión
 └── .refi/                  # Packets REFI de planeación interna
-    └── modules/linux-compat/   # Planeación completa de compatibilidad Linux
+    ├── modules/linux-compat/                  # Compatibilidad Linux + MeridianUI
+    └── modules/sdd-profile-provider-support/  # Soporte de selección explícita de provider
 ```
 
 ---
@@ -117,7 +120,125 @@ reasp snapshot purge --agent claude-code --keep 5 --yes
 
 ---
 
+## Reglas de Diseño Importantes (NO violar)
+
+1. **Windows y Linux son aditivos, nunca reemplazantes.** `winPaths[]` y `unixPaths[]` coexisten. El código Windows NO se toca al agregar soporte Linux.
+
+2. **Una sola fuente de verdad.** Los assets canónicos están en `.opencode/`. Ningún adapter tiene su propia copia de prompts o configuraciones — todos leen de `.opencode/` via `compile.js`.
+
+3. **MeridianUI no se elimina en `uninstall`.** `reasp uninstall` elimina la config del agente, pero `~/.MeridianUI/` permanece.
+
+4. **Warning, no error, cuando `.MeridianUI/` está vacía.** Si solo tiene `.gitkeep`, el installer advierte y continúa sin fallar.
+
+5. **`pathToFileURL()` para URLs de plugins.** No construir URLs de archivos con concatenación de strings. Usar `import { pathToFileURL } from 'node:url'`.
+
+6. **Snapshots sobreviven a la desinstalación.** Los snapshots en `~/.reasp/snapshots/` no se eliminan con `reasp uninstall`.
+
+7. **Formato canónico de modelo = `provider/model`.** No introducir objeto `{provider, model}` en disco. El provider siempre va prefijado en el string. Esto preserva el contrato con OpenCode y el runtime.
+
+8. **Validación de provider es opcional.** Si el usuario pasa `provider` al tool, se valida que `primary.startsWith(provider + '/')`. Si omite `provider`, no se valida (backward compat). Custom models con warning, no error.
+
+9. **Custom model es first-class.** Modelos no listados en `api.state.provider` se aceptan con warning — cubre providers beta, modelos nuevos, providers privados.
+
+---
+
+## Estado Actual del Repositorio
+
+```
+Branch activo:  Master
+Remoto:         https://github.com/keorgtz/REASP.git
+Push pendiente: git push origin Master  (6 commits adelante del remoto)
+```
+
+### Pending (manual, requiere el usuario)
+
+- [ ] `git push origin Master` — publicar en GitHub
+- [ ] `reasp install --agents opencode` real en Linux → verificar que el plugin carga
+- [ ] Depositar contenido en `.MeridianUI/` → `reasp install` lo desplegará a `~/.MeridianUI/`
+- [ ] Validar el flujo de selección de provider en `/sdd` con OpenCode real
+
+---
+
+## Cómo correr los tests
+
+```bash
+npm test
+# node --check en todos los archivos JS del installer
+
+node scripts/test-provider-support.mjs
+# 65 tests unitarios: provider catalog, validación, ModeProfile CRUD
+
+node scripts/test-e2e-tool.mjs
+# 21 tests E2E: simulación completa de sdd_mode_profile con provider
+```
+
+---
+
 ## Historial de Implementaciones
+
+### Sesión 3 — 2026-07-08 | SDD Profile Provider Support
+**Ver:** `AI/Summarys/summary-2026-07-08.html`
+
+**Problema resuelto:** Al configurar un SDD ModeProfile, el usuario podía elegir un modelo pero NO el provider. El modelo se almacenaba como string `provider/model` (ej. `opencode-go/glm-5.1`), pero el provider venía implícito en el ID — no había forma de validar, forzar, o mezclar providers.
+
+**Solución:**
+- **TUI** (`/sdd` → Edit/Create ModeProfile → Configure Models): flujo de 2 pasos (Proveedor → Modelo) con opción "Custom model" al final de cada lista. El provider actual se preselecciona automáticamente al editar.
+- **Tool** `sdd_mode_profile`: nuevo argumento opcional `provider` que valida que `primary` pertenezca a ese provider. Si solo se pasa `provider`, resuelve al primer modelo del catálogo.
+- **Helpers nuevos en `rass-core.js`**: `DEFAULT_PROVIDERS`, `discoverProviders(api)`, `validateModelInProvider()`, `deriveProviderFromModel()`, `getProviderLabel()`, `getModelsForProvider()`.
+- **Output enriquecido**: `list`, `switch`, `edit`, `create`, `status` ahora muestran el provider derivado del default model.
+
+**Archivos modificados:**
+- `.opencode/rass-core.js` — +132 líneas (catálogo de providers + 5 funciones nuevas)
+- `.opencode/tui.js` — +200 líneas, 4 diálogos refactorizados a flujo de 2 pasos
+- `.opencode/plugin.js` — +85 líneas (schema con `provider` arg + validación en create/edit)
+
+**Archivos nuevos:**
+- `scripts/test-provider-support.mjs` — 65 tests unitarios
+- `scripts/test-e2e-tool.mjs` — 21 tests E2E
+- `AI/Summarys/summary-2026-07-08.html` — resumen visual
+- `.refi/modules/sdd-profile-provider-support/` — packet REFI
+
+**Verificado:**
+- 65/65 tests unitarios ✅
+- 21/21 tests E2E ✅
+- `node --check` en installer/ y .opencode/ ✅
+- Cross-platform simulado (Windows + Linux) ✅
+- No regresión en ModeProfiles existentes (formato `provider/model` sin cambios) ✅
+- Crash real del selector de proveedor corregido en repo y en `~/.config/opencode/tui.js`: los helpers del TUI usan `currentTuiApi` en vez de referenciar `api` fuera de scope ✅
+
+---
+
+### Sesión 2 — 2026-06-26 | Linux compatibility + MeridianUI global installer
+**Ver:** `AI/Summarys/summary-2026-06-26.html`  
+**Branch:** `linux-compat` (mergeado a `Master`)
+
+**Problema resuelto:** REASP solo funcionaba en Windows. Se añadió soporte Linux/macOS de forma **aditiva** — el código Windows se preservó intacto.
+
+**Bugs corregidos:**
+- `installer/lib/targets/opencode.js` líneas 379-380 y 531-532:  
+  `file:///` + `/home/...` = `file:////home/...` (4 barras, URL inválida en Linux).  
+  Fix: `pathToFileURL(path.join(globalDir, 'plugin.js')).href` — genera el formato correcto en ambas plataformas.
+
+**Features añadidas:**
+- `installer/lib/meridianui.js` — copia `.MeridianUI/` del repo a `~/.MeridianUI/` al correr `reasp install`.
+- `.MeridianUI/.gitkeep` — placeholder; depositar contenido UI aquí para se instale globalmente.
+- `~/.volta/bin/opencode` añadido a `unixPaths[]` en `opencode.js`.
+- `scripts/reasp` mode `100755` (execute bit en git index).
+- `.gitattributes` — LF/CRLF según plataforma.
+- `package.json scripts.prepare` — chmod fallback post `npm install -g`.
+
+**Documentación actualizada:**
+- `README.md` — sección Linux/Unix + sección MeridianUI
+- `installer/AGENTS.md` — rutas Linux, Volta detection paths
+- `installer/TROUBLESHOOTING.md` — 5 casos Linux nuevos
+
+**Verificado en Fedora 44 Linux:**
+- `reasp detect`: OpenCode v1.17.11, Claude Code v2.1.193, Gemini CLI ✅
+- URL format `file:///home/...` (3 barras) ✅
+- `scripts/reasp` mode 100755 en git tree ✅
+- Warning MeridianUI vacía sin crash ✅
+
+---
 
 ### Sesión 1 — 2026-06-16 | Multi-agente + CLI global + Backup Manager
 **Ver:** `AI/Summarys/summary-2026-06-16.html`
@@ -137,78 +258,4 @@ reasp snapshot purge --agent claude-code --keep 5 --yes
 
 ---
 
-### Sesión 2 — 2026-06-26 | Linux compatibility + MeridianUI global installer
-**Ver:** `AI/Summarys/summary-2026-06-26.html`  
-**Branch:** `linux-compat` (mergeado a `Master`)
-
-**Problema resuelto:** REASP solo funcionaba en Windows. Se añadió soporte Linux/macOS de forma **aditiva** — el código Windows se preservó intacto.
-
-**Bugs corregidos:**
-- `installer/lib/targets/opencode.js` líneas 379-380 y 531-532:  
-  `file:///` + `/home/...` = `file:////home/...` (4 barras, URL inválida en Linux).  
-  Fix: `pathToFileURL(path.join(globalDir, 'plugin.js')).href` — genera el formato correcto en ambas plataformas.
-
-**Features añadidas:**
-- `installer/lib/meridianui.js` — copia `.MeridianUI/` del repo a `~/.MeridianUI/` al correr `reasp install`.
-- `.MeridianUI/.gitkeep` — placeholder; depositar contenido UI aquí para que se instale globalmente.
-- `~/.volta/bin/opencode` añadido a `unixPaths[]` en `opencode.js`.
-- `scripts/reasp` mode `100755` (execute bit en git index).
-- `.gitattributes` — LF/CRLF según plataforma.
-- `package.json scripts.prepare` — chmod fallback post `npm install -g`.
-
-**Documentación actualizada:**
-- `README.md` — sección Linux/Unix + sección MeridianUI
-- `installer/AGENTS.md` — rutas Linux, Volta detection paths
-- `installer/TROUBLESHOOTING.md` — 5 casos Linux nuevos
-
-**Verificado en Fedora 44 Linux:**
-- `reasp detect`: OpenCode v1.17.11, Claude Code v2.1.193, Gemini CLI ✅
-- URL format `file:///home/...` (3 barras) ✅
-- `scripts/reasp` mode 100755 en git tree ✅
-- Warning MeridianUI vacía sin crash ✅
-
----
-
-## Reglas de Diseño Importantes (NO violar)
-
-1. **Windows y Linux son aditivos, nunca reemplazantes.** `winPaths[]` y `unixPaths[]` coexisten. El código Windows NO se toca al agregar soporte Linux.
-
-2. **Una sola fuente de verdad.** Los assets canónicos están en `.opencode/`. Ningún adapter tiene su propia copia de prompts o configuraciones — todos leen de `.opencode/` via `compile.js`.
-
-3. **MeridianUI no se elimina en `uninstall`.** `reasp uninstall` elimina la config del agente, pero `~/.MeridianUI/` permanece.
-
-4. **Warning, no error, cuando `.MeridianUI/` está vacía.** Si solo tiene `.gitkeep`, el installer advierte y continúa sin fallar.
-
-5. **`pathToFileURL()` para URLs de plugins.** No construir URLs de archivos con concatenación de strings. Usar `import { pathToFileURL } from 'node:url'`.
-
-6. **Snapshots sobreviven a la desinstalación.** Los snapshots en `~/.reasp/snapshots/` no se eliminan con `reasp uninstall`.
-
----
-
-## Estado Actual del Repositorio
-
-```
-Branch activo:  Master
-Remoto:         https://github.com/keorgtz/REASP.git
-Push pendiente: git push origin Master  (6 commits adelante del remoto)
-```
-
-### Pending (manual, requiere el usuario)
-
-- [ ] `git push origin Master` — publicar en GitHub
-- [ ] `reasp install --agents opencode` real en Linux → verificar que el plugin carga
-- [ ] Depositar contenido en `.MeridianUI/` → `reasp install` lo desplegará a `~/.MeridianUI/`
-- [ ] Verificar regresión Windows (opcional si no hay máquina disponible)
-
----
-
-## Cómo correr los tests
-
-```bash
-npm test
-# node --check en todos los archivos JS del installer
-```
-
----
-
-*Última actualización: 2026-06-26 — Sesión Linux compatibility + MeridianUI*
+*Última actualización: 2026-07-08 — Sesión SDD Profile Provider Support*

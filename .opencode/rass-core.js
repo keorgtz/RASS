@@ -605,6 +605,174 @@ export const AVAILABLE_MODELS = [
 ];
 
 /**
+ * Default provider catalog used when OpenCode runtime is not available
+ * (tests, scripts without api context, etc).
+ * Same structure as api.state.provider entries.
+ */
+export const DEFAULT_PROVIDERS = [
+  {
+    id: 'opencode-go',
+    name: 'OpenCode Go',
+    models: [
+      { id: 'glm-5.1', fullId: 'opencode-go/glm-5.1', label: 'GLM-5.1', description: 'reasoning' },
+      { id: 'kimi-k2.7-code', fullId: 'opencode-go/kimi-k2.7-code', label: 'Kimi K2.7 Code', description: 'coding' },
+      { id: 'kimi-k2.6', fullId: 'opencode-go/kimi-k2.6', label: 'Kimi K2.6', description: 'coding' },
+      { id: 'deepseek-v4-pro', fullId: 'opencode-go/deepseek-v4-pro', label: 'DeepSeek V4 Pro', description: 'reasoning' },
+      { id: 'deepseek-v4-flash', fullId: 'opencode-go/deepseek-v4-flash', label: 'DeepSeek V4 Flash', description: 'coding' },
+      { id: 'minimax-m3', fullId: 'opencode-go/minimax-m3', label: 'minimax-m3', description: 'general' },
+    ],
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    models: [
+      { id: 'claude-sonnet-4-5', fullId: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5', description: 'reasoning' },
+      { id: 'claude-opus-4-1', fullId: 'anthropic/claude-opus-4-1', label: 'Claude Opus 4.1', description: 'reasoning' },
+      { id: 'claude-haiku-4-5', fullId: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5', description: 'fast' },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    models: [
+      { id: 'gpt-5', fullId: 'openai/gpt-5', label: 'GPT-5', description: 'reasoning' },
+      { id: 'gpt-5-mini', fullId: 'openai/gpt-5-mini', label: 'GPT-5 mini', description: 'fast' },
+      { id: 'o3', fullId: 'openai/o3', label: 'o3', description: 'reasoning' },
+    ],
+  },
+  {
+    id: 'google',
+    name: 'Google',
+    models: [
+      { id: 'gemini-2.5-pro', fullId: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'reasoning' },
+      { id: 'gemini-2.5-flash', fullId: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'fast' },
+    ],
+  },
+];
+
+/**
+ * Discover providers from OpenCode runtime state.
+ * Returns a normalized array of { id, name, models: [{id, fullId, label, description}] }.
+ * Falls back to DEFAULT_PROVIDERS when the runtime is not available.
+ *
+ * @param {object} [api] - OpenCode plugin api (optional)
+ * @returns {Array<{id: string, name: string, models: Array<{id: string, fullId: string, label: string, description: string}>}>}
+ */
+export function discoverProviders(api) {
+  if (api?.state?.provider && Array.isArray(api.state.provider)) {
+    const providers = api.state.provider
+      .filter((prov) => prov && prov.id)
+      .map((prov) => ({
+        id: prov.id,
+        name: prov.name || prov.id,
+        models: Object.entries(prov.models || {}).map(([modelId, modelInfo]) => ({
+          id: modelId,
+          fullId: `${prov.id}/${modelId}`,
+          label: modelInfo?.name || modelId,
+          description: modelInfo?.family || '',
+        })),
+      }));
+
+    if (providers.length > 0) {
+      // Sort: opencode-go first, then alphabetical
+      providers.sort((a, b) => {
+        const aGo = a.id === 'opencode-go' ? 0 : 1;
+        const bGo = b.id === 'opencode-go' ? 0 : 1;
+        if (aGo !== bGo) return aGo - bGo;
+        return a.id.localeCompare(b.id);
+      });
+      return providers;
+    }
+  }
+  return DEFAULT_PROVIDERS;
+}
+
+/**
+ * Validate that a model belongs to a provider.
+ * Accepts both catalog models and custom model strings (warning, not error).
+ *
+ * @param {string} modelId - Full model string in "provider/model" format
+ * @param {string} providerId - Expected provider ID
+ * @param {Array} [providers] - Provider catalog (defaults to DEFAULT_PROVIDERS)
+ * @returns {{valid: boolean, warning?: string, error?: string}}
+ */
+export function validateModelInProvider(modelId, providerId, providers = DEFAULT_PROVIDERS) {
+  if (!modelId || typeof modelId !== 'string') {
+    return { valid: false, error: 'Model ID is required' };
+  }
+  if (!providerId || typeof providerId !== 'string') {
+    return { valid: false, error: 'Provider ID is required' };
+  }
+
+  const prefix = `${providerId}/`;
+  if (!modelId.startsWith(prefix)) {
+    return {
+      valid: false,
+      error: `Model '${modelId}' does not start with provider prefix '${prefix}'`,
+    };
+  }
+
+  const prov = providers.find((p) => p.id === providerId);
+  if (!prov) {
+    return { valid: true, warning: `Provider '${providerId}' is not in the known catalog (custom)` };
+  }
+
+  const modelPart = modelId.slice(prefix.length);
+  if (!modelPart) {
+    return { valid: false, error: `Model part is empty after provider prefix '${prefix}'` };
+  }
+
+  const exists = prov.models.some((m) => m.id === modelPart);
+  if (!exists) {
+    return {
+      valid: true,
+      warning: `Model '${modelPart}' is not in the catalog of provider '${providerId}' (custom)`,
+    };
+  }
+  return { valid: true };
+}
+
+/**
+ * Derive the provider ID from a "provider/model" string.
+ * Returns the provider ID even if not in catalog (for forward compatibility).
+ *
+ * @param {string} modelId
+ * @returns {string|null}
+ */
+export function deriveProviderFromModel(modelId) {
+  if (!modelId || typeof modelId !== 'string') return null;
+  const idx = modelId.indexOf('/');
+  if (idx <= 0) return null;
+  return modelId.slice(0, idx);
+}
+
+/**
+ * Get a human-readable label for a provider.
+ *
+ * @param {string} providerId
+ * @param {Array} [providers]
+ * @returns {string}
+ */
+export function getProviderLabel(providerId, providers = DEFAULT_PROVIDERS) {
+  if (!providerId) return 'unknown';
+  const prov = providers.find((p) => p.id === providerId);
+  return prov ? (prov.name || prov.id) : providerId;
+}
+
+/**
+ * Get models for a specific provider, or empty array if provider not found.
+ *
+ * @param {string} providerId
+ * @param {Array} [providers]
+ * @returns {Array}
+ */
+export function getModelsForProvider(providerId, providers = DEFAULT_PROVIDERS) {
+  if (!providerId) return [];
+  const prov = providers.find((p) => p.id === providerId);
+  return prov?.models || [];
+}
+
+/**
  * Fallback models used when a ModeProfile does not define a phase/default.
  */
 const DEFAULT_AGENT_MODELS = {
