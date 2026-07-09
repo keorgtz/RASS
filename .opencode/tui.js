@@ -1343,6 +1343,28 @@ export default {
 
     const disposeCommands = api.command?.register(() => [
       {
+        title: 'Share session',
+        value: 'session.share',
+        description: 'Create or copy the native OpenCode share link for the current session',
+        category: 'Session',
+        slash: { name: 'share' },
+        onSelect: (dialog) => {
+          dialog?.clear?.();
+          api.keymap?.dispatchCommand?.('session.share');
+        },
+      },
+      {
+        title: 'Unshare session',
+        value: 'session.unshare',
+        description: 'Remove the native OpenCode share link for the current session',
+        category: 'Session',
+        slash: { name: 'unshare' },
+        onSelect: (dialog) => {
+          dialog?.clear?.();
+          api.keymap?.dispatchCommand?.('session.unshare');
+        },
+      },
+      {
         title: 'SDD ModeProfile',
         value: 'sdd',
         description: 'Switch, create, edit, or delete SDD ModeProfiles',

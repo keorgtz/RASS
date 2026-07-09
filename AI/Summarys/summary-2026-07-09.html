@@ -88,6 +88,14 @@
       <li>Nuevo <code>scripts/check-syntax.js</code> para que <code>npm test</code> sea cross-platform; los globs anteriores fallaban en Windows PowerShell/CMD.</li>
     </ul>
 
+    <h3>Follow-up: comando <code>/share</code> de OpenCode no aparecía</h3>
+    <ul>
+      <li>Se verificó que OpenCode <code>1.17.17</code> sí contiene los comandos nativos <code>/share</code> y <code>/unshare</code>, y que la config no tenía <code>"share": "disabled"</code>.</li>
+      <li>La causa probable es que el plugin TUI de REASP usa el API legacy <code>api.command.register()</code>; en esta versión del TUI esa lista puede dejar fuera comandos nativos del selector.</li>
+      <li>Se añadieron puentes explícitos en <code>.opencode/tui.js</code> para <code>/share</code> y <code>/unshare</code>, delegando al comando interno nativo de OpenCode: <code>session.share</code> y <code>session.unshare</code>.</li>
+      <li>Se sincronizó el plugin instalado en <code>~/.config/opencode/tui.js</code> y se verificó sintaxis con <code>npm test</code>.</li>
+    </ul>
+
     <div class="step">
       <div class="step-num">1</div>
       <div>
