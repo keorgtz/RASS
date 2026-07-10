@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía · Perfiles por Agente en REASP</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #334155;
+      --code-bg: #0b1220;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+    }
+    h1 { margin: 0 0 .25rem; font-size: 1.9rem; color: var(--accent); }
+    h2 {
+      margin-top: 2rem;
+      font-size: 1.35rem;
+      color: var(--accent);
+      border-left: 3px solid var(--accent);
+      padding-left: .75rem;
+    }
+    h3 {
+      margin-top: 1.25rem;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    .subtitle { color: var(--muted); font-size: 1rem; margin: 0; }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border);
+    }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+    code {
+      background: var(--code-bg);
+      color: #e2e8f0;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    pre {
+      background: var(--code-bg);
+      color: #e2e8f0;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      line-height: 1.55;
+    }
+    pre code { background: none; border: none; padding: 0; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .badge-info { background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+    .badge-success { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    ol, ul { padding-left: 1.4rem; }
+    li { margin-bottom: 0.5rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: rgba(56, 189, 248, 0.08); color: var(--accent); font-weight: 600; }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.06);
+      padding: 0.9rem 1.1rem;
+      border-radius: 6px;
+      margin: 1rem 0;
+    }
+    .callout-warning {
+      border-left-color: var(--warning);
+      background: rgba(245, 158, 11, 0.06);
+    }
+    .callout-success {
+      border-left-color: var(--success);
+      background: rgba(34, 197, 94, 0.06);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 50%;
+      font-weight: 700;
+      margin-right: 0.5rem;
+    }
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Perfiles por Agente en REASP</h1>
+      <p class="subtitle">Guía para asignar ModeProfiles distintos al Ryou Orchestrator y al Ryou EFI Planner.</p>
+      <p class="subtitle">Versión 1.0 · 2026-07-10 · REASP <code>modeprofile-ryou-provider-suite</code></p>
+    </header>
+
+    <div class="card">
+      <h2>1. ¿Qué hace esta funcionalidad?</h2>
+      <p>
+        Por defecto, REASP/RASS usa un único <code>default_modeprofile</code> para resolver los modelos de todos los agentes.
+        Con la nueva sección <code>agent_modeprofiles</code> en <code>.opencode/reasp.config.json</code> puedes asignar un
+        ModeProfile distinto a cada agente principal:
+      </p>
+      <ul>
+        <li><code>ryou-orchestrator</code> → perfil para el flujo de implementación.</li>
+        <li><code>ryou-efi-planner</code> → perfil para el flujo de planificación REFI.</li>
+      </ul>
+      <div class="callout">
+        <strong>Beneficio:</strong> puedes usar modelos <em>baratos y rápidos</em> en el Orchestrator (OpenCode Go)
+        y modelos <em>más potentes</em> en el Planner (Kimi o Minimax), o viceversa.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Estado por defecto</h2>
+      <p>Después de la implementación, ambos agentes usan <code>ryougo</code>:</p>
+      <pre><code>{
+  "default_modeprofile": "ryougo",
+  "agent_modeprofiles": {
+    "ryou-orchestrator": "ryougo",
+    "ryou-efi-planner": "ryougo"
+  }
+}</code></pre>
+      <p>El comportamiento es idéntico al de versiones anteriores: todo apunta a <code>ryougo</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2>3. Cambiar el perfil de un agente (paso a paso)</h2>
+      <p>Desde la TUI de OpenCode ejecuta el comando del plugin (<code>/sdd</code>) y selecciona la opción <strong>"Assign ModeProfile to Ryou agent"</strong>. Verás dos secciones:</p>
+      <ul>
+        <li><strong>Primary agents:</strong> <code>ryou-orchestrator</code> y <code>ryou-efi-planner</code>.</li>
+        <li><strong>Subagents:</strong> <code>planner</code>, <code>builder</code>, <code>architect</code>, <code>reviewer</code>, <code>debugger</code>, <code>documentation</code>.</li>
+      </ul>
+
+      <h3><span class="step-num">1</span> Elegir agente</h3>
+      <p>Selecciona el agente al que quieres asignar un perfil. Cada opción muestra el perfil actualmente asignado.</p>
+
+      <h3><span class="step-num">2</span> Elegir perfil</h3>
+      <p>La lista muestra todos los ModeProfiles disponibles. Cada opción indica el modelo que el agente recibirá al seleccionarlo (preview). El perfil actual aparece marcado con <code>✓ (current)</code>.</p>
+
+      <h3><span class="step-num">3</span> Confirmar</h3>
+      <p>Al confirmar, el sistema:</p>
+      <ol>
+        <li>Actualiza <code>agent_modeprofiles[&lt;agente&gt;]</code> en <code>.opencode/reasp.config.json</code>.</li>
+        <li>Llama a <code>refreshAllAgentModels()</code> para escribir el modelo en <code>~/.config/opencode/opencode.json</code>.</li>
+        <li>Muestra un toast con el modelo resultante.</li>
+      </ol>
+
+      <h3><span class="step-num">4</span> Verificar</h3>
+      <p>Comprueba que cada agente tiene el modelo correcto:</p>
+      <pre><code>node -e "const c = require(process.env.USERPROFILE + '/.config/opencode/opencode.json'); \
+console.log('orchestrator:', c.agent['ryou-orchestrator'].model); \
+console.log('planner:', c.agent['ryou-efi-planner'].model);"</code></pre>
+      <p>Salida esperada:</p>
+      <pre><code>orchestrator: minimax-coding-plan/MiniMax-M3
+planner: kimi-for-coding/k2p7</code></pre>
+
+      <div class="callout callout-success">
+        <strong>Listo.</strong> Cada agente ahora usa un perfil independiente del otro.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. Reglas de resolución</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Agente</th>
+            <th>Fuente del perfil</th>
+            <th>Fase del perfil usada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ryou-orchestrator</code></td>
+            <td><code>agent_modeprofiles["ryou-orchestrator"]</code> o <code>default_modeprofile</code></td>
+            <td><code>orchestrator.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>ryou-efi-planner</code></td>
+            <td><code>agent_modeprofiles["ryou-efi-planner"]</code> o <code>default_modeprofile</code></td>
+            <td><code>orchestrator.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>planner</code></td>
+            <td><code>default_modeprofile</code></td>
+            <td><code>propose.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>builder</code></td>
+            <td><code>default_modeprofile</code></td>
+            <td><code>apply.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>architect</code></td>
+            <td><code>default_modeprofile</code></td>
+            <td><code>design.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>reviewer</code> / <code>debugger</code></td>
+            <td><code>default_modeprofile</code></td>
+            <td><code>verify.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>documentation</code></td>
+            <td><code>default_modeprofile</code></td>
+            <td><code>archive.primary</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Desde la TUI:</strong> la opción <strong>"Assign ModeProfile to Ryou agent"</strong> lista los dos agentes principales más todos los subagentes (<code>planner</code>, <code>builder</code>, <code>architect</code>, <code>reviewer</code>, <code>debugger</code>, <code>documentation</code>). Puedes asignar perfil a cualquiera de ellos; los que no estén en <code>agent_modeprofiles</code> usan <code>default_modeprofile</code>.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. Combinaciones típicas</h2>
+      <div class="grid">
+        <div>
+          <h3>A. Todo OpenCode Go (default)</h3>
+          <pre><code>"agent_modeprofiles": {
+  "ryou-orchestrator": "ryougo",
+  "ryou-efi-planner": "ryougo"
+}</code></pre>
+        </div>
+        <div>
+          <h3>B. Planner con Kimi, Orchestrator OpenCode Go</h3>
+          <pre><code>"agent_modeprofiles": {
+  "ryou-orchestrator": "ryougo",
+  "ryou-efi-planner": "ryoukimi"
+}</code></pre>
+        </div>
+        <div>
+          <h3>C. Todo Minimax</h3>
+          <pre><code>"agent_modeprofiles": {
+  "ryou-orchestrator": "ryouminimax",
+  "ryou-efi-planner": "ryouminimax"
+}</code></pre>
+        </div>
+        <div>
+          <h3>D. Mixer: Planner Kimi, Orchestrator Minimax</h3>
+          <pre><code>"agent_modeprofiles": {
+  "ryou-orchestrator": "ryouminimax",
+  "ryou-efi-planner": "ryoukimi"
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>6. Validación</h2>
+      <p>Después de cualquier cambio, ejecuta:</p>
+      <pre><code>node scripts/rass-sync-validator.js</code></pre>
+      <p>Debe terminar con:</p>
+      <pre><code>✅ Profile / runtime / opencode.json are consistent.
+✅ Repo and global sdd-profiles are in sync.
+All checks passed.</code></pre>
+
+      <p>Y también los tests automáticos:</p>
+      <pre><code>node scripts/test-e2e-tool.mjs
+node scripts/test-provider-support.mjs</code></pre>
+    </div>
+
+    <div class="card">
+      <h2>7. Errores frecuentes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Síntoma</th>
+            <th>Causa probable</th>
+            <th>Solución</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>El modelo del agente no cambia.</td>
+            <td>No ejecutaste <code>sync-reasp push</code> ni <code>rass_setup validate</code>.</td>
+            <td>Ejecuta uno de los dos comandos.</td>
+          </tr>
+          <tr>
+            <td><code>"ryouminimax" not found</code></td>
+            <td>El perfil no existe en <code>.opencode/sdd-profiles/</code>.</td>
+            <td>Verifica que el archivo <code>ryouminimax.json</code> exista y sea válido.</td>
+          </tr>
+          <tr>
+            <td>Todos los agentes vuelven a <code>ryougo</code>.</td>
+            <td><code>agent_modeprofiles</code> no tiene la clave para ese agente.</td>
+            <td>Agrega el agente a <code>agent_modeprofiles</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>8. Reinicio de OpenCode</h2>
+      <div class="callout callout-warning">
+        <strong>Importante:</strong> los cambios en <code>~/.config/opencode/opencode.json</code> solo se cargan cuando
+        OpenCode arranca. Después de modificar perfiles, <strong>cierra y vuelve a abrir</strong> OpenCode para que la
+        nueva configuración tome efecto.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>9. Asignar perfiles durante la instalación (reasp-cli)</h2>
+      <p>El instalador REASP también puede asignar perfiles por agente en el momento de instalar. Útil cuando configuras un equipo nuevo.</p>
+
+      <h3>Modo interactivo</h3>
+      <p>Durante <code>reasp install</code> se te preguntará:</p>
+      <ol>
+        <li>Default ModeProfile.</li>
+        <li>Default workflow agent.</li>
+        <li>ModeProfile para <strong>Ryou Orchestrator</strong>.</li>
+        <li>ModeProfile para <strong>Ryou EFI Planner</strong>.</li>
+      </ol>
+
+      <h3>Modo no interactivo (flags)</h3>
+      <pre><code>reasp install \
+  --modeprofile ryougo \
+  --workflow ryou-orchestrator \
+  --agent-profile-orchestrator ryouminimax \
+  --agent-profile-planner ryoukimi</code></pre>
+      <table>
+        <thead>
+          <tr><th>Flag</th><th>Descripción</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>--modeprofile &lt;id&gt;</code></td><td>ModoProfile default del sistema.</td></tr>
+          <tr><td><code>--agent-profile-orchestrator &lt;id&gt;</code></td><td>ModoProfile para <code>ryou-orchestrator</code>.</td></tr>
+          <tr><td><code>--agent-profile-planner &lt;id&gt;</code></td><td>ModoProfile para <code>ryou-efi-planner</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>10. Persistencia: dónde se guarda</h2>
+      <p>El sistema escribe en dos lugares, en este orden:</p>
+      <ol>
+        <li><strong>Global</strong> <code>~/.config/opencode/reasp.config.json</code> — fuente de verdad que OpenCode lee al arrancar.</li>
+        <li><strong>Repo</strong> <code>.opencode/reasp.config.json</code> — espejo para distribución.</li>
+      </ol>
+      <p>Tras cualquier cambio, ejecuta <code>node scripts/sync-reasp.js push</code> para mantener el repo sincronizado si editas a mano el JSON global.</p>
+    </div>
+
+    <footer>
+      Guía generada por REASP · Ryou Orchestrator · Packet <code>modeprofile-ryou-provider-suite</code>
+    </footer>
+  </div>
+</body>
+</html>

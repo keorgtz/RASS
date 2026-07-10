@@ -31,12 +31,6 @@ function writeJson(filePath, data) {
 
 function getModeProfilesDir() { return join(__dirname, 'sdd-profiles'); }
 function getRuntimeDir() { return join(__dirname, 'runtime'); }
-function getReaspConfigPath() { return join(__dirname, 'reasp.config.json'); }
-
-function getModeProfilePath(name) { return join(getModeProfilesDir(), `${name}.json`); }
-function getCurrentModeProfilePath() { return join(getRuntimeDir(), 'current-modeprofile.json'); }
-function getRuntimePath() { return join(getRuntimeDir(), 'runtime.generated.json'); }
-function getConfigPath() { return join(__dirname, 'sdd.config.json'); }
 
 function getHomeDir() {
   return process.env.USERPROFILE || process.env.HOME || os.homedir();
@@ -45,6 +39,20 @@ function getHomeDir() {
 function getGlobalConfigPath() {
   return join(getHomeDir(), '.config', 'opencode', 'opencode.json');
 }
+
+/**
+ * REASP config path. The global location (`~/.config/opencode/reasp.config.json`)
+ * is the runtime source of truth because OpenCode reads it on startup. The repo
+ * copy (`.opencode/reasp.config.json`) is kept in sync via `scripts/sync-reasp.js`.
+ */
+function getReaspConfigPath() {
+  return join(getHomeDir(), '.config', 'opencode', 'reasp.config.json');
+}
+
+function getModeProfilePath(name) { return join(getModeProfilesDir(), `${name}.json`); }
+function getCurrentModeProfilePath() { return join(getRuntimeDir(), 'current-modeprofile.json'); }
+function getRuntimePath() { return join(getRuntimeDir(), 'runtime.generated.json'); }
+function getConfigPath() { return join(__dirname, 'sdd.config.json'); }
 
 function readOpenCodeConfig(configPath = getGlobalConfigPath()) {
   return readJson(configPath) || {};
@@ -137,6 +145,133 @@ export function resolveAgentModels(modeProfile) {
 }
 
 /**
+ * Read REASP configuration and return the ModeProfile assigned to a specific agent.
+ * Falls back to the default ModeProfile when no agent-specific assignment exists.
+ * @param {string} agentName
+ * @returns {string}
+ */
+export function getAgentModeProfile(agentName) {
+  const reasp = getReaspConfig();
+  return reasp.agent_modeprofiles?.[agentName] || reasp.default_modeprofile || 'ryougo';
+}
+
+/**
+ * Assign a specific ModeProfile to a Ryou agent.
+ * Writes to the GLOBAL reasp.config.json (source of truth for OpenCode runtime)
+ * and also mirrors the change to the repo copy (`.opencode/reasp.config.json`)
+ * when it exists, so `scripts/sync-reasp.js` stays in sync.
+ * @param {string} agentName
+ * @param {string} modeProfileName
+ * @returns {object} Updated REASP config
+ */
+export function setAgentModeProfile(agentName, modeProfileName) {
+  if (!RYOU_AGENTS[agentName]) {
+    throw new Error(`Unknown Ryou agent '${agentName}'. Available: ${Object.keys(RYOU_AGENTS).join(', ')}`);
+  }
+  const mp = getModeProfile(modeProfileName);
+  if (!mp) {
+    throw new Error(`ModeProfile '${modeProfileName}' not found. Available: ${listModeProfiles().map((m) => m.id).join(', ')}`);
+  }
+
+  const reasp = getReaspConfig();
+  if (!reasp.agent_modeprofiles) reasp.agent_modeprofiles = {};
+  reasp.agent_modeprofiles[agentName] = modeProfileName;
+
+  // Write to global (runtime source of truth)
+  writeJson(getReaspConfigPath(), reasp);
+
+  // Mirror to repo copy when present, so distribution/version control stays accurate.
+  const repoPath = join(__dirname, 'reasp.config.json');
+  if (existsSync(repoPath)) {
+    try {
+      writeJson(repoPath, reasp);
+    } catch (err) {
+      // Non-fatal: global is the source of truth; the repo mirror will be
+      // re-synced on the next `scripts/sync-reasp.js pull`.
+    }
+  }
+
+  return reasp;
+}
+
+/**
+ * Resolve the model for a single Ryou agent from a specific ModeProfile.
+ * Uses the phase mapping appropriate to each agent role.
+ * @param {string} agentName
+ * @param {string|object} modeProfile - ModeProfile name or ModeProfile object
+ * @returns {string|null}
+ */
+export function resolveAgentModel(agentName, modeProfile) {
+  const mp = typeof modeProfile === 'string' ? getModeProfile(modeProfile) : modeProfile;
+  if (!mp) return null;
+
+  const defaultConfig = mp.default || {};
+  switch (agentName) {
+    case 'ryou-orchestrator':
+    case 'ryou-efi-planner':
+      return mp.orchestrator?.primary || mp.init?.primary || mp.explore?.primary || defaultConfig.primary || null;
+    case 'planner':
+      return mp.propose?.primary || defaultConfig.primary || null;
+    case 'builder':
+      return mp.apply?.primary || defaultConfig.primary || null;
+    case 'architect':
+      return mp.design?.primary || defaultConfig.primary || null;
+    case 'reviewer':
+    case 'debugger':
+      return mp.verify?.primary || defaultConfig.primary || null;
+    case 'documentation':
+      return mp.archive?.primary || defaultConfig.primary || null;
+    default:
+      return defaultConfig.primary || null;
+  }
+}
+
+/**
+ * Synchronize all Ryou agent models using their individually assigned ModeProfiles.
+ * Reads agent_modeprofiles from reasp.config.json, resolves the correct model per agent,
+ * and updates ~/.config/opencode/opencode.json.
+ * @returns {string[]}
+ */
+export function refreshAllAgentModels() {
+  const changes = [];
+  const configPath = getGlobalConfigPath();
+  if (!existsSync(configPath)) return changes;
+
+  let config;
+  try {
+    config = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch {
+    return changes;
+  }
+  if (!config) return changes;
+  if (!config.agent) config.agent = {};
+
+  for (const agentName of Object.keys(RYOU_AGENTS)) {
+    const profileName = getAgentModeProfile(agentName);
+    const modelId = resolveAgentModel(agentName, profileName);
+    if (!modelId) continue;
+
+    const template = RYOU_AGENTS[agentName];
+    if (!config.agent[agentName]) {
+      config.agent[agentName] = template ? { ...template, model: modelId } : { model: modelId };
+      changes.push(`Created agent '${agentName}' -> ${modelId} (profile: ${profileName})`);
+    } else if (config.agent[agentName].model !== modelId) {
+      const old = config.agent[agentName].model;
+      config.agent[agentName].model = modelId;
+      changes.push(`Updated agent '${agentName}' model: ${old} -> ${modelId} (profile: ${profileName})`);
+    }
+  }
+
+  try {
+    writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+  } catch (err) {
+    changes.push(`ERROR writing opencode.json: ${err.message}`);
+  }
+
+  return changes;
+}
+
+/**
  * Generate the resolved runtime configuration from a ModeProfile.
  * @param {string|object} modeProfile
  * @returns {object|null}
@@ -210,7 +345,7 @@ export function syncAgentsWithModeProfile(modeProfileName, configPath = getGloba
  * @param {string} [modeProfileName]
  * @returns {{runtime: object|null, agents: object|null, changes: string[]}}
  */
-export function refreshAllFromModeProfile(modeProfileName = getCurrentModeProfile() || 'ryouset') {
+export function refreshAllFromModeProfile(modeProfileName = getCurrentModeProfile() || 'ryougo') {
   const changes = [];
 
   const mp = getModeProfile(modeProfileName);
@@ -276,6 +411,10 @@ export function refreshAllFromModeProfile(modeProfileName = getCurrentModeProfil
     }
   }
 
+  // 3. Sync each agent against its individually assigned ModeProfile
+  const agentProfileChanges = refreshAllAgentModels();
+  if (agentProfileChanges.length) changes.push(...agentProfileChanges);
+
   return { runtime, agents, changes };
 }
 
@@ -284,7 +423,7 @@ export function refreshAllFromModeProfile(modeProfileName = getCurrentModeProfil
  * @param {string} [modeProfileName]
  * @returns {boolean}
  */
-export function isRuntimeInSync(modeProfileName = getCurrentModeProfile() || 'ryouset') {
+export function isRuntimeInSync(modeProfileName = getCurrentModeProfile() || 'ryougo') {
   const mp = getModeProfile(modeProfileName);
   if (!mp) return false;
 
@@ -398,7 +537,7 @@ export function getCurrentModeProfile() {
  * @returns {object|null}
  */
 export function generateRuntime() {
-  const currentName = getCurrentModeProfile() || 'ryouset';
+  const currentName = getCurrentModeProfile() || 'ryougo';
   const mp = getModeProfile(currentName);
   if (!mp) return null;
 
@@ -470,7 +609,7 @@ export function getReaspConfig() {
     system_name: 'REASP',
     full_name: 'Ryou Enterprise Adaptive SDD Protocol',
     version: '1.0.0',
-    default_modeprofile: 'ryouset',
+    default_modeprofile: 'ryougo',
     default_workflow: 'ryou-orchestrator',
     features: {
       rass: { enabled: true, label: 'Ryou Orchestrator' },
@@ -591,7 +730,7 @@ export function getConfig() {
     system_name: 'RASS',
     full_name: 'Ryou Adaptive SDD System',
     version: '3.0.0',
-    default_modeprofile: 'ryouset',
+    default_modeprofile: 'ryougo',
   };
 }
 

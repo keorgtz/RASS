@@ -24,7 +24,7 @@ export const REASP_CLI_VERSION = '1.0.1';
 export const DEFAULT_MAX_SNAPSHOTS_PER_AGENT = 0;
 
 /** Default SDD ModeProfile used when the user does not choose one. */
-export const DEFAULT_MODEPROFILE = 'ryouset';
+export const DEFAULT_MODEPROFILE = 'ryougo';
 
 /** Default REASP workflow agent. */
 export const DEFAULT_WORKFLOW = 'ryou-orchestrator';

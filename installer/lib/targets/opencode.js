@@ -192,7 +192,7 @@ export function removeDirRecursiveSync(dir) {
  * Read a ModeProfile and resolve agent models from its phase configuration.
  * Primary agents follow a fallback chain: orchestrator → init → explore → default.
  * @param {string} sourceDir - Canonical REASP asset directory.
- * @param {string} modeProfileName - e.g., 'ryouset', 'fast'
+ * @param {string} modeProfileName - e.g., 'ryougo', 'fast'
  * @returns {object} Map of agent names to model IDs
  */
 export function resolveAgentModels(sourceDir, modeProfileName) {
@@ -351,6 +351,121 @@ export function setInstalledModeProfile(ctx, modeProfileName) {
   return { success: syncResult, runtimeDir };
 }
 
+/**
+ * Resolve the model for a single agent from a specific ModeProfile.
+ * Mirrors the logic in `.opencode/rass-core.js` so the installer can sync
+ * per-agent without depending on the OpenCode runtime.
+ */
+function resolveAgentModelForInstaller(sourceDir, agentName, modeProfileName) {
+  if (!modeProfileName) return null;
+  const profilePath = path.join(sourceDir, 'sdd-profiles', `${modeProfileName}.json`);
+  if (!fs.existsSync(profilePath)) return null;
+  let mp;
+  try {
+    mp = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+  } catch {
+    return null;
+  }
+  const fallback = (mp.default && mp.default.primary) || null;
+  switch (agentName) {
+    case 'ryou-orchestrator':
+    case 'ryou-efi-planner':
+      return (mp.orchestrator && mp.orchestrator.primary) ||
+        (mp.init && mp.init.primary) ||
+        (mp.explore && mp.explore.primary) ||
+        fallback;
+    case 'planner':
+      return (mp.propose && mp.propose.primary) || fallback;
+    case 'builder':
+      return (mp.apply && mp.apply.primary) || fallback;
+    case 'architect':
+      return (mp.design && mp.design.primary) || fallback;
+    case 'reviewer':
+    case 'debugger':
+      return (mp.verify && mp.verify.primary) || fallback;
+    case 'documentation':
+      return (mp.archive && mp.archive.primary) || fallback;
+    default:
+      return fallback;
+  }
+}
+
+/**
+ * Persist per-agent ModeProfile assignments (ryou-orchestrator, ryou-efi-planner)
+ * into the global reasp.config.json so OpenCode picks them up on next launch.
+ * Also synchronizes all Ryou agent models in opencode.json using the assignments,
+ * so each agent gets the model from its own profile.
+ *
+ * @param {object} ctx - Installer context
+ * @param {{ryouOrchestrator?: string, ryouEfiPlanner?: string}} agentProfiles
+ * @returns {{success: boolean, agentProfiles: object, modelChanges: string[]}}
+ */
+export function setInstalledAgentModeProfiles(ctx, agentProfiles = {}) {
+  const sourceDir = ctx.sourceDir || SOURCE_DIR;
+  const globalDir = getGlobalDir(ctx);
+  const reaspConfigPath = getInstalledReaspConfigPath(globalDir);
+
+  let reaspConfig = {};
+  if (fs.existsSync(reaspConfigPath)) {
+    try {
+      reaspConfig = JSON.parse(fs.readFileSync(reaspConfigPath, 'utf8'));
+    } catch {
+      reaspConfig = {};
+    }
+  }
+
+  if (!reaspConfig.agent_modeprofiles) reaspConfig.agent_modeprofiles = {};
+  if (agentProfiles.ryouOrchestrator) {
+    reaspConfig.agent_modeprofiles['ryou-orchestrator'] = agentProfiles.ryouOrchestrator;
+  }
+  if (agentProfiles.ryouEfiPlanner) {
+    reaspConfig.agent_modeprofiles['ryou-efi-planner'] = agentProfiles.ryouEfiPlanner;
+  }
+
+  fs.mkdirSync(path.dirname(reaspConfigPath), { recursive: true });
+  fs.writeFileSync(reaspConfigPath, JSON.stringify(reaspConfig, null, 2), 'utf8');
+
+  // Sync all Ryou agent models in opencode.json using agent_modeprofiles.
+  const globalConfigPath = getGlobalConfigPath(ctx);
+  const modelChanges = [];
+  if (fs.existsSync(globalConfigPath)) {
+    let opencodeConfig = {};
+    try {
+      opencodeConfig = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
+    } catch {
+      opencodeConfig = {};
+    }
+    if (opencodeConfig.agent) {
+      const defaultProfile =
+        reaspConfig.agent_modeprofiles['ryou-orchestrator'] ||
+        reaspConfig.default_modeprofile ||
+        'ryougo';
+      for (const agentName of Object.keys(opencodeConfig.agent)) {
+        const profileName =
+          reaspConfig.agent_modeprofiles[agentName] || defaultProfile;
+        const modelId = resolveAgentModelForInstaller(sourceDir, agentName, profileName);
+        if (!modelId) continue;
+        if (opencodeConfig.agent[agentName].model !== modelId) {
+          const old = opencodeConfig.agent[agentName].model;
+          opencodeConfig.agent[agentName].model = modelId;
+          modelChanges.push(`${agentName}: ${old} -> ${modelId} (profile: ${profileName})`);
+        }
+      }
+      try {
+        fs.writeFileSync(globalConfigPath, JSON.stringify(opencodeConfig, null, 2), 'utf8');
+      } catch {
+        // Non-fatal: reasp.config.json is the source of truth.
+      }
+    }
+  }
+
+  return {
+    success: true,
+    agentProfiles: reaspConfig.agent_modeprofiles,
+    modelChanges,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INSTALL
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -413,7 +528,7 @@ export function install(ctx, bundle = {}) {
   const globalConfigPath = getGlobalConfigPath(ctx);
   const { starPattern, starStarPattern } = getMeridianUIPathPatterns(ctx);
 
-  const modeProfileName = bundle.modeProfile || ctx.modeProfile || 'ryouset';
+  const modeProfileName = bundle.modeProfile || ctx.modeProfile || 'ryougo';
   const agentModels = bundle.modelMapping || resolveAgentModels(sourceDir, modeProfileName);
   const progress = ctx.progress || null;
   const dryRun = ctx.dryRun || bundle.dryRun || false;
@@ -901,6 +1016,7 @@ export default {
   installLocally,
   setInstalledWorkflow,
   setInstalledModeProfile,
+  setInstalledAgentModeProfiles,
   syncAgentsWithModeProfile,
   resolveAgentModels,
   findOpenCodeCommand,

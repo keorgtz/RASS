@@ -24,7 +24,7 @@ Combina **RASS** (workflow de implementación adaptativo) con **REFI** (planeaci
 REASP/
 ├── .opencode/              # Assets canónicos (agents, rules, phases, plugins, skills)
 │   ├── agents/             # 8 prompts de agentes Ryou
-│   ├── sdd-profiles/       # 8 ModeProfiles (ryouset, fast, architecture, ui, debug, enterprise, legacy, minimal)
+│   ├── sdd-profiles/       # 8 ModeProfiles (ryougo, fast, architecture, ui, debug, enterprise, legacy, minimal)
 │   ├── phases/             # System prompts por fase (orchestrator, init, explore, propose, design, apply, verify, archive)
 │   ├── rules/              # global-rules.md, meridianui.md
 │   ├── skills/             # refi-enterprise-feature-implementation (skill principal)
@@ -109,7 +109,7 @@ reasp snapshot purge --agent claude-code --keep 5 --yes
 
 | ID | Fases | Uso recomendado |
 |----|-------|-----------------|
-| `ryouset` | orchestrator→init→explore→propose→design→apply→verify→archive | Workflow completo Ryou (default) |
+| `ryougo` | orchestrator→init→explore→propose→design→apply→verify→archive | Workflow completo Ryou (default) |
 | `fast` | orchestrator→apply→verify | CRUDs, APIs simples |
 | `architecture` | orchestrator→init→explore→propose→design→apply→verify→archive | Sistemas complejos |
 | `ui` | orchestrator→design→apply→verify | UI/UX con MeridianUI |

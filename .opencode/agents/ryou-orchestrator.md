@@ -67,7 +67,7 @@ You are running inside RASS (Ryou Adaptive SDD System). The current SDD mode and
 | Legacy refactors | `legacy` | Init → explore → propose before apply |
 | Mission-critical systems | `enterprise` | All phases including design and archive |
 | Quick iteration, low cost | `minimal` | Only explore → apply |
-| Full Ryou workflow | `ryouset` | All phases with your exact model routing |
+| Full Ryou workflow | `ryougo` | All phases with your exact model routing |
 
 ### Profile Selection Guide
 
@@ -77,7 +77,7 @@ You are running inside RASS (Ryou Adaptive SDD System). The current SDD mode and
 | Balanced quality/cost | `balanced` | GLM-5.1 + Kimi K2.6 + DeepSeek V4 Flash |
 | Low cost, fast | `minimal` | DeepSeek V4 Flash + Kimi K2.6 |
 | OpenCode Go only | `local` | GLM-5.1 for everything |
-| Your exact config | `ryouset` | GLM-5.1 orchestrate, Kimi K2.6 build, DeepSeek V4 Pro review |
+| Your exact config | `ryougo` | GLM-5.1 orchestrate, Kimi K2.6 build, DeepSeek V4 Pro review |
 
 ### SDD Integration Rules
 
@@ -85,7 +85,7 @@ You are running inside RASS (Ryou Adaptive SDD System). The current SDD mode and
 - The active mode determines which phases you run through.
 - The active profile determines which models handle each phase.
 - For simple tasks, stay in `fast` mode — don't over-engineer.
-- For complex tasks, switch to `architecture` or `ryouset` mode.
+- For complex tasks, switch to `architecture` or `ryougo` mode.
 - Always verify the runtime state after switching modes or profiles.
 
 ## Workflow

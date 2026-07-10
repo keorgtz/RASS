@@ -42,6 +42,7 @@ import {
   promptAgentSelection,
   promptModeProfile,
   promptWorkflowAgent,
+  promptAgentModeProfiles,
   promptMainMenu,
   promptSnapshotSubmenu,
   promptSelectAgent,
@@ -268,6 +269,28 @@ async function runInstall(selectedIds, options = {}) {
       target.setInstalledModeProfile(targetCtx, options.modeProfile);
     }
 
+    if (agentId === 'opencode' && options.agentProfiles && !ctx.dryRun) {
+      const hasAny = options.agentProfiles.ryouOrchestrator || options.agentProfiles.ryouEfiPlanner;
+      if (hasAny) {
+        const resultAgentProfiles = target.setInstalledAgentModeProfiles(targetCtx, options.agentProfiles);
+        if (resultAgentProfiles?.agentProfiles) {
+          printInfo(
+            '  ' + ICONS.arrow +
+            ' Agent profiles: orchestrator=' +
+            (resultAgentProfiles.agentProfiles['ryou-orchestrator'] || 'default') +
+            ', planner=' +
+            (resultAgentProfiles.agentProfiles['ryou-efi-planner'] || 'default')
+          );
+          if (resultAgentProfiles.modelChanges && resultAgentProfiles.modelChanges.length) {
+            printInfo('  ' + ICONS.arrow + ' Agent models updated:');
+            for (const change of resultAgentProfiles.modelChanges) {
+              printInfo('    ' + ICONS.bullet + ' ' + change);
+            }
+          }
+        }
+      }
+    }
+
     if (result.success) {
       printSuccess(result.message || `${target.displayName} ready`);
     } else {
@@ -344,6 +367,18 @@ async function cmdInstall(args, flags) {
     force: !!flags.force,
     modeProfile: flags.modeprofile || flags['mode-profile'] || DEFAULT_MODEPROFILE,
     workflow: flags.workflow || DEFAULT_WORKFLOW,
+    agentProfiles: {
+      ryouOrchestrator:
+        (typeof flags['agent-profile-orchestrator'] === 'string'
+          ? flags['agent-profile-orchestrator']
+          : null) ||
+        (typeof flags['agent-profile'] === 'string' ? flags['agent-profile'] : null) ||
+        null,
+      ryouEfiPlanner:
+        typeof flags['agent-profile-planner'] === 'string'
+          ? flags['agent-profile-planner']
+          : null,
+    },
   };
 
   const selectedIds = resolveSelectedAgents(options, detectedAgents);
@@ -490,10 +525,12 @@ async function interactiveInstall() {
 
   const modeProfile = await promptModeProfile();
   const workflowAgent = await promptWorkflowAgent();
+  const agentProfiles = await promptAgentModeProfiles(modeProfile);
 
   await runInstall(selectedIds, {
     modeProfile,
     workflow: workflowAgent,
+    agentProfiles,
     dryRun: false,
     yes: false, // Prompt for snapshot; install confirmation already obtained above.
   });

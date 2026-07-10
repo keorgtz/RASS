@@ -123,7 +123,7 @@ assert(deriveProviderFromModel(updated.apply.primary) === 'google', 'derive goog
 
 console.log('\nCase 9: Cleanup');
 deleteModeProfile(profileName);
-switchModeProfile('ryouset');
+switchModeProfile('ryougo');
 const cleaned = getModeProfile(profileName);
 assert(cleaned === null, 'profile deleted');
 

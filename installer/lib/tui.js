@@ -320,7 +320,9 @@ export async function promptModeProfile() {
   const modeProfile = await select({
     message: THEME.primaryBright(ICONS.arrow + ' Select default SDD ModeProfile:'),
     options: [
-      { value: 'ryouset', label: THEME.successBright(ICONS.star + ' RyouSet (Recommended)'), hint: THEME.dim('Full pipeline — GLM-5.1 orchestrates, all 8 phases, per-phase models') },
+      { value: 'ryougo', label: THEME.successBright(ICONS.star + ' RyouGo (Recommended)'), hint: THEME.dim('Full pipeline — OpenCode Go, all 8 phases, per-phase models') },
+      { value: 'ryoukimi', label: THEME.secondaryBright(ICONS.diamond + ' RyouKimi'), hint: THEME.dim('Full pipeline — Kimi k2p7 primary, k2p6 fallback/archive') },
+      { value: 'ryouminimax', label: THEME.accentBright(ICONS.bullet + ' RyouMinimax'), hint: THEME.dim('Full pipeline — MiniMax-M3 primary, MiniMax-M2.7 fallback/archive') },
       { value: 'fast', label: THEME.accentBright(ICONS.bullet + ' Fast'), hint: THEME.dim('Orchestrator → Apply → Verify, low effort') },
       { value: 'architecture', label: THEME.secondaryBright(ICONS.diamond + ' Architecture'), hint: THEME.dim('Full pipeline for complex systems, high reasoning') },
       { value: 'ui', label: THEME.primaryBright(ICONS.sparkle + ' UI'), hint: THEME.dim('Orchestrator → Design → Apply → Verify, UI-focused') },
@@ -360,6 +362,48 @@ export async function promptWorkflowAgent() {
   }
 
   return workflowAgent;
+}
+
+/**
+ * Prompt the user to assign a ModeProfile to each Ryou primary agent.
+ * Lets the orchestrator and planner use different profiles independently.
+ * @returns {Promise<{ryouOrchestrator: string, ryouEfiPlanner: string}>}
+ */
+export async function promptAgentModeProfiles(defaultProfile = DEFAULT_MODEPROFILE) {
+  const profileOptions = [
+    { value: 'ryougo', label: THEME.successBright(ICONS.star + ' RyouGo'), hint: THEME.dim('OpenCode Go, all 8 phases') },
+    { value: 'ryoukimi', label: THEME.secondaryBright(ICONS.diamond + ' RyouKimi'), hint: THEME.dim('Kimi for coding: k2p7 / k2p6') },
+    { value: 'ryouminimax', label: THEME.accentBright(ICONS.bullet + ' RyouMinimax'), hint: THEME.dim('minimax-coding-plan: MiniMax-M3 / M2.7') },
+    { value: 'fast', label: THEME.accentBright(ICONS.bullet + ' Fast'), hint: THEME.dim('Orchestrator → Apply → Verify') },
+    { value: 'architecture', label: THEME.secondaryBright(ICONS.diamond + ' Architecture'), hint: THEME.dim('Full pipeline, high reasoning') },
+    { value: 'ui', label: THEME.primaryBright(ICONS.sparkle + ' UI'), hint: THEME.dim('UI-focused pipeline') },
+    { value: 'debug', label: THEME.warningBright(ICONS.triangle + ' Debug'), hint: THEME.dim('Explore → Verify → Apply loop') },
+    { value: 'enterprise', label: THEME.errorBright(ICONS.circle + ' Enterprise'), hint: THEME.dim('Maximum robustness, extreme reasoning') },
+    { value: 'legacy', label: THEME.infoBright(ICONS.dot + ' Legacy'), hint: THEME.dim('For refactors and modernization') },
+    { value: 'minimal', label: THEME.dim(ICONS.dash + ' Minimal'), hint: THEME.dim('Explore → Apply only') },
+  ];
+
+  const ryouOrchestrator = await select({
+    message: THEME.primaryBright(ICONS.arrow + ' ModeProfile for Ryou Orchestrator (implementation):'),
+    options: profileOptions,
+    initialValue: defaultProfile,
+  });
+  if (isCancel(ryouOrchestrator)) {
+    outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
+    process.exit(0);
+  }
+
+  const ryouEfiPlanner = await select({
+    message: THEME.secondaryBright(ICONS.arrow + ' ModeProfile for Ryou EFI Planner (planning):'),
+    options: profileOptions,
+    initialValue: defaultProfile,
+  });
+  if (isCancel(ryouEfiPlanner)) {
+    outro(THEME.warning('  ' + ICONS.triangle + ' Cancelled'));
+    process.exit(0);
+  }
+
+  return { ryouOrchestrator, ryouEfiPlanner };
 }
 
 /**

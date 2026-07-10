@@ -65,7 +65,7 @@ The canonical REASP assets live in `.opencode/`. `lib/compile.js` reads those as
 
 The OpenCode adapter resolves models from the active ModeProfile. Non-OpenCode targets embed the mapping as text because they do not support per-agent model routing.
 
-Example mapping (from `ryouset` ModeProfile):
+Example mapping (from `RyouGo` ModeProfile):
 
 ```text
 ryou-orchestrator: opencode-go/kimi-k2.7-code

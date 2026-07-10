@@ -1,5 +1,5 @@
 {
-  "active_modeprofile": "RyouSet",
+  "active_modeprofile": "RyouGo",
   "enabled_phases": [
     "orchestrator",
     "init",
@@ -67,5 +67,5 @@
       "fallbacks": []
     }
   },
-  "generated_at": "2026-07-09T15:35:46.374Z"
+  "generated_at": "2026-07-10T16:23:19.730Z"
 }

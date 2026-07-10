@@ -20,10 +20,15 @@ import {
   getCurrentModeProfile,
   getStatus,
   getReaspStatus,
+  getReaspConfig,
   setPrimaryWorkflow,
   setFeatureEnabled,
   getPlanningMethod,
   setPlanningMethod,
+  setAgentModeProfile,
+  getAgentModeProfile,
+  resolveAgentModel,
+  refreshAllAgentModels,
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   RYOU_AGENTS,
@@ -274,19 +279,118 @@ export default {
           value: '__create__',
           description: 'Create a custom SDD ModeProfile with your own phases and model routing',
         },
+        {
+          title: 'Assign ModeProfile to Ryou agent',
+          value: '__assign_agent__',
+          description: 'Set a specific ModeProfile for ryou-orchestrator or ryou-efi-planner',
+        },
       ];
 
       dialog.replace(
         () => api.ui.DialogSelect({
           title: 'SDD ModeProfile',
-          placeholder: 'Select a ModeProfile or create new...',
+          placeholder: 'Select a ModeProfile, create new, or assign to agent...',
           options,
           current: currentMp,
           onSelect: (option) => {
             if (option.value === '__create__') {
               showCreateNameDialog(dialog);
+            } else if (option.value === '__assign_agent__') {
+              showAssignAgentDialog(dialog);
             } else {
               showActionsDialog(dialog, option.value);
+            }
+          },
+        }),
+      );
+    };
+
+    // ── Assign ModeProfile to Ryou agent ────────────────────────────────────
+
+    const showAssignAgentDialog = (dialog) => {
+      const reasp = getReaspConfig();
+      const agentProfiles = reasp.agent_modeprofiles || {};
+      const defaultProfile = reasp.default_modeprofile || 'ryougo';
+
+      const options = [
+        {
+          title: `Ryou Orchestrator — ${agentProfiles['ryou-orchestrator'] || `${defaultProfile} (default)`}`,
+          value: 'ryou-orchestrator',
+          description: `Current: ${agentProfiles['ryou-orchestrator'] || `${defaultProfile} (default)`}`,
+        },
+        {
+          title: `Ryou EFI Planner — ${agentProfiles['ryou-efi-planner'] || `${defaultProfile} (default)`}`,
+          value: 'ryou-efi-planner',
+          description: `Current: ${agentProfiles['ryou-efi-planner'] || `${defaultProfile} (default)`}`,
+        },
+        {
+          title: '← Back',
+          value: '__back__',
+          description: 'Return to ModeProfile list',
+        },
+      ];
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: 'Assign ModeProfile to Ryou agent',
+          placeholder: 'Choose a Ryou agent...',
+          options,
+          onSelect: (option) => {
+            if (option.value === '__back__') {
+              showModeProfileDialog(dialog);
+            } else {
+              showAssignProfileDialog(dialog, option.value);
+            }
+          },
+        }),
+      );
+    };
+
+    const showAssignProfileDialog = (dialog, agentName) => {
+      const modeProfiles = listModeProfiles();
+      const currentProfile = getAgentModeProfile(agentName);
+
+      const options = [
+        ...modeProfiles.map((mp) => {
+          const assignedModel = resolveAgentModel(agentName, mp.id) || mp.default?.primary || 'unknown';
+          const isCurrent = mp.id === currentProfile;
+          return {
+            title: isCurrent ? `✓ ${mp.name} (current)` : mp.name,
+            value: mp.id,
+            description: `Model: ${assignedModel}`,
+          };
+        }),
+        {
+          title: '← Back',
+          value: '__back__',
+          description: 'Return to agent selection',
+        },
+      ];
+
+      dialog.replace(
+        () => api.ui.DialogSelect({
+          title: `Select ModeProfile for ${agentName}`,
+          placeholder: 'Choose a ModeProfile...',
+          options,
+          current: currentProfile,
+          onSelect: (option) => {
+            if (option.value === '__back__') {
+              showAssignAgentDialog(dialog);
+              return;
+            }
+            try {
+              setAgentModeProfile(agentName, option.value);
+              const profileChanges = refreshAllAgentModels();
+              const newModel = resolveAgentModel(agentName) || option.value;
+              dialog.clear();
+              api.ui.toast({
+                variant: 'success',
+                title: 'ModeProfile Assigned',
+                message: `${agentName} → "${option.value}" (model: ${newModel}). ${profileChanges.length ? 'Agent models synchronized.' : 'No model changes needed.'}`,
+              });
+            } catch (err) {
+              dialog.clear();
+              api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
             }
           },
         }),
@@ -1240,9 +1344,9 @@ export default {
           description: refiEnabled ? 'Keep REASP installed but turn off the EFI planning workflow' : 'Turn REFI planning back on inside REASP',
         },
         {
-          title: 'Switch to RyouSet',
-          value: 'ryouset',
-          description: 'Switch to RyouSet ModeProfile (full pipeline with all subagents)',
+          title: 'Switch to RyouGo',
+          value: 'ryougo',
+          description: 'Switch to RyouGo ModeProfile (full pipeline with all subagents)',
         },
         {
           title: 'View REASP Agents',
@@ -1349,14 +1453,14 @@ export default {
                   }
                   break;
                 }
-                case 'ryouset': {
+                case 'ryougo': {
                   try {
-                    switchModeProfile('ryouset');
+                    switchModeProfile('ryougo');
                   dialog.clear();
                   api.ui.toast({
                     variant: 'success',
-                    title: 'Switched to RyouSet',
-                    message: 'ModeProfile: RyouSet — Full pipeline with per-phase model routing. Agent models synchronized.',
+                    title: 'Switched to RyouGo',
+                    message: 'ModeProfile: RyouGo — Full pipeline with per-phase model routing. Agent models synchronized.',
                   });
                 } catch (err) {
                   dialog.clear();

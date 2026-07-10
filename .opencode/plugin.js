@@ -20,6 +20,10 @@ import {
   getReaspConfig,
   getPlanningMethod,
   setPlanningMethod,
+  getAgentModeProfile,
+  setAgentModeProfile,
+  resolveAgentModel,
+  refreshAllAgentModels,
   resolveAgentModels,
   refreshAllFromModeProfile,
   isRuntimeInSync,
@@ -67,7 +71,7 @@ export default {
             name: tool.schema
               .string()
               .optional()
-              .describe('ModeProfile name (required for switch, create, edit, delete). Available base modeprofiles: ryouset, fast, architecture, ui, debug, enterprise, legacy, minimal'),
+              .describe('ModeProfile name (required for switch, create, edit, delete). Available base modeprofiles: ryougo, ryoukimi, ryouminimax, fast, architecture, ui, debug, enterprise, legacy, minimal'),
             phases: tool.schema
               .string()
               .optional()
@@ -316,19 +320,23 @@ export default {
               switch (args.action) {
                 case 'status': {
                   const status = getStatus();
-                  const reasp = getReaspStatus();
+                  const reasp = getReaspConfig();
                   const agents = Object.keys(RYOU_AGENTS);
+                  const agentProfiles = reasp.agent_modeprofiles || {};
+                  const defaultProfile = reasp.default_modeprofile || 'ryougo';
                   return {
                     title: 'REASP Full Status',
                     output:
-                      `**System:** ${reasp.full_name}\n` +
+                      `**System:** ${reasp.full_name || 'REASP'}\n` +
                       `**Default workflow:** ${reasp.default_workflow}\n` +
                       `**REFI enabled:** ${reasp.features?.refi?.enabled ? 'yes' : 'no'}\n` +
                       `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
                       `**Phases:** ${status.modeprofile?.phases?.join(' → ') || 'none'}\n` +
                       `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
                       `**Default model:** ${status.modeprofile?.default_model || 'none'}\n\n` +
-                      `**Ryou Agents:** ${agents.length} configured\n` +
+                      `**Agent ModeProfiles:**\n` +
+                      agents.map((a) => `  - ${a}: ${agentProfiles[a] || defaultProfile}`).join('\n') +
+                      `\n\n**Ryou Agents:** ${agents.length} configured\n` +
                       agents.map((a) => `  - ${a}: ${RYOU_AGENTS[a].description}`).join('\n'),
                   };
                 }
@@ -366,14 +374,14 @@ export default {
                       `2. Deploy Ryou agents to your OpenCode config\n` +
                       `3. Deploy REFI rules, templates, and skill\n` +
                       `4. Let you choose between ryou-efi-planner and ryou-orchestrator\n` +
-                      `5. Configure SDD ModeProfile "ryouset" as default`,
+                      `5. Configure SDD ModeProfile "ryougo" as default`,
                   };
                 }
 
                 case 'validate': {
                   const current = getCurrentModeProfile();
                   if (!current) {
-                    return { title: 'Validate', output: 'No active ModeProfile. Run `sdd_mode_profile(action="switch", name="ryouset")` first.' };
+                    return { title: 'Validate', output: 'No active ModeProfile. Run `sdd_mode_profile(action="switch", name="ryougo")` first.' };
                   }
                   const before = isRuntimeInSync(current);
                   const result = refreshAllFromModeProfile(current);

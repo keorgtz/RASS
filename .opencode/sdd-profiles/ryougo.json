@@ -1,5 +1,5 @@
 {
-  "name": "RyouSet",
+  "name": "RyouGo",
   "description": "Efficient full pipeline — Kimi K2.7 Code for daily implementation, GLM-5.1 reserved for deep reasoning only, DeepSeek V4 Pro for review.",
   "phases": [
     "orchestrator",

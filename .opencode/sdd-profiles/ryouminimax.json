@@ -1,0 +1,76 @@
+{
+  "name": "RyouMinimax",
+  "description": "Full pipeline using minimax-coding-plan models (MiniMax-M3 primary, MiniMax-M2.7 fallback/archive).",
+  "phases": [
+    "orchestrator",
+    "init",
+    "explore",
+    "propose",
+    "design",
+    "apply",
+    "verify",
+    "archive"
+  ],
+  "model_strategy": "per-phase",
+  "default": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "medium",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "orchestrator": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "medium",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "init": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "low",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "explore": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "medium",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "propose": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "high",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "design": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "medium",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "apply": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "medium",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "verify": {
+    "primary": "minimax-coding-plan/MiniMax-M3",
+    "effort": "high",
+    "fallbacks": [
+      "minimax-coding-plan/MiniMax-M2.7"
+    ]
+  },
+  "archive": {
+    "primary": "minimax-coding-plan/MiniMax-M2.7",
+    "effort": "low",
+    "fallbacks": []
+  }
+}

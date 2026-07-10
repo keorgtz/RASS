@@ -171,7 +171,7 @@ function validateRepoGlobalSync() {
 
 console.log(`Validating RASS sync in: ${BASE_DIR}\n`);
 
-const currentProfile = readJson(path.join(BASE_DIR, 'runtime', 'current-modeprofile.json'))?.modeprofile || 'ryouset';
+const currentProfile = readJson(path.join(BASE_DIR, 'runtime', 'current-modeprofile.json'))?.modeprofile || 'ryougo';
 console.log(`Active ModeProfile: ${currentProfile}\n`);
 
 const profileIssues = validateProfile(currentProfile);

@@ -99,7 +99,7 @@ Instead of using a one-size-fits-all massive autonomous pipeline, **REASP adapts
 │  Complex Arch →  Architecture   (8 phases, deep reasoning)        │
 │  UI Design    →  UI Mode        (4 phases, design-focused)        │
 │  Debugging    →  Debug Mode      (4 phases, explore-verify loop)  │
-│  Full Workflow→  RyouSet        (8 phases, per-phase routing)     │
+│  Full Workflow→  RyouGo        (8 phases, per-phase routing)     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -145,7 +145,7 @@ REASP workflow adapted to its native configuration format.
 ## ✨ Features
 
 ### 🎛️ Adaptive Pipeline System
-- **8 Built-in ModeProfiles**: Fast, Architecture, UI, Debug, Enterprise, Legacy, Minimal, RyouSet
+- **8 Built-in ModeProfiles**: Fast, Architecture, UI, Debug, Enterprise, Legacy, Minimal, RyouGo
 - **Dynamic Phase Selection**: Enable/disable phases per task
 - **Effort Levels**: Low → Medium → High → Extreme
 - **Zero Overhead**: Simple tasks use minimal phases, complex tasks get full pipeline
@@ -240,7 +240,7 @@ After installation, activate your ModeProfile via your agent's interface:
 # • architecture — Complex systems, offline-first
 # • ui          — UI/UX work with MeridianUI
 # • debug       — Bug investigation, concurrency
-# • ryouset     — Full Ryou workflow (default)
+# • ryougo     — Full Ryou workflow (default)
 ```
 
 > **Note:** Slash commands (`/sdd`, `/reasp-setup`) are native only in OpenCode. In other agents, the equivalent workflow is described in the REASP system instructions block. Refer to your agent's prompt for available verbs.
@@ -320,7 +320,7 @@ planning session. Phases is the default; Epic + PART is opt-in through
 - RASS phases (`orchestrator → init → explore → propose → design → apply → verify
   → archive`) still execute INSIDE each PART, chosen by the active ModeProfile.
 - ModeProfiles (Fast / Architecture / UI / Debug / Enterprise / Legacy / Minimal /
-  RyouSet) unchanged.
+  RyouGo) unchanged.
 - Legacy REFI packets using `domain-shards/` keep working — migration is optional.
 
 For the canonical vocabulary, see `.opencode/refi/rules/epic-glossary.md`. For a
@@ -509,7 +509,7 @@ You can also manage snapshots from the interactive TUI by choosing **Snapshots**
 │   ├── global-rules.md
 │   └── meridianui.md
 ├── sdd-profiles/          # 8 ModeProfile definitions
-│   ├── ryouset.json
+│   ├── ryougo.json
 │   ├── fast.json
 │   ├── architecture.json
 │   ├── ui.json
@@ -602,7 +602,7 @@ scripts/
 ┌─────────────────────────────────────────┐
 │  SDD ModeProfile Manager                │
 │                                         │
-│  Current: ryouset                       │
+│  Current: ryougo                       │
 │                                         │
 │  [•] List all ModeProfiles              │
 │  [•] Switch to existing                 │
@@ -629,7 +629,7 @@ scripts/
 │  RASS Setup                             │
 │                                         │
 │  [•] Status — View current config       │
-│  [•] RyouSet — Switch to RyouSet        │
+│  [•] RyouGo — Switch to RyouGo        │
 │  [•] Agents — View 7 Ryou agents        │
 └─────────────────────────────────────────┘
 ```
@@ -676,7 +676,7 @@ ModeProfiles combine **which phases run** with **which models handle each phase*
 
 | ModeProfile | Phases | Strategy | Best For |
 |-------------|--------|----------|----------|
-| **🌟 RyouSet** | orchestrator → init → explore → propose → design → apply → verify → archive | per-phase | Full Ryou workflow with your exact config |
+| **🌟 RyouGo** | orchestrator → init → explore → propose → design → apply → verify → archive | per-phase | Full Ryou workflow with your exact config |
 | **⚡ Fast** | orchestrator → apply → verify | per-phase | CRUDs, simple UI, APIs |
 | **🏗️ Architecture** | orchestrator → init → explore → propose → design → apply → verify → archive | per-phase | Complex systems, offline-first |
 | **🎨 UI** | orchestrator → design → apply → verify | per-phase | MeridianUI, MAUI, Blazor, Avalonia |
@@ -830,7 +830,7 @@ When you switch ModeProfiles with `/sdd`, RASS **automatically synchronizes** ag
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │  │   │
 │  │  │ sdd-profiles/│  │   phases/    │  │    agents/              │ │  │   │
 │  │  │              │  │              │  │                         │ │  │   │
-│  │  │ • ryouset    │  │ • orchestrator│  │ • ryou-orchestrator   │ │  │   │
+│  │  │ • ryougo    │  │ • orchestrator│  │ • ryou-orchestrator   │ │  │   │
 │  │  │ • fast       │  │ • init       │  │ • planner              │ │  │   │
 │  │  │ • architecture│  │ • explore    │  │ • builder              │ │  │   │
 │  │  │ • ui         │  │ • propose    │  │ • architect            │ │  │   │

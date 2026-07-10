@@ -76,7 +76,7 @@ function syncPush() {
   if (fs.existsSync(rassCorePath)) {
     import(pathToFileURL(rassCorePath).href)
       .then((mod) => {
-        const current = mod.getCurrentModeProfile?.() || 'ryouset';
+        const current = mod.getCurrentModeProfile?.() || 'ryougo';
         const result = mod.refreshAllFromModeProfile?.(current);
         if (result) {
           console.log('\nRefreshed from ModeProfile:', current);
