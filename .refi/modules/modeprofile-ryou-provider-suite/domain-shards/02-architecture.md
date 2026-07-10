@@ -136,35 +136,45 @@ Los tres perfiles usan `model_strategy: "per-phase"`. La siguiente tabla muestra
 
 #### RyouKimi (Kimi for coding) — proveedor confirmado: `kimi-for-coding`
 
+Distribución por nivel de esfuerzo:
+- **Crítico (`high`)**: `k2p7` (top).
+- **Mediano (`medium`)**: `k2p6` (balanceado).
+- **Bajo (`low`)**: `k2p5`.
+
 | Fase | Primary | Fallbacks |
 |------|---------|-----------|
-| `default` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
-| `orchestrator` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
-| `init` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
-| `explore` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
+| `default` | `kimi-for-coding/k2p6` | `["kimi-for-coding/k2p5"]` |
+| `orchestrator` | `kimi-for-coding/k2p6` | `["kimi-for-coding/k2p5"]` |
+| `init` | `kimi-for-coding/k2p5` | `[]` |
+| `explore` | `kimi-for-coding/k2p6` | `["kimi-for-coding/k2p5"]` |
 | `propose` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
-| `design` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
-| `apply` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
+| `design` | `kimi-for-coding/k2p6` | `["kimi-for-coding/k2p5"]` |
+| `apply` | `kimi-for-coding/k2p6` | `["kimi-for-coding/k2p5"]` |
 | `verify` | `kimi-for-coding/k2p7` | `["kimi-for-coding/k2p6"]` |
-| `archive` | `kimi-for-coding/k2p6` | `[]` |
+| `archive` | `kimi-for-coding/k2p5` | `[]` |
 
-> **Razonamiento:** `k2p7` es el modelo más reciente y se usa como primary en todas las fases de trabajo principal. `k2p6` es el modelo anterior y se usa como fallback y para la fase `archive` (tareas livianas de documentación/cierre).
+> **Razonamiento:** `k2p7` (top) se reserva para `propose` y `verify` (effort `high`). `k2p6` (balanceado) cubre la mayoría del trabajo (`orchestrator`, `explore`, `design`, `apply` con effort `medium`). `k2p5` (bajo) solo en `init` y `archive` (effort `low`).
 
 #### RyouMinimax (minimax-coding-plan) — proveedor confirmado: `minimax-coding-plan`
 
+Distribución por nivel de esfuerzo:
+- **Crítico (`high`)**: `M3` (top).
+- **Mediano (`medium`)**: `M2.7`.
+- **Bajo (`low`)**: `M2.7` (no hay modelo más bajo en el catálogo actual).
+
 | Fase | Primary | Fallbacks |
 |------|---------|-----------|
-| `default` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
-| `orchestrator` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
-| `init` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
-| `explore` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
+| `default` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
+| `orchestrator` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
+| `init` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
+| `explore` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
 | `propose` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
-| `design` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
-| `apply` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
+| `design` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
+| `apply` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
 | `verify` | `minimax-coding-plan/MiniMax-M3` | `["minimax-coding-plan/MiniMax-M2.7"]` |
 | `archive` | `minimax-coding-plan/MiniMax-M2.7` | `[]` |
 
-> **Razonamiento:** `MiniMax-M3` es el modelo principal y se usa como primary en todas las fases. `MiniMax-M2.7` es el modelo anterior y se usa como fallback y para la fase `archive`.
+> **Razonamiento:** `M3` (top) se reserva para `propose` y `verify` (effort `high`). `M2.7` cubre el resto (medium y low). Si en el futuro aparece un modelo más económico del proveedor, se asignará a `init` y `archive`.
 
 ## 4. Cross-cutting concerns
 

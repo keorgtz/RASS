@@ -1,6 +1,6 @@
 {
   "name": "RyouKimi",
-  "description": "Full pipeline using Kimi for coding models (k2p7 primary, k2p6 fallback/archive).",
+  "description": "Kimi for coding pipeline — k2p7 only for critical phases (high effort), k2p6 for medium phases, k2p5 for low effort.",
   "phases": [
     "orchestrator",
     "init",
@@ -13,31 +13,29 @@
   ],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p6",
     "effort": "medium",
     "fallbacks": [
-      "kimi-for-coding/k2p6"
+      "kimi-for-coding/k2p5"
     ]
   },
   "orchestrator": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p6",
     "effort": "medium",
     "fallbacks": [
-      "kimi-for-coding/k2p6"
+      "kimi-for-coding/k2p5"
     ]
   },
   "init": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p5",
     "effort": "low",
-    "fallbacks": [
-      "kimi-for-coding/k2p6"
-    ]
+    "fallbacks": []
   },
   "explore": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p6",
     "effort": "medium",
     "fallbacks": [
-      "kimi-for-coding/k2p6"
+      "kimi-for-coding/k2p5"
     ]
   },
   "propose": {
@@ -48,17 +46,17 @@
     ]
   },
   "design": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p6",
     "effort": "medium",
     "fallbacks": [
-      "kimi-for-coding/k2p6"
+      "kimi-for-coding/k2p5"
     ]
   },
   "apply": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p6",
     "effort": "medium",
     "fallbacks": [
-      "kimi-for-coding/k2p6"
+      "kimi-for-coding/k2p5"
     ]
   },
   "verify": {
@@ -69,7 +67,7 @@
     ]
   },
   "archive": {
-    "primary": "kimi-for-coding/k2p6",
+    "primary": "kimi-for-coding/k2p5",
     "effort": "low",
     "fallbacks": []
   }

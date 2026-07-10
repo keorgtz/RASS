@@ -102,22 +102,22 @@ Crear `.opencode/sdd-profiles/ryoukimi.json` con la misma estructura que `ryougo
 ```json
 {
   "name": "RyouKimi",
-  "description": "Full pipeline using Kimi for coding models (k2p7 primary, k2p6 fallback/archive).",
+  "description": "Kimi for coding pipeline — k2p7 only for critical phases (high effort), k2p6 for medium phases, k2p5 for low effort.",
   "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "kimi-for-coding/k2p7",
+    "primary": "kimi-for-coding/k2p6",
     "effort": "medium",
-    "fallbacks": ["kimi-for-coding/k2p6"]
+    "fallbacks": ["kimi-for-coding/k2p5"]
   },
-  "orchestrator": { "primary": "kimi-for-coding/k2p7", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p6"] },
-  "init": { "primary": "kimi-for-coding/k2p7", "effort": "low", "fallbacks": ["kimi-for-coding/k2p6"] },
-  "explore": { "primary": "kimi-for-coding/k2p7", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p6"] },
+  "orchestrator": { "primary": "kimi-for-coding/k2p6", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p5"] },
+  "init": { "primary": "kimi-for-coding/k2p5", "effort": "low", "fallbacks": [] },
+  "explore": { "primary": "kimi-for-coding/k2p6", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p5"] },
   "propose": { "primary": "kimi-for-coding/k2p7", "effort": "high", "fallbacks": ["kimi-for-coding/k2p6"] },
-  "design": { "primary": "kimi-for-coding/k2p7", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p6"] },
-  "apply": { "primary": "kimi-for-coding/k2p7", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p6"] },
+  "design": { "primary": "kimi-for-coding/k2p6", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p5"] },
+  "apply": { "primary": "kimi-for-coding/k2p6", "effort": "medium", "fallbacks": ["kimi-for-coding/k2p5"] },
   "verify": { "primary": "kimi-for-coding/k2p7", "effort": "high", "fallbacks": ["kimi-for-coding/k2p6"] },
-  "archive": { "primary": "kimi-for-coding/k2p6", "effort": "low", "fallbacks": [] }
+  "archive": { "primary": "kimi-for-coding/k2p5", "effort": "low", "fallbacks": [] }
 }
 ```
 
@@ -128,20 +128,20 @@ Crear `.opencode/sdd-profiles/ryouminimax.json` con la misma estructura, cambian
 ```json
 {
   "name": "RyouMinimax",
-  "description": "Full pipeline using minimax-coding-plan models (MiniMax-M3 primary, MiniMax-M2.7 fallback/archive).",
+  "description": "minimax-coding-plan pipeline — M3 only for critical phases (high effort), M2.7 for medium and low effort.",
   "phases": ["orchestrator", "init", "explore", "propose", "design", "apply", "verify", "archive"],
   "model_strategy": "per-phase",
   "default": {
-    "primary": "minimax-coding-plan/MiniMax-M3",
+    "primary": "minimax-coding-plan/MiniMax-M2.7",
     "effort": "medium",
-    "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"]
+    "fallbacks": []
   },
-  "orchestrator": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "medium", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
-  "init": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "low", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
-  "explore": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "medium", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
+  "orchestrator": { "primary": "minimax-coding-plan/MiniMax-M2.7", "effort": "medium", "fallbacks": [] },
+  "init": { "primary": "minimax-coding-plan/MiniMax-M2.7", "effort": "low", "fallbacks": [] },
+  "explore": { "primary": "minimax-coding-plan/MiniMax-M2.7", "effort": "medium", "fallbacks": [] },
   "propose": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "high", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
-  "design": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "medium", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
-  "apply": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "medium", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
+  "design": { "primary": "minimax-coding-plan/MiniMax-M2.7", "effort": "medium", "fallbacks": [] },
+  "apply": { "primary": "minimax-coding-plan/MiniMax-M2.7", "effort": "medium", "fallbacks": [] },
   "verify": { "primary": "minimax-coding-plan/MiniMax-M3", "effort": "high", "fallbacks": ["minimax-coding-plan/MiniMax-M2.7"] },
   "archive": { "primary": "minimax-coding-plan/MiniMax-M2.7", "effort": "low", "fallbacks": [] }
 }

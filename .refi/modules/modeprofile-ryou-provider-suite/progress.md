@@ -58,4 +58,4 @@
 | 2026-07-10 | Packet creado con todos los domain-shards. | Ryou EFI Planner |
 | 2026-07-10 | Implementación completada: perfiles creados, referencias actualizadas, agent_modeprofiles funcional, tests pasando. | Ryou Orchestrator |
 | 2026-07-10 | Resumen diario creado en `AI/Summarys/summary-2026-07-10.html`. | Ryou Orchestrator |
-| 2026-07-10 | TUI mejorada: `showAssignAgentDialog` lista todos los RYOU_AGENTS (principales + subagentes), `showAssignProfileDialog` muestra preview del modelo asignado, `resolveAgentModel` agregado al import, toast mejorado con modelo resultante. | Ryou Orchestrator |
+| 2026-07-10 | Distribución ajustada: top solo en fases críticas (`high` effort). Kimi: `k2p7` solo en propose/verify, `k2p6` en medium, `k2p5` en low. Minimax: `M3` solo en propose/verify, `M2.7` en el resto. | Ryou Orchestrator |

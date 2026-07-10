@@ -131,6 +131,44 @@
     </div>
 
     <div class="card">
+      <h2>Distribución top/balanced (2026-07-10)</h2>
+      <p>Se aplicó el patrón de <code>RyouGo</code> a <code>RyouKimi</code> y <code>RyouMinimax</code> para optimizar tokens:</p>
+      <table>
+        <thead><tr><th>Fase</th><th>Effort</th><th>RyouKimi</th><th>RyouMinimax</th></tr></thead>
+        <tbody>
+          <tr><td>orchestrator</td><td>medium</td><td>k2p7 (top)</td><td>M3 (top)</td></tr>
+          <tr><td>init</td><td>low</td><td>k2p6 (balanced)</td><td>M2.7 (balanced)</td></tr>
+          <tr><td>explore</td><td>medium</td><td>k2p7</td><td>M3</td></tr>
+          <tr><td>propose</td><td>high</td><td>k2p7</td><td>M3</td></tr>
+          <tr><td>design</td><td>medium</td><td>k2p7</td><td>M3</td></tr>
+          <tr><td>apply</td><td>medium</td><td>k2p7</td><td>M3</td></tr>
+          <tr><td>verify</td><td>high</td><td>k2p7</td><td>M3</td></tr>
+          <tr><td>archive</td><td>low</td><td>k2p6 (balanced)</td><td>M2.7 (balanced)</td></tr>
+        </tbody>
+      </table>
+      <p>El modelo top se reserva para trabajo pesado; el balanceado solo en <code>init</code> y <code>archive</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2>Distribución top/balanced/bajo (2026-07-10)</h2>
+      <p>Top solo en fases críticas (<code>high</code> effort). Kimi: <code>k2p7</code> solo en propose/verify, <code>k2p6</code> en medium, <code>k2p5</code> en low. Minimax: <code>M3</code> solo en propose/verify, <code>M2.7</code> en el resto.</p>
+      <table>
+        <thead><tr><th>Fase</th><th>Effort</th><th>RyouKimi</th><th>RyouMinimax</th></tr></thead>
+        <tbody>
+          <tr><td>orchestrator</td><td>medium</td><td>k2p6</td><td>M2.7</td></tr>
+          <tr><td>init</td><td>low</td><td>k2p5</td><td>M2.7</td></tr>
+          <tr><td>explore</td><td>medium</td><td>k2p6</td><td>M2.7</td></tr>
+          <tr><td>propose</td><td>high</td><td>k2p7 (top)</td><td>M3 (top)</td></tr>
+          <tr><td>design</td><td>medium</td><td>k2p6</td><td>M2.7</td></tr>
+          <tr><td>apply</td><td>medium</td><td>k2p6</td><td>M2.7</td></tr>
+          <tr><td>verify</td><td>high</td><td>k2p7 (top)</td><td>M3 (top)</td></tr>
+          <tr><td>archive</td><td>low</td><td>k2p5</td><td>M2.7</td></tr>
+        </tbody>
+      </table>
+      <p>Kimi tiene 3 niveles (k2p7/k2p6/k2p5). Minimax usa 2 niveles (M3/M2.7) por catálogo actual.</p>
+    </div>
+
+    <div class="card">
       <h2>Decisiones técnicas relevantes</h2>
       <ul>
         <li><code>RyouGo</code> se mantiene como perfil por defecto del sistema.</li>
