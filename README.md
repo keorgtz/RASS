@@ -81,6 +81,10 @@ It combines:
 - **RASS** for adaptive orchestration and implementation workflows.
 - **REFI** for enterprise packet planning, domain sharding, and implementation handoff.
 
+REASP keeps the original **Phases** planning method as the default, while making
+**Epic + PART** available as an explicit, user-selectable alternative. Switch
+methods any time via `/reasp-setup` or `reasp_setup(action="set-planning-method")`.
+
 Instead of forcing one agent to do everything, REASP lets you:
 
 1. plan deeply with **Ryou EFI Planner**,
@@ -175,12 +179,14 @@ REASP workflow adapted to its native configuration format.
 - `/sdd-mode` / `/sm` — Quick mode switch
 - `/sdd-profile` / `/sp` — Quick profile switch
 - `/rass-setup` / `/rs` — Legacy alias for REASP setup
-- `/reasp-setup` / `/reasp` — Switch between Ryou EFI Planner and Ryou Orchestrator
+- `/reasp-setup` / `/reasp` — Switch between Ryou EFI Planner and Ryou Orchestrator, toggle REFI, and select the planning method
 
 ### 🔧 AI Tools (Server-Side)
 - `sdd_mode_profile` — Programmatic ModeProfile management
 - `rass_setup` — Backward-compatible RASS/REASP status tool
-- `reasp_setup` — REASP status, workflow switching, and REFI toggling
+- `reasp_setup` — REASP status, workflow switching, REFI toggling, and planning-method selection
+  - `reasp_setup(action="set-planning-method", method="phases")` — legacy domain-shard planning
+  - `reasp_setup(action="set-planning-method", method="epic")` — Epic + PART v2 planning
 
 ---
 
@@ -261,6 +267,64 @@ RASS (Fast Mode):
 
 Done in 3 phases instead of 8. Efficient. Fast. Precise.
 ```
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- REFI v2 · Epic + PART Methodology -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+
+## 🧭 REFI v2 · Epic + PART Methodology
+
+REFI supports both the original **Phases** planning method and the new **Epic +
+PART** methodology. The active method is selected in `reasp.config.json` via
+`planning_method` and is honored by `ryou-efi-planner.md` at the start of every
+planning session. Phases is the default; Epic + PART is opt-in through
+`/reasp-setup` or `reasp_setup(action="set-planning-method", method="epic")`.
+
+```text
+            ┌────────────── Ryou EFI Planner ──────────────┐
+            │                                               │
+            │   Pass 1 — Epic Breakdown                     │
+            │   ├─ request.md                                │
+            │   ├─ master-blueprint.md (con EPIC breakdown)  │
+            │   ├─ epics/matrix.md                           │
+            │   └─ epics/<epic>/README.md  (x N)             │
+            │        ⤷ STOP · WAIT FOR USER ⤷                │
+            │   Pass 2 — PART Detail (por EPIC)              │
+            │   └─ epics/<epic>/parts/PARTnn.md (15 sec.)     │
+            │        ⤷ STOP · entre EPICs ⤷                  │
+            │   Pass 3 — Orchestration                       │
+            │   └─ orchestration-map.md / progress.md /       │
+            │      verification.md                           │
+            │        ⤷ HANDOFF TO ORCHESTRATOR ⤷             │
+            │                                               │
+            │   Cada PART atraviesa 8 gates                  │
+            │   1·Architecture  2·Scope  3·UX  4·Manual      │
+            │   5·DefectClosure 6·TechDoc 7·UserDoc 8·SignOff│
+            └───────────────────────────────────────────────┘
+```
+
+**What changed**
+
+| Layer | Before (REFI v1) | After (REFI v2) |
+|---|---|---|
+| Top-level concept | Domain shards | **EPICs** (subsystem-aligned) |
+| Execution unit | 7-section shard | **PART** with **15 sections** + footer of 8 gates |
+| Quality gates | 5 generic bullets | **8 mechanical gates** with evidence minimum |
+| Planner workflow | 7 linear steps (no user waits) | **3 passes** with **2 STOP gates** waiting for user |
+| Code kickoff | After 1 shard detailed | **After ALL EPICs × ALL PARTs detailed** (100 % rule) |
+
+**What did NOT change**
+
+- RASS phases (`orchestrator → init → explore → propose → design → apply → verify
+  → archive`) still execute INSIDE each PART, chosen by the active ModeProfile.
+- ModeProfiles (Fast / Architecture / UI / Debug / Enterprise / Legacy / Minimal /
+  RyouSet) unchanged.
+- Legacy REFI packets using `domain-shards/` keep working — migration is optional.
+
+For the canonical vocabulary, see `.opencode/refi/rules/epic-glossary.md`. For a
+worked example, see `.refi/modules/example-todo-cli/`.
 
 ---
 

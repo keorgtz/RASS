@@ -18,6 +18,8 @@ import {
   setPrimaryWorkflow,
   setFeatureEnabled,
   getReaspConfig,
+  getPlanningMethod,
+  setPlanningMethod,
   resolveAgentModels,
   refreshAllFromModeProfile,
   isRuntimeInSync,
@@ -398,11 +400,12 @@ export default {
 
         reasp_setup: tool({
           description:
-            'Manage REASP setup. View combined RASS/REFI status, switch between Ryou EFI Planner and Ryou Orchestrator, or enable and disable REFI.',
+            'Manage REASP setup. View combined RASS/REFI status, switch between Ryou EFI Planner and Ryou Orchestrator, toggle REFI, ' +
+            'or set the planning methodology. Use set-planning-method to switch between phases (legacy) and epic (v2).',
           args: {
             action: tool.schema
-              .enum(['status', 'deploy', 'switch-workflow', 'toggle-feature'])
-              .describe('Action: status, deploy, switch-workflow, or toggle-feature'),
+              .enum(['status', 'deploy', 'switch-workflow', 'toggle-feature', 'set-planning-method'])
+              .describe('Action: status, deploy, switch-workflow, toggle-feature, or set-planning-method'),
             workflow: tool.schema
               .string()
               .optional()
@@ -415,6 +418,10 @@ export default {
               .boolean()
               .optional()
               .describe('Desired feature state for toggle-feature'),
+            method: tool.schema
+              .enum(['phases', 'epic'])
+              .optional()
+              .describe('Planning method to activate (required for set-planning-method). phases=legacy domain-shard planning, epic=EPIC+PART v2 planning.'),
           },
           async execute(args, _context) {
             try {
@@ -426,6 +433,7 @@ export default {
                     output:
                       `**System:** ${status.full_name}\n` +
                       `**Workflow agent:** ${status.default_workflow}\n` +
+                      `**Planning method:** ${status.planning_method}\n` +
                       `**ModeProfile:** ${status.current_modeprofile || 'none'}\n` +
                       `**REFI enabled:** ${status.features?.refi?.enabled ? 'yes' : 'no'}\n` +
                       `**RASS enabled:** ${status.features?.rass?.enabled ? 'yes' : 'no'}\n` +
@@ -456,6 +464,16 @@ export default {
                   return {
                     title: 'Feature Updated',
                     output: `Feature **${args.feature}** is now **${status.features?.[args.feature]?.enabled ? 'enabled' : 'disabled'}**. Active workflow: **${status.default_workflow}**.`,
+                  };
+                }
+                case 'set-planning-method': {
+                  if (!args.method) {
+                    return { title: 'Error', output: 'method is required for set-planning-method. Use "phases" or "epic".' };
+                  }
+                  const result = setPlanningMethod(args.method);
+                  return {
+                    title: 'Planning Method Updated',
+                    output: `Planning method set to **${result.planning_method}**.`,
                   };
                 }
                 default:

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>REASP Summary 2026-07-09 · Install Fix + Guide Update</title>
+  <title>REASP Summary 2026-07-09 · Install Fix + Guide Update + REFI v2 Epic/PART</title>
   <style>
     body { font-family: Arial, sans-serif; background:#0b1220; color:#e5eefc; margin:0; padding:24px; }
     .card { max-width:980px; margin:0 auto; background:#121a2b; border:1px solid #24324d; border-radius:16px; padding:28px 32px; }
@@ -38,7 +38,8 @@
 <body>
   <div class="card">
     <h1>REASP — Resumen 2026-07-09</h1>
-    <p class="muted">Sesión 4 · Fix del install global + documentación del soporte de proveedores en la guía HTML. El código de proveedores ya estaba en <code>.opencode/</code> desde la sesión 3; el problema era de distribución, PATH de Windows e instalación duplicada.</p>
+    <p class="muted"><strong>Sesión 4</strong> · Fix del install global + documentación del soporte de proveedores en la guía HTML. El código de proveedores ya estaba en <code>.opencode/</code> desde la sesión 3; el problema era de distribución, PATH de Windows e instalación duplicada.</p>
+    <p class="muted"><strong>Sesión 5</strong> · Upgrade del sistema de planificación REFI: de shards planos a la metodología <strong>Epic + PART</strong> con 8 puertas mecánicas. REFI ahora planifica en 3 pasadas con 2 STOP gates que esperan confirmación del usuario antes de escribir código.</p>
 
     <div class="grid">
       <div class="stat success">
@@ -221,6 +222,360 @@ npm install -g reasp-cli-1.0.0.tgz</pre>
       <li><code>~/.config/opencode/plugin.js</code> — actualizado a 43C6…</li>
       <li><code>~/.config/opencode/tui.js</code> — actualizado a 43C6…</li>
       <li><code>~/.config/opencode/runtime/current-modeprofile.json</code> — corregido a <code>ryouset</code></li>
+    </ul>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- Sesión 5 · REFI v2 · Epic + PART Methodology Upgrade -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+    <h1 style="color:#86efac;">Sesión 5 — REFI v2 · Epic + PART Methodology</h1>
+    <p class="muted">Upgrade del planner REFI: las fases como concepto top-level se reemplazan por <strong>EPICs</strong> (subsistema/capacidad) y cada EPIC contiene <strong>PARTs</strong> (15 secciones + 8 puertas mecánicas). El planner ahora espera al usuario en 2 puntos antes de avanzar a código. Backward-compatible con los 4 paquetes legacy existentes.</p>
+
+    <div class="grid">
+      <div class="stat success">
+        <div class="label">EPICs implementados</div>
+        <div class="value">7 / 7</div>
+      </div>
+      <div class="stat success">
+        <div class="label">PARTs ejecutados</div>
+        <div class="value">27 / 27</div>
+      </div>
+      <div class="stat success">
+        <div class="label">8-puertas firmadas</div>
+        <div class="value">216</div>
+      </div>
+      <div class="stat success">
+        <div class="label">Dry-run migración</div>
+        <div class="value">OK</div>
+      </div>
+      <div class="stat success">
+        <div class="label">Paquetes legacy intactos</div>
+        <div class="value">4 / 4</div>
+      </div>
+    </div>
+
+    <h2>Problema resuelto</h2>
+    <p>El método REFI v1 trabajaba con "shards" planos de 7 secciones. Para una sola fase, el planner pasaba a implementación sin esperar al usuario. No había anclaje contra realidad en los shards (§3 ausente), no había gates mecánicos verificables (5 viñetas genéricas), y no había forma de decir "ya planeamos TODO, ahora sí ejecuta". Esto provocaba:</p>
+    <ul>
+      <li>Implementación prematura con código todavía por afinar.</li>
+      <li>Alucinaciones sin ancla contra archivos/líneas reales.</li>
+      <li>Criterios de "done" subjetivos (no testeables).</li>
+      <li>Re-planning a media ejecución.</li>
+    </ul>
+
+    <h2>Solución aplicada — metodología Epic + PART</h2>
+
+    <h3>Workflow de 3 pasadas (con 2 STOP gates de usuario)</h3>
+    <div class="flow">Ryou EFI Planner
+    │
+    ├─ Pass 1 — Epic Breakdown
+    │   ├─ request.md
+    │   ├─ master-blueprint.md (con EPIC breakdown)
+    │   ├─ epics/matrix.md
+    │   └─ epics/<epic>/README.md (backlog × N)
+    │        ⤷ STOP · WAIT FOR USER ⤷  ← Gate A
+    │
+    ├─ Pass 2 — PART Detail (per EPIC, on demand)
+    │   └─ epics/<epic>/parts/PARTnn.md (15 sec + 8 gates footer)
+    │        ⤷ STOP · entre EPICs ⤷   ← Gate B
+    │
+    └─ Pass 3 — Orchestration & Hand-off
+        ├─ orchestration-map.md
+        ├─ progress.md
+        ├─ verification.md
+        ⤷ HANDOFF TO ORCHESTRATOR ⤷</div>
+
+    <h3>15 secciones obligatorias por PART</h3>
+    <table>
+      <thead><tr><th>#</th><th>Sección</th><th>N/A permitido</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Purpose</td><td>no</td></tr>
+        <tr><td>2</td><td>Current State</td><td>sí — greenfield</td></tr>
+        <tr><td>3</td><td><strong>Comparison against baseline</strong></td><td>sí — greenfield con justificación</td></tr>
+        <tr><td>4</td><td>Missing / Required Scope</td><td>no</td></tr>
+        <tr><td>5</td><td>UX Problems</td><td>sí — no UI</td></tr>
+        <tr><td>6</td><td>Backend / Logic Problems</td><td>no</td></tr>
+        <tr><td>7</td><td>Frontend / Presentation Problems</td><td>sí — no UI</td></tr>
+        <tr><td>8</td><td>Technical Debt</td><td>no ("none" es aceptable)</td></tr>
+        <tr><td>9</td><td>Required Improvements</td><td>no (verb + objeto + medida)</td></tr>
+        <tr><td>10</td><td>Implementation Plan</td><td>no (archivos exactos)</td></tr>
+        <tr><td>11</td><td>Automated Test Plan</td><td>no</td></tr>
+        <tr><td>12</td><td>Manual Validation Checklist</td><td>no</td></tr>
+        <tr><td>13</td><td>Technical Documentation to produce</td><td>no</td></tr>
+        <tr><td>14</td><td>User Documentation to produce</td><td>no</td></tr>
+        <tr><td>15</td><td><strong>Acceptance Criteria</strong></td><td>no (testable bullets)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Las 8 puertas mecánicas (strict order 1→8)</h3>
+    <ol>
+      <li><span class="badge purple">Architecture Review</span> — diseño vs invariantes / ADRs del proyecto.</li>
+      <li><span class="badge purple">Scope &amp; Completeness Audit</span> — tabla declared vs actual, gaps clasificados.</li>
+      <li><span class="badge purple">UX/Design Review</span> — MeridianUI si UI; contratos si no UI.</li>
+      <li><span class="badge purple">Manual / Runtime Validation</span> — checklist §12 ejecutado con tickboxes.</li>
+      <li><span class="badge purple">Defect Closure</span> — todo defecto de gates 1–4 cerrado en el mismo PART.</li>
+      <li><span class="badge purple">Technical Documentation</span> — docs técnicos producidos.</li>
+      <li><span class="badge purple">User Documentation</span> — docs de usuario producidos.</li>
+      <li><span class="badge purple">Final Review &amp; Sign-off</span> — build 0/0 + suite verde + Acceptance Criteria re-leído + firma.</li>
+    </ol>
+
+    <h2>EPICs implementados en esta sesión</h2>
+    <table>
+      <thead><tr><th>#</th><th>EPIC</th><th>PARTs</th><th>Entregable</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Conventions &amp; Terminology</td><td>5</td><td><code>rules/epic-glossary.md</code> + <code>rules/global-rules.md</code> v2</td></tr>
+        <tr><td>5</td><td>8-Gate Verification System</td><td>3</td><td><code>rules/quality-gates.md</code> v2 + <code>anti-hallucination.md</code> v2 + template <code>verification.md</code></td></tr>
+        <tr><td>2</td><td>Ryou EFI Planner Agent Prompt</td><td>4</td><td>prompt reescrito con 3 Passes + Gate A literal + Gate B literal + anti-hallucination block + handoff literal</td></tr>
+        <tr><td>3</td><td>REFI Packet Contract &amp; Folder Structure</td><td>4</td><td><code>refi/README.md</code> v2 + <code>config.yaml</code> con 5 flags <code>epic_part.*</code></td></tr>
+        <tr><td>4</td><td>Templates &amp; Module Skeleton</td><td>4</td><td>3 templates nuevos (<code>part-template.md</code>, <code>epic-readme-template.md</code>, <code>epic-matrix-template.md</code>) + <code>modules/_template/epics/00-demo/</code></td></tr>
+        <tr><td>6</td><td>User Documentation &amp; Worked Example</td><td>4</td><td>sección REFI v2 en <code>README.md</code> raíz + diagrama ASCII + <code>.refi/modules/example-todo-cli/</code> (2 EPICs × 3 PARTs)</td></tr>
+        <tr><td>7</td><td>Backward Compatibility &amp; Migration Helper</td><td>3</td><td>política dual-format + <code>scripts/migrate-refi-module.js</code> (ESM, dry-run validado) + doc de migración</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Decisiones técnicas clave</h2>
+    <ul>
+      <li><strong>RASS phases se preservan intactas.</strong> El Epic/PART es la capa <em>externa</em> (planeación). Las fases RASS son la capa <em>interna</em> dentro de cada PART durante ejecución. Complementary layers.</li>
+      <li><strong>ModoProfile no se toca.</strong> Las 8 ModeProfiles (Fast, Architecture, UI, Debug, Enterprise, Legacy, Minimal, RyouSet) siguen eligiendo qué fases RASS se ejecutan dentro de cada PART.</li>
+      <li><strong>Backward-compat por default.</strong> Los 4 paquetes legacy (<code>reasp-backup-manager</code>, <code>linux-compat</code>, <code>multi-agent-compatibility</code>, <code>sdd-profile-provider-support</code>) siguen funcionando — el flag <code>epic_part.legacy_domain_shards_fallback: true</code> los acepta sin tocarlos.</li>
+      <li><strong>Helper de migración = opcional.</strong> El usuario decide por paquete; nunca auto-migración silenciosa. El helper crea un nuevo folder <code>&lt;slug&gt;-v2/</code> y nunca toca el original.</li>
+      <li><strong>Anti-hallucination reforzado en §3 y §15.</strong> §3 obliga ancla contra archivos/líneas reales del repo. §15 obliga bullets testeables. Frases como "industry standard" o "improve performance" sin medida son rechazadas.</li>
+    </ul>
+
+    <h2>Verificación</h2>
+    <pre>// Sanity check del agente reescrito
+$ grep -c "Hand-off a Ryou Orchestrator" .opencode/agents/ryou-efi-planner.md
+1   ← literal presente
+
+$ grep -c "He generado `request.md`" .opencode/agents/ryou-efi-planner.md
+1   ← Gate A literal presente
+
+// Sanity check de los 5 flags de config
+$ grep "epic_part\." .opencode/refi/config.yaml | wc -l
+5
+
+// Sanity check de los 6 PARTs del worked-example
+$ for f in .refi/modules/example-todo-cli/epics/*/parts/PART*.md; do
+    echo "$f: sections=$(grep -c '^## [0-9]' $f) gates=$(grep -c 'Gate [1-8] (' $f)"
+  done
+.../PART01_CLISkeleton.md: sections=15 gates=8
+.../PART02_CommandsAddListComplete.md: sections=15 gates=8
+.../PART03_PersistenceJSON.md: sections=15 gates=8
+.../PART01_HelpTexts.md: sections=15 gates=8
+.../PART02_ReadmeGen.md: sections=15 gates=8
+.../PART03_ManualSmoke.md: sections=15 gates=8
+
+// Dry-run del helper de migración
+$ node scripts/migrate-refi-module.js reasp-backup-manager --dry-run
+migrate-refi-module: source = .refi/modules/reasp-backup-manager/
+migrate-refi-module: output = .refi/modules/reasp-backup-manager-v2
+migrate-refi-module: legacy shards = 6
+--- DRY RUN · no files written ---
+Planned files:
+  reasp-backup-manager-v2/request.md
+  reasp-backup-manager-v2/epics/matrix.md
+  reasp-backup-manager-v2/epics/00-legacy-shards/README.md
+  reasp-backup-manager-v2/epics/00-legacy-shards/parts/PART01..06_*.md
+  reasp-backup-manager-v2/orchestration-map.md
+  reasp-backup-manager-v2/progress.md
+  reasp-backup-manager-v2/verification.md</pre>
+
+    <h2>Archivos creados / modificados</h2>
+
+    <h3>Nuevos archivos</h3>
+    <ul>
+      <li><code>.opencode/refi/rules/epic-glossary.md</code> — vocabulario canónico (REFI, REFI Packet, Epic, PART, 8 Gates, Baseline, Acceptance Criteria, Planning 100% Rule, etc.) + anatomía del Epic + 15 secciones del PART + tabla de 8 puertas + reglas N/A.</li>
+      <li><code>.opencode/refi/templates/part-template.md</code> — 15 secciones numeradas + footer de 8 puertas.</li>
+      <li><code>.opencode/refi/templates/epic-readme-template.md</code> — 9 secciones obligatorias.</li>
+      <li><code>.opencode/refi/templates/epic-matrix-template.md</code> — tabla de 8 columnas + reglas de promoción.</li>
+      <li><code>.opencode/refi/modules/_template/epics/matrix.md</code> + <code>00-demo/README.md</code> + <code>00-demo/parts/PART01_demo.md</code> — scaffold copiable.</li>
+      <li><code>.refi/modules/example-todo-cli/</code> — paquete worked-example completo (2 EPICs × 3 PARTs + matrix + orchestration-map + progress + verification).</li>
+      <li><code>scripts/migrate-refi-module.js</code> — helper ESM de migración legacy → v2 con dry-run determinista.</li>
+    </ul>
+
+    <h3>Archivos modificados</h3>
+    <ul>
+      <li><code>.opencode/agents/ryou-efi-planner.md</code> — reescrito (Pass 1 → STOP → Pass 2 → STOP → Pass 3 → handoff).</li>
+      <li><code>.opencode/refi/README.md</code> — v2 con diagrama ASCII, contract de archivos, política backward-compat.</li>
+      <li><code>.opencode/refi/config.yaml</code> — 5 flags nuevos en <code>epic_part:</code>.</li>
+      <li><code>.opencode/refi/rules/global-rules.md</code> — reemplazado por la versión v2 (3 Passes, 4 Directivas).</li>
+      <li><code>.opencode/refi/rules/quality-gates.md</code> — reemplazado por la tabla de 8 puertas con evidencia mínima.</li>
+      <li><code>.opencode/refi/rules/anti-hallucination.md</code> — v2 con cláusulas §3 / §9 / §10 / §15.</li>
+      <li><code>.opencode/refi/modules/_template/request.md</code>, <code>master-blueprint.md</code>, <code>orchestration-map.md</code>, <code>progress.md</code>, <code>verification.md</code> — actualizados al nuevo contrato.</li>
+      <li><code>README.md</code> (raíz) — sección "REFI v2 · Epic + PART Methodology" + tabla comparativa v1 vs v2 + diagrama ASCII.</li>
+    </ul>
+
+    <h3>Paquetes legacy preservados (no migrados automáticamente)</h3>
+    <ul>
+      <li><code>.refi/modules/reasp-backup-manager/</code> — intacto.</li>
+      <li><code>.refi/modules/linux-compat/</code> — intacto.</li>
+      <li><code>.refi/modules/multi-agent-compatibility/</code> — intacto.</li>
+      <li><code>.refi/modules/sdd-profile-provider-support/</code> — intacto.</li>
+    </ul>
+
+    <h3>Paquetes nuevos</h3>
+    <ul>
+      <li><code>.refi/modules/refi-epic-part-methodology/</code> — packet REFI que documenta el upgrade mismo (request, master-blueprint, epics/matrix, 7 EPIC READMEs, 27 PARTs detallados, orchestration-map, progress, verification).</li>
+      <li><code>.refi/modules/example-todo-cli/</code> — worked-example de la nueva metodología.</li>
+    </ul>
+
+    <h2>Cómo se usa ahora (flujo de usuario)</h2>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>El usuario pide algo al agente: <em>"Necesito un módulo de autenticación JWT"</em>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>El planner produce <strong>Pass 1</strong>: <code>request.md</code>, <code>master-blueprint.md</code>, <code>epics/matrix.md</code>, y 1+ READMEs de EPIC. <strong>Se detiene.</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>El usuario responde: <em>"Detalla los PARTs del EPIC 01"</em> o <em>"Detalla TODOS"</em>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>El planner produce <strong>Pass 2</strong>: los PARTs (15 secciones + footer de 8 puertas). <strong>Se detiene.</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div>El usuario confirma → <strong>Pass 3</strong>: <code>orchestration-map.md</code>, <code>progress.md</code>, <code>verification.md</code>. Hand-off literal a Ryou Orchestrator.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div>Orchestrator ejecuta EPIC por EPIC, PART por PART, gate por gate. Al cerrar las 8 puertas firma el footer del PART.</div>
+    </div>
+
+    <h2>Anti-patterns evitados explícitamente</h2>
+    <ul>
+      <li>❌ Implementación mientras los PARTs aún están en backlog.</li>
+      <li>❌ Saltarse una gate para llegar a la siguiente.</li>
+      <li>❌ Cerrar un PART con Acceptance Criteria no testeables.</li>
+      <li>❌ Auto-migrar paquetes legacy sin pedirlo.</li>
+      <li>❌ Acceptance Criteria vagos tipo "código limpio" o "se ve bien".</li>
+      <li>❌ Inventar archivos, endpoints, servicios o columnas.</li>
+    </ul>
+
+    <h2>Estado final</h2>
+    <ul>
+      <li><span class="badge green">REFI v2 disponible</span> — el prompt del planner ahora es dual-mode y elige vía <code>planning_method</code>.</li>
+      <li><span class="badge green">Phases default</span> — <code>planning_method</code> por defecto es <code>"phases"</code> (legacy); Epic + PART es opt-in.</li>
+      <li><span class="badge green">Selector UI/tool</span> — <code>/reasp-setup</code> y <code>reasp_setup(action="set-planning-method")</code> permiten cambiar método.</li>
+      <li><span class="badge green">Backward-compat</span> — los 4 paquetes legacy siguen parseando; el default phases preserva el comportamiento anterior.</li>
+      <li><span class="badge green">Helper validado</span> — dry-run exitoso contra <code>reasp-backup-manager</code>.</li>
+      <li><span class="badge green">Worked-example navegable</span> — <code>.refi/modules/example-todo-cli/</code> muestra el patrón completo.</li>
+      <li><span class="badge amber">Pendiente</span> — validar interactivamente que <code>/reasp-setup</code> cambia <code>planning_method</code> y que el planner llama <code>reasp_setup(action="status")</code> al inicio. (Requiere sesión interactiva.)</li>
+    </ul>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- Sesión 6 · Planning Method Selector -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+    <h1 style="color:#7dd3fc;">Sesión 6 — Planning Method Selector</h1>
+    <p class="muted">Nueva funcionalidad para elegir la metodología de planificación desde la UI y el tool, manteniendo <strong>Phases (legacy)</strong> como default y <strong>Epic + PART (v2)</strong> como alternativa explícita.</p>
+
+    <div class="grid">
+      <div class="stat success">
+        <div class="label">Métodos soportados</div>
+        <div class="value">2</div>
+      </div>
+      <div class="stat success">
+        <div class="label">Default</div>
+        <div class="value">phases</div>
+      </div>
+      <div class="stat success">
+        <div class="label">PARTs de EPIC 08</div>
+        <div class="value">3 / 3</div>
+      </div>
+      <div class="stat success">
+        <div class="label">Archivos de runtime modificados</div>
+        <div class="value">4</div>
+      </div>
+    </div>
+
+    <h2>Problema resuelto</h2>
+    <p>El usuario quería que REFI v2 Epic + PART estuviera disponible, pero <strong>sin romper el flujo actual</strong>. La metodología anterior (domain-shards por fases) debía seguir siendo el default, y Epic + PART debía ser seleccionable explícitamente desde la interfaz.</p>
+
+    <h2>Solución aplicada</h2>
+
+    <h3>1. Estado persistente</h3>
+    <ul>
+      <li><code>.opencode/reasp.config.json</code> añade <code>"planning_method": "phases"</code>.</li>
+      <li><code>.opencode/rass-core.js</code> añade <code>VALID_PLANNING_METHODS</code>, <code>DEFAULT_PLANNING_METHOD</code>, <code>getPlanningMethod()</code> y <code>setPlanningMethod(method)</code>. Fallback seguro a <code>"phases"</code> si el campo falta o es inválido.</li>
+      <li><code>getReaspStatus()</code> expone <code>planning_method</code> en su respuesta.</li>
+    </ul>
+
+    <h3>2. Tool programático</h3>
+    <ul>
+      <li><code>.opencode/plugin.js</code>: <code>reasp_setup</code> acepta <code>action="set-planning-method"</code> con argumento <code>method</code> (<code>phases</code> o <code>epic</code>).</li>
+      <li>La acción <code>status</code> devuelve el método activo.</li>
+    </ul>
+
+    <h3>3. TUI /reasp-setup</h3>
+    <ul>
+      <li><code>.opencode/tui.js</code>: nueva opción <em>"Switch Planning Method"</em> con sub-selección <em>Phases (legacy)</em> / <em>Epic + PART (v2)</em>.</li>
+      <li>El toast de <em>View Status</em> muestra el método activo.</li>
+    </ul>
+
+    <h3>4. Prompt dual del planner</h3>
+    <ul>
+      <li><code>.opencode/agents/ryou-efi-planner.md</code> reescrito como dual-mode. Al inicio de cada sesión el agente debe llamar <code>reasp_setup(action="status")</code> y seguir la sección correspondiente (<code>phases</code> o <code>epic</code>).</li>
+      <li>Se preservan Gate A, Gate B y Handoff literal para Epic + PART; se añade Gate y Handoff literal para Phases.</li>
+    </ul>
+
+    <h3>5. Documentación</h3>
+    <ul>
+      <li><code>README.md</code> (raíz): se explica que Phases es default y Epic + PART es opt-in; se documenta <code>reasp_setup(action="set-planning-method", method="...")</code>.</li>
+      <li><code>.opencode/refi/README.md</code>: sección "Planning Method Selector" con tabla, ejemplos de uso y nota de que <code>ryou-efi-planner.md</code> detecta el modo al inicio.</li>
+    </ul>
+
+    <h3>6. REFI packet EPIC 08</h3>
+    <ul>
+      <li><code>.refi/modules/refi-epic-part-methodology/epics/08-planning-method-selector/</code>: README + 3 PARTs (<code>08-01-config-state</code>, <code>08-02-tool-and-tui</code>, <code>08-03-dual-prompt</code>).</li>
+      <li>Se actualizarán <code>epics/matrix.md</code>, <code>progress.md</code>, <code>orchestration-map.md</code> y <code>verification.md</code>.</li>
+    </ul>
+
+    <h2>Archivos creados / modificados</h2>
+
+    <h3>Modificados</h3>
+    <ul>
+      <li><code>.opencode/reasp.config.json</code> — campo <code>planning_method</code> default <code>"phases"</code>.</li>
+      <li><code>.opencode/rass-core.js</code> — helpers <code>getPlanningMethod()</code> / <code>setPlanningMethod()</code> + exposición en <code>getReaspStatus()</code>.</li>
+      <li><code>.opencode/plugin.js</code> — acción <code>set-planning-method</code> en <code>reasp_setup</code>.</li>
+      <li><code>.opencode/tui.js</code> — opción <em>Switch Planning Method</em> en <code>/reasp-setup</code>.</li>
+      <li><code>.opencode/agents/ryou-efi-planner.md</code> — prompt dual-mode (Phases + Epic/PART).</li>
+      <li><code>.opencode/refi/README.md</code> — sección "Planning Method Selector".</li>
+      <li><code>README.md</code> (raíz) — mención al selector y ejemplos de tool.</li>
+      <li><code>AI/Summarys/summary-2026-07-09.html</code> — este resumen ampliado.</li>
+    </ul>
+
+    <h3>Nuevos</h3>
+    <ul>
+      <li><code>.refi/modules/refi-epic-part-methodology/epics/08-planning-method-selector/</code> — README y 3 PARTs.</li>
+    </ul>
+
+    <h2>Verificación</h2>
+    <pre>// Fallback cuando el campo falta
+$ node -e "import('./.opencode/rass-core.js').then(m => console.log(m.getPlanningMethod()))"
+phases
+
+// Cambiar a epic
+$ node -e "import('./.opencode/rass-core.js').then(m => console.log(m.setPlanningMethod('epic').planning_method))"
+epic
+
+// Ver status incluye planning_method
+$ node -e "import('./.opencode/rass-core.js').then(m => console.log(m.getReaspStatus().planning_method))"
+epic</pre>
+
+    <h2>Estado final</h2>
+    <ul>
+      <li><span class="badge green">Selector implementado</span> — UI, tool y prompt sincronizados.</li>
+      <li><span class="badge green">Default phases</span> — comportamiento legacy preservado.</li>
+      <li><span class="badge green">Backward-compat</span> — configs existentes sin <code>planning_method</code> fallback a phases.</li>
+      <li><span class="badge amber">Pendiente</span> — validación interactiva en OpenCode real con <code>/reasp-setup</code>.</li>
     </ul>
   </div>
 </body>

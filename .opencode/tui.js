@@ -22,6 +22,8 @@ import {
   getReaspStatus,
   setPrimaryWorkflow,
   setFeatureEnabled,
+  getPlanningMethod,
+  setPlanningMethod,
   AVAILABLE_PHASES,
   EFFORT_LEVELS,
   RYOU_AGENTS,
@@ -1215,7 +1217,12 @@ export default {
         {
           title: 'View Status',
           value: 'status',
-          description: `Workflow: ${reasp.default_workflow} | ModeProfile: ${status.current_modeprofile || 'none'}`,
+          description: `Workflow: ${reasp.default_workflow} | ModeProfile: ${status.current_modeprofile || 'none'} | Planning: ${reasp.planning_method || 'phases'}`,
+        },
+        {
+          title: 'Switch Planning Method',
+          value: 'switch-planning-method',
+          description: `Current: ${getPlanningMethod()} — choose Phases (legacy) or Epic + PART (v2)`,
         },
         {
           title: 'Use Ryou EFI Planner',
@@ -1256,8 +1263,43 @@ export default {
                   api.ui.toast({
                     variant: 'info',
                     title: 'REASP Status',
-                    message: `Workflow: ${reasp.default_workflow} | ModeProfile: ${status.current_modeprofile || 'none'} | REFI: ${refiEnabled ? 'enabled' : 'disabled'}`,
+                    message: `Workflow: ${reasp.default_workflow} | ModeProfile: ${status.current_modeprofile || 'none'} | REFI: ${refiEnabled ? 'enabled' : 'disabled'} | Planning: ${reasp.planning_method || 'phases'}`,
                   });
+                  break;
+                }
+                case 'switch-planning-method': {
+                  dialog.replace(
+                    () => api.ui.DialogSelect({
+                      title: 'Select Planning Method',
+                      placeholder: 'Choose planning methodology...',
+                      options: [
+                        {
+                          title: 'Phases (legacy)',
+                          value: 'phases',
+                          description: 'Domain-shard planning: planning, architecture, implementation, verification, handoff',
+                        },
+                        {
+                          title: 'Epic + PART (v2)',
+                          value: 'epic',
+                          description: 'EPIC/PART planning with packets, quality gates, and anti-hallucination rules',
+                        },
+                      ],
+                      onSelect: (opt) => {
+                        try {
+                          setPlanningMethod(opt.value);
+                          dialog.clear();
+                          api.ui.toast({
+                            variant: 'success',
+                            title: 'Planning Method Updated',
+                            message: `REASP is now using "${opt.value}" planning methodology.`,
+                          });
+                        } catch (err) {
+                          dialog.clear();
+                          api.ui.toast({ variant: 'error', title: 'Error', message: err.message });
+                        }
+                      },
+                    }),
+                  );
                   break;
                 }
                 case 'efi': {

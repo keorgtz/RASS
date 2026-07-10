@@ -1,40 +1,68 @@
- system:
-   name: REFI
-   expanded_name: Ryou Enterprise Feature Implementation
-   language: es-MX
-   documentation_mode: documentation-first-execution
+system:
+  name: REFI
+  expanded_name: Ryou Enterprise Feature Implementation
+  version: 2.0.0-epic-part
+  language: es-MX
+  documentation_mode: documentation-first-execution
 
- defaults:
-   auto_create_packet: true
-   auto_begin_implementation: false
-   ask_only_if_blocked: true
-   require_verification_between_shards: true
-   require_daily_summary: true
+defaults:
+  auto_create_packet: true
+  auto_begin_implementation: false
+  ask_only_if_blocked: true
+  require_verification_between_shards: true
+  require_daily_summary: true
 
- project_profile:
-   primary_stack:
-     - .NET 9
-     - C#
-     - WPF
-     - Entity Framework Core
-     - SQL Server
-   ui_system: MeridianUI
-   architecture_bias: pragmatic-clean-modular
-   copy_tone: enterprise-soft
+project_profile:
+  primary_stack:
+    - .NET 9
+    - C#
+    - WPF
+    - Entity Framework Core
+    - SQL Server
+  ui_system: MeridianUI
+  architecture_bias: pragmatic-clean-modular
+  copy_tone: enterprise-soft
 
- packet:
-   required_files:
-     - request.md
-     - master-blueprint.md
-     - orchestration-map.md
-     - progress.md
-     - verification.md
-   shard_folder: domain-shards
-   shard_naming: "NN-domain-name.md"
+packet:
+  required_files:
+    - request.md
+    - master-blueprint.md
+    - epics/matrix.md
+    - orchestration-map.md
+    - progress.md
+    - verification.md
+  shard_folder: domain-shards                # optional, for cross-cutting only
+  shard_naming: "NN-domain-name.md"
+  epic_folder: epics                         # NEW · v2
+  epic_readme_naming: "README.md"            # one per epic
+  epic_parts_naming: "PARTnn_<slug>.md"      # NEW · v2
 
- quality_gates:
-   - scope-grounded
-   - architecture-consistent
-   - no-fake-abstractions
-   - no-unverified-advance
-   - project-convention-aligned
+# NEW · REFI v2 (Epic + PART methodology)
+# See rules/epic-glossary.md for vocabulary, rules/quality-gates.md for the 8 gates.
+epic_part:
+  enabled: true                              # Planner always proposes EPICs first.
+  require_part_detail_before_handoff: true   # No handoff without detailed PARTs.
+  legacy_domain_shards_fallback: true        # Accept v1 packets (read-only).
+  min_epics_for_enterprise: 2                # Tasks with < 2 EPICs are treated as trivial.
+  max_parts_per_epic_soft_warning: 30        # EPICs growing beyond 30 PARTs trigger a warning.
+
+quality_gates:
+  # REFI v2 — every PART must traverse these 8 gates in strict order.
+  # Detailed evidence requirements live in rules/quality-gates.md v2.
+  - architecture-review
+  - scope-completeness-audit
+  - ux-design-review
+  - manual-runtime-validation
+  - defect-closure
+  - technical-documentation
+  - user-documentation
+  - final-review-signoff
+
+# Backward-compat alias kept for v1 references in scripts/tools.
+# New code MUST use the 8-gate list above.
+quality_gates_legacy:
+  - scope-grounded
+  - architecture-consistent
+  - no-fake-abstractions
+  - no-unverified-advance
+  - project-convention-aligned

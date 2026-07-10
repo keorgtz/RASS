@@ -1,17 +1,18 @@
- {
-   "system_name": "REASP",
-   "full_name": "Ryou Enterprise Adaptive SDD Protocol",
-   "version": "1.0.0",
-   "default_modeprofile": "ryouset",
-   "default_workflow": "ryou-orchestrator",
-   "features": {
-     "rass": {
-       "enabled": true,
-       "label": "Ryou Orchestrator"
-     },
-     "refi": {
-       "enabled": true,
-       "label": "Ryou EFI Planner"
-     }
-   }
- }
+{
+  "system_name": "REASP",
+  "full_name": "Ryou Enterprise Adaptive SDD Protocol",
+  "version": "1.0.0",
+  "default_modeprofile": "ryouset",
+  "default_workflow": "ryou-orchestrator",
+  "features": {
+    "rass": {
+      "enabled": true,
+      "label": "Ryou Orchestrator"
+    },
+    "refi": {
+      "enabled": true,
+      "label": "Ryou EFI Planner"
+    }
+  },
+  "planning_method": "phases"
+}

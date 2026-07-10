@@ -462,6 +462,9 @@ export function getStatus() {
 
 export const REASP_PRIMARY_AGENTS = ['ryou-orchestrator', 'ryou-efi-planner'];
 
+export const VALID_PLANNING_METHODS = ['phases', 'epic'];
+export const DEFAULT_PLANNING_METHOD = 'phases';
+
 export function getReaspConfig() {
   return readJson(getReaspConfigPath()) || {
     system_name: 'REASP',
@@ -473,7 +476,25 @@ export function getReaspConfig() {
       rass: { enabled: true, label: 'Ryou Orchestrator' },
       refi: { enabled: true, label: 'Ryou EFI Planner' },
     },
+    planning_method: DEFAULT_PLANNING_METHOD,
   };
+}
+
+export function getPlanningMethod() {
+  const reasp = getReaspConfig();
+  const method = reasp?.planning_method;
+  if (VALID_PLANNING_METHODS.includes(method)) return method;
+  return DEFAULT_PLANNING_METHOD;
+}
+
+export function setPlanningMethod(method) {
+  if (!VALID_PLANNING_METHODS.includes(method)) {
+    throw new Error(`Invalid planning_method "${method}". Must be one of: ${VALID_PLANNING_METHODS.join(', ')}`);
+  }
+  const config = getReaspConfig();
+  config.planning_method = method;
+  writeJson(getReaspConfigPath(), config);
+  return { planning_method: method };
 }
 
 export function setPrimaryWorkflow(agentName, configPath = getGlobalConfigPath()) {
@@ -555,6 +576,7 @@ export function getReaspStatus(configPath = getGlobalConfigPath()) {
     current_modeprofile: status.current_modeprofile,
     modeprofile: status.modeprofile,
     default_workflow: config.default_agent || reasp.default_workflow || 'ryou-orchestrator',
+    planning_method: getPlanningMethod(),
     features: reasp.features,
     primary_agents: REASP_PRIMARY_AGENTS,
   };
