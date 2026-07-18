@@ -4,11 +4,6 @@
   "version": "1.0.0",
   "default_modeprofile": "ryougo",
   "default_workflow": "ryou-orchestrator",
-  "agent_modeprofiles": {
-    "ryou-orchestrator": "ryougo",
-    "ryou-efi-planner": "ryougo",
-    "builder": "ryougo"
-  },
   "features": {
     "rass": {
       "enabled": true,

@@ -20,10 +20,6 @@ import {
   getReaspConfig,
   getPlanningMethod,
   setPlanningMethod,
-  getAgentModeProfile,
-  setAgentModeProfile,
-  resolveAgentModel,
-  refreshAllAgentModels,
   resolveAgentModels,
   refreshAllFromModeProfile,
   isRuntimeInSync,
@@ -309,7 +305,7 @@ export default {
         rass_setup: tool({
           description:
             'Manage RASS setup. Check if Ryou agents are configured, deploy agents to OpenCode config, ' +
-            'or show the current RASS status including ModeProfile and agent configuration.',
+            'or show the current RASS status using the single active ModeProfile.',
           args: {
             action: tool.schema
               .enum(['status', 'deploy', 'check', 'validate'])
@@ -322,8 +318,6 @@ export default {
                   const status = getStatus();
                   const reasp = getReaspConfig();
                   const agents = Object.keys(RYOU_AGENTS);
-                  const agentProfiles = reasp.agent_modeprofiles || {};
-                  const defaultProfile = reasp.default_modeprofile || 'ryougo';
                   return {
                     title: 'REASP Full Status',
                     output:
@@ -334,9 +328,7 @@ export default {
                       `**Phases:** ${status.modeprofile?.phases?.join(' → ') || 'none'}\n` +
                       `**Model strategy:** ${status.modeprofile?.model_strategy || 'unknown'}\n` +
                       `**Default model:** ${status.modeprofile?.default_model || 'none'}\n\n` +
-                      `**Agent ModeProfiles:**\n` +
-                      agents.map((a) => `  - ${a}: ${agentProfiles[a] || defaultProfile}`).join('\n') +
-                      `\n\n**Ryou Agents:** ${agents.length} configured\n` +
+                      `**Ryou Agents:** ${agents.length} configured from the active ModeProfile\n` +
                       agents.map((a) => `  - ${a}: ${RYOU_AGENTS[a].description}`).join('\n'),
                   };
                 }
